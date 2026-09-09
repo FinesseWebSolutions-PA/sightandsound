@@ -1,0 +1,203 @@
+import { createFileRoute, notFound } from "@tanstack/react-router";
+import { ArrowUpRight, Link2, Lock } from "lucide-react";
+
+import { StatusBadge } from "@/components/StatusBadge";
+import { departments, personById, taskDependencies, useStore } from "@/lib/store";
+import { formatDate, milestoneStatusMeta, taskStatusMeta } from "@/lib/status";
+import type { TaskStatus } from "@/lib/production-data";
+
+export const Route = createFileRoute("/projects/$projectId/timeline")({
+  head: () => ({
+    meta: [
+      { title: "Production timeline — Sight & Sound Show Production" },
+      {
+        name: "description",
+        content:
+          "Milestones and work items with due dates, ownership, status, and what each item waits on.",
+      },
+      { property: "og:title", content: "Production timeline — Sight & Sound Show Production" },
+      {
+        property: "og:description",
+        content: "Milestones and work items with due dates, ownership, status, and dependencies.",
+      },
+    ],
+  }),
+  component: TimelineTab,
+});
+
+const statusOptions: TaskStatus[] = [
+  "not_started",
+  "in_progress",
+  "in_review",
+  "blocked",
+  "complete",
+];
+
+function TimelineTab() {
+  const { projectId } = Route.useParams();
+  const { projects, milestones, tasks, can, setTaskStatus, setMilestoneDate } = useStore();
+  const project = projects.find((p) => p.id === projectId);
+  if (!project) throw notFound();
+
+  const projectMilestones = milestones
+    .filter((m) => m.project_id === projectId)
+    .sort((a, b) => a.due_date.localeCompare(b.due_date));
+
+  const taskTitle = (id: string) => tasks.find((t) => t.id === id)?.title ?? id;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 className="font-display text-3xl text-ink">Timeline</h2>
+          <p className="mt-1 max-w-2xl text-sm text-ink-soft">
+            Milestones in date order, with the work items under each one. Core milestone dates are
+            edited by Admins; anyone assigned can move their own work forward.
+          </p>
+        </div>
+        {!can.editCoreTimeline && (
+          <p className="inline-flex items-center gap-1.5 rounded-md border border-border bg-cream px-3 py-1.5 text-xs text-ink-soft">
+            <Lock aria-hidden className="size-3.5" />
+            Core milestone dates are read-only in your role
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-5">
+        {projectMilestones.map((milestone) => {
+          const milestoneTasks = tasks
+            .filter((t) => t.milestone_id === milestone.id)
+            .sort((a, b) => a.due_date.localeCompare(b.due_date));
+          return (
+            <section key={milestone.id} className="surface-card overflow-hidden">
+              <header className="flex flex-wrap items-center gap-3 border-b border-border bg-cream-soft px-4 py-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-semibold text-ink">{milestone.name}</h3>
+                    {milestone.is_core && (
+                      <span className="rule-label inline-flex items-center gap-1">
+                        <Lock aria-hidden className="size-3" /> Core
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 text-xs text-ink-soft">
+                    {departments.find((d) => d.id === milestone.department_id)?.name} ·{" "}
+                    {personById(milestone.owner_id)?.full_name}
+                  </p>
+                </div>
+                <StatusBadge meta={milestoneStatusMeta[milestone.status]} size="sm" />
+                <div className="ml-auto flex items-center gap-2">
+                  <span className="rule-label">Due</span>
+                  {can.editCoreTimeline ? (
+                    <input
+                      type="date"
+                      aria-label={`Due date for ${milestone.name}`}
+                      value={milestone.due_date}
+                      onChange={(e) => setMilestoneDate(milestone.id, e.target.value)}
+                      className="rounded-md border border-border bg-card px-2 py-1 text-xs text-ink"
+                    />
+                  ) : (
+                    <span className="text-sm text-ink">{formatDate(milestone.due_date)}</span>
+                  )}
+                </div>
+              </header>
+
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[46rem] text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left">
+                      <th className="rule-label px-4 py-2">Work item</th>
+                      <th className="rule-label px-4 py-2">Department</th>
+                      <th className="rule-label px-4 py-2">Team member</th>
+                      <th className="rule-label px-4 py-2">Due</th>
+                      <th className="rule-label px-4 py-2">Waits on</th>
+                      <th className="rule-label px-4 py-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {milestoneTasks.map((task) => {
+                      const waitsOn = taskDependencies.filter((d) => d.task_id === task.id);
+                      const blocks = taskDependencies.filter(
+                        (d) => d.depends_on_task_id === task.id,
+                      );
+                      return (
+                        <tr key={task.id} className="align-top">
+                          <td className="px-4 py-3">
+                            <span className="text-ink">{task.title}</span>
+                            <span className="code-id mt-0.5 block">{task.id}</span>
+                            {blocks.length > 0 && (
+                              <span className="mt-1 inline-flex items-center gap-1 text-xs text-ink-soft">
+                                <ArrowUpRight aria-hidden className="size-3" />
+                                Blocks {blocks.length} {blocks.length === 1 ? "item" : "items"}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-ink-soft">
+                            {departments.find((d) => d.id === task.department_id)?.name}
+                          </td>
+                          <td className="px-4 py-3 text-ink-soft">
+                            {personById(task.assignee_id)?.full_name}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-ink-soft">
+                            {formatDate(task.due_date)}
+                          </td>
+                          <td className="px-4 py-3 text-ink-soft">
+                            {waitsOn.length === 0 ? (
+                              "—"
+                            ) : (
+                              <ul className="space-y-1">
+                                {waitsOn.map((d) => (
+                                  <li
+                                    key={d.depends_on_task_id}
+                                    className="flex items-start gap-1.5"
+                                  >
+                                    <Link2 aria-hidden className="mt-0.5 size-3 shrink-0" />
+                                    <span>{taskTitle(d.depends_on_task_id)}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {can.updateWork ? (
+                              <div className="space-y-1.5">
+                                <StatusBadge meta={taskStatusMeta[task.status]} size="sm" />
+                                <select
+                                  aria-label={`Status for ${task.title}`}
+                                  value={task.status}
+                                  onChange={(e) =>
+                                    setTaskStatus(task.id, e.target.value as TaskStatus)
+                                  }
+                                  className="block rounded-md border border-border bg-card px-2 py-1 text-xs text-ink"
+                                >
+                                  {statusOptions.map((s) => (
+                                    <option key={s} value={s}>
+                                      {taskStatusMeta[s].label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            ) : (
+                              <StatusBadge meta={taskStatusMeta[task.status]} size="sm" />
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {milestoneTasks.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-3 text-ink-soft">
+                          No work items under this milestone yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

@@ -10,33 +10,111 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
+import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects.$projectId.index'
+import { Route as ProjectsProjectIdDiscussionsRouteImport } from './routes/projects.$projectId.discussions'
+import { Route as ProjectsProjectIdDocumentsRouteImport } from './routes/projects.$projectId.documents'
+import { Route as ProjectsProjectIdTeamRouteImport } from './routes/projects.$projectId.team'
+import { Route as ProjectsProjectIdTimelineRouteImport } from './routes/projects.$projectId.timeline'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
+  id: '/projects/$projectId',
+  path: '/projects/$projectId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsProjectIdIndexRoute = ProjectsProjectIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProjectsProjectIdRoute,
+} as any)
+const ProjectsProjectIdDiscussionsRoute =
+  ProjectsProjectIdDiscussionsRouteImport.update({
+    id: '/discussions',
+    path: '/discussions',
+    getParentRoute: () => ProjectsProjectIdRoute,
+  } as any)
+const ProjectsProjectIdDocumentsRoute =
+  ProjectsProjectIdDocumentsRouteImport.update({
+    id: '/documents',
+    path: '/documents',
+    getParentRoute: () => ProjectsProjectIdRoute,
+  } as any)
+const ProjectsProjectIdTeamRoute = ProjectsProjectIdTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => ProjectsProjectIdRoute,
+} as any)
+const ProjectsProjectIdTimelineRoute =
+  ProjectsProjectIdTimelineRouteImport.update({
+    id: '/timeline',
+    path: '/timeline',
+    getParentRoute: () => ProjectsProjectIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
+  '/projects/$projectId/discussions': typeof ProjectsProjectIdDiscussionsRoute
+  '/projects/$projectId/documents': typeof ProjectsProjectIdDocumentsRoute
+  '/projects/$projectId/team': typeof ProjectsProjectIdTeamRoute
+  '/projects/$projectId/timeline': typeof ProjectsProjectIdTimelineRoute
+  '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/projects/$projectId/discussions': typeof ProjectsProjectIdDiscussionsRoute
+  '/projects/$projectId/documents': typeof ProjectsProjectIdDocumentsRoute
+  '/projects/$projectId/team': typeof ProjectsProjectIdTeamRoute
+  '/projects/$projectId/timeline': typeof ProjectsProjectIdTimelineRoute
+  '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
+  '/projects/$projectId/discussions': typeof ProjectsProjectIdDiscussionsRoute
+  '/projects/$projectId/documents': typeof ProjectsProjectIdDocumentsRoute
+  '/projects/$projectId/team': typeof ProjectsProjectIdTeamRoute
+  '/projects/$projectId/timeline': typeof ProjectsProjectIdTimelineRoute
+  '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/projects/$projectId'
+    | '/projects/$projectId/discussions'
+    | '/projects/$projectId/documents'
+    | '/projects/$projectId/team'
+    | '/projects/$projectId/timeline'
+    | '/projects/$projectId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/projects/$projectId/discussions'
+    | '/projects/$projectId/documents'
+    | '/projects/$projectId/team'
+    | '/projects/$projectId/timeline'
+    | '/projects/$projectId'
+  id:
+    | '__root__'
+    | '/'
+    | '/projects/$projectId'
+    | '/projects/$projectId/discussions'
+    | '/projects/$projectId/documents'
+    | '/projects/$projectId/team'
+    | '/projects/$projectId/timeline'
+    | '/projects/$projectId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ProjectsProjectIdRoute: typeof ProjectsProjectIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +126,73 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projects/$projectId': {
+      id: '/projects/$projectId'
+      path: '/projects/$projectId'
+      fullPath: '/projects/$projectId'
+      preLoaderRoute: typeof ProjectsProjectIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects/$projectId/': {
+      id: '/projects/$projectId/'
+      path: '/'
+      fullPath: '/projects/$projectId/'
+      preLoaderRoute: typeof ProjectsProjectIdIndexRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/projects/$projectId/discussions': {
+      id: '/projects/$projectId/discussions'
+      path: '/discussions'
+      fullPath: '/projects/$projectId/discussions'
+      preLoaderRoute: typeof ProjectsProjectIdDiscussionsRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/projects/$projectId/documents': {
+      id: '/projects/$projectId/documents'
+      path: '/documents'
+      fullPath: '/projects/$projectId/documents'
+      preLoaderRoute: typeof ProjectsProjectIdDocumentsRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/projects/$projectId/team': {
+      id: '/projects/$projectId/team'
+      path: '/team'
+      fullPath: '/projects/$projectId/team'
+      preLoaderRoute: typeof ProjectsProjectIdTeamRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/projects/$projectId/timeline': {
+      id: '/projects/$projectId/timeline'
+      path: '/timeline'
+      fullPath: '/projects/$projectId/timeline'
+      preLoaderRoute: typeof ProjectsProjectIdTimelineRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
   }
 }
 
+interface ProjectsProjectIdRouteChildren {
+  ProjectsProjectIdDiscussionsRoute: typeof ProjectsProjectIdDiscussionsRoute
+  ProjectsProjectIdDocumentsRoute: typeof ProjectsProjectIdDocumentsRoute
+  ProjectsProjectIdTeamRoute: typeof ProjectsProjectIdTeamRoute
+  ProjectsProjectIdTimelineRoute: typeof ProjectsProjectIdTimelineRoute
+  ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
+}
+
+const ProjectsProjectIdRouteChildren: ProjectsProjectIdRouteChildren = {
+  ProjectsProjectIdDiscussionsRoute: ProjectsProjectIdDiscussionsRoute,
+  ProjectsProjectIdDocumentsRoute: ProjectsProjectIdDocumentsRoute,
+  ProjectsProjectIdTeamRoute: ProjectsProjectIdTeamRoute,
+  ProjectsProjectIdTimelineRoute: ProjectsProjectIdTimelineRoute,
+  ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,
+}
+
+const ProjectsProjectIdRouteWithChildren =
+  ProjectsProjectIdRoute._addFileChildren(ProjectsProjectIdRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ProjectsProjectIdRoute: ProjectsProjectIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
