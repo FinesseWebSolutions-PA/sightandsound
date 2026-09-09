@@ -13,7 +13,7 @@ import {
 
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, people, personById, useStore } from "@/lib/store";
-import { approvalStateMeta, formatDate, formatDateTime, taskStatusMeta } from "@/lib/status";
+import { approvalStateMeta, formatDate, formatDateTime, projectStatusMeta, taskStatusMeta } from "@/lib/status";
 import { snippet } from "@/lib/threads";
 import { cn } from "@/lib/utils";
 
