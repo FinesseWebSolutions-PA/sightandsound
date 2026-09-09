@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowRight, CalendarDays, MapPin } from "lucide-react";
+import { ArrowRight, CalendarDays, MapPin, SlidersHorizontal } from "lucide-react";
 
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, projectDepartments, personById, useStore } from "@/lib/store";
 import { formatDate, projectStatusMeta, readinessMeta } from "@/lib/status";
+import { cn } from "@/lib/utils";
 import type { ProjectStatus } from "@/lib/production-data";
 
 export const Route = createFileRoute("/")({
@@ -34,6 +35,7 @@ function PortfolioPage() {
   const [status, setStatus] = useState<"all" | ProjectStatus>("all");
   const [venue, setVenue] = useState("all");
   const [department, setDepartment] = useState("all");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const rows = useMemo(
     () =>
