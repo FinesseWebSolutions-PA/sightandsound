@@ -70,7 +70,7 @@ function DiscussionsTab() {
         key={level}
         projectId={projectId}
         contextType={level}
-        heading={levels.find((l) => l.key === level)?.label}
+        heading={levels.find((l) => l.key === level)?.label ?? "Discussions"}
         blurb={
           level === "project"
             ? "Conversation about the production as a whole."

@@ -12,6 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects.$projectId.index'
+import { Route as ProjectsProjectIdDiscussionsRouteImport } from './routes/projects.$projectId.discussions'
+import { Route as ProjectsProjectIdDocumentsRouteImport } from './routes/projects.$projectId.documents'
+import { Route as ProjectsProjectIdTeamRouteImport } from './routes/projects.$projectId.team'
 import { Route as ProjectsProjectIdTimelineRouteImport } from './routes/projects.$projectId.timeline'
 
 const IndexRoute = IndexRouteImport.update({
@@ -29,6 +32,23 @@ const ProjectsProjectIdIndexRoute = ProjectsProjectIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ProjectsProjectIdRoute,
 } as any)
+const ProjectsProjectIdDiscussionsRoute =
+  ProjectsProjectIdDiscussionsRouteImport.update({
+    id: '/discussions',
+    path: '/discussions',
+    getParentRoute: () => ProjectsProjectIdRoute,
+  } as any)
+const ProjectsProjectIdDocumentsRoute =
+  ProjectsProjectIdDocumentsRouteImport.update({
+    id: '/documents',
+    path: '/documents',
+    getParentRoute: () => ProjectsProjectIdRoute,
+  } as any)
+const ProjectsProjectIdTeamRoute = ProjectsProjectIdTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => ProjectsProjectIdRoute,
+} as any)
 const ProjectsProjectIdTimelineRoute =
   ProjectsProjectIdTimelineRouteImport.update({
     id: '/timeline',
@@ -39,11 +59,17 @@ const ProjectsProjectIdTimelineRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
+  '/projects/$projectId/discussions': typeof ProjectsProjectIdDiscussionsRoute
+  '/projects/$projectId/documents': typeof ProjectsProjectIdDocumentsRoute
+  '/projects/$projectId/team': typeof ProjectsProjectIdTeamRoute
   '/projects/$projectId/timeline': typeof ProjectsProjectIdTimelineRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/projects/$projectId/discussions': typeof ProjectsProjectIdDiscussionsRoute
+  '/projects/$projectId/documents': typeof ProjectsProjectIdDocumentsRoute
+  '/projects/$projectId/team': typeof ProjectsProjectIdTeamRoute
   '/projects/$projectId/timeline': typeof ProjectsProjectIdTimelineRoute
   '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
 }
@@ -51,6 +77,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
+  '/projects/$projectId/discussions': typeof ProjectsProjectIdDiscussionsRoute
+  '/projects/$projectId/documents': typeof ProjectsProjectIdDocumentsRoute
+  '/projects/$projectId/team': typeof ProjectsProjectIdTeamRoute
   '/projects/$projectId/timeline': typeof ProjectsProjectIdTimelineRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
 }
@@ -59,14 +88,26 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/projects/$projectId'
+    | '/projects/$projectId/discussions'
+    | '/projects/$projectId/documents'
+    | '/projects/$projectId/team'
     | '/projects/$projectId/timeline'
     | '/projects/$projectId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/projects/$projectId/timeline' | '/projects/$projectId'
+  to:
+    | '/'
+    | '/projects/$projectId/discussions'
+    | '/projects/$projectId/documents'
+    | '/projects/$projectId/team'
+    | '/projects/$projectId/timeline'
+    | '/projects/$projectId'
   id:
     | '__root__'
     | '/'
     | '/projects/$projectId'
+    | '/projects/$projectId/discussions'
+    | '/projects/$projectId/documents'
+    | '/projects/$projectId/team'
     | '/projects/$projectId/timeline'
     | '/projects/$projectId/'
   fileRoutesById: FileRoutesById
@@ -99,6 +140,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectIdIndexRouteImport
       parentRoute: typeof ProjectsProjectIdRoute
     }
+    '/projects/$projectId/discussions': {
+      id: '/projects/$projectId/discussions'
+      path: '/discussions'
+      fullPath: '/projects/$projectId/discussions'
+      preLoaderRoute: typeof ProjectsProjectIdDiscussionsRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/projects/$projectId/documents': {
+      id: '/projects/$projectId/documents'
+      path: '/documents'
+      fullPath: '/projects/$projectId/documents'
+      preLoaderRoute: typeof ProjectsProjectIdDocumentsRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/projects/$projectId/team': {
+      id: '/projects/$projectId/team'
+      path: '/team'
+      fullPath: '/projects/$projectId/team'
+      preLoaderRoute: typeof ProjectsProjectIdTeamRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
     '/projects/$projectId/timeline': {
       id: '/projects/$projectId/timeline'
       path: '/timeline'
@@ -110,11 +172,17 @@ declare module '@tanstack/react-router' {
 }
 
 interface ProjectsProjectIdRouteChildren {
+  ProjectsProjectIdDiscussionsRoute: typeof ProjectsProjectIdDiscussionsRoute
+  ProjectsProjectIdDocumentsRoute: typeof ProjectsProjectIdDocumentsRoute
+  ProjectsProjectIdTeamRoute: typeof ProjectsProjectIdTeamRoute
   ProjectsProjectIdTimelineRoute: typeof ProjectsProjectIdTimelineRoute
   ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
 }
 
 const ProjectsProjectIdRouteChildren: ProjectsProjectIdRouteChildren = {
+  ProjectsProjectIdDiscussionsRoute: ProjectsProjectIdDiscussionsRoute,
+  ProjectsProjectIdDocumentsRoute: ProjectsProjectIdDocumentsRoute,
+  ProjectsProjectIdTeamRoute: ProjectsProjectIdTeamRoute,
   ProjectsProjectIdTimelineRoute: ProjectsProjectIdTimelineRoute,
   ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,
 }
