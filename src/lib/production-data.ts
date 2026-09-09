@@ -635,7 +635,7 @@ async function recordAudit(
   entityId: string,
   actorId: string,
   action: string,
-  changes: Record<string, unknown>,
+  changes: Record<string, string | number | boolean | null>,
 ) {
   await supabase.from("audit_log").insert({
     entity_type: entityType,
@@ -794,7 +794,14 @@ async function writeMentions(
     mentioned_person_id: string | null;
     mentioned_department_id: string | null;
   }[] = [];
-  const notificationRows: Record<string, unknown>[] = [];
+  const notificationRows: {
+    person_id: string;
+    type: string;
+    project_id: string | null;
+    source_comment_id: string;
+    source_entity_type: string;
+    source_entity_id: string | null;
+  }[] = [];
 
   for (const department of departments) {
     if (!body.includes(`@${department.name}`)) continue;

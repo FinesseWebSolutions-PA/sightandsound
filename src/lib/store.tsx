@@ -247,7 +247,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const addComment = useCallback(
     (threadId: string, _parentCommentId: string | null, body: string) => {
-      const thread = data?.threads.find((t) => t.id === threadId);
+      const thread = data?.discussionThreads.find((t) => t.id === threadId);
       if (!thread) return;
       run(() =>
         writeComment({
@@ -305,7 +305,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             documents: data.documents,
             documentVersions: data.documentVersions,
             approvals: data.approvals,
-            threads: data.threads,
+            threads: data.discussionThreads,
             comments: data.comments,
             mentions: data.mentions,
             notifications: data.notifications,
