@@ -387,7 +387,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         : null,
     [
       role,
+      setRole,
       isClosed,
+
 
       currentUserId,
       data,
