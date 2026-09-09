@@ -131,7 +131,7 @@ function InboxPage() {
         </Link>
       );
 
-      const cleanSummary = n.summary.replace(/^Approval /i, (m) => "").replace(/^(\w)/, (c) => c.toUpperCase());
+      const cleanSummary = n.summary.replace(/^Approval /i, "").replace(/^(\w)/, (c) => c.toUpperCase());
 
       out.push({
         id: `n-${n.id}`,
