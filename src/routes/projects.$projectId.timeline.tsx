@@ -190,6 +190,12 @@ function TaskCards({
               </p>
             )}
             <StatusControl task={task} canUpdate={canUpdate} onStatus={onStatus} size="touch" />
+            <TaskConversation
+              task={task}
+              open={openTaskId === task.id}
+              onToggle={() => onToggleThread(task.id)}
+              {...(highlightCommentId ? { highlightCommentId } : {})}
+            />
           </li>
         );
       })}
