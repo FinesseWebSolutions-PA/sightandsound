@@ -121,12 +121,28 @@ function personForRole(roster: Person[], role: Role): string {
   return (roster.find((p) => p.role === role) ?? roster[0])?.id ?? "";
 }
 
+const ROLE_KEY = "ss-demo-role";
+const isRole = (v: string | null): v is Role =>
+  v === "admin" || v === "contributor" || v === "viewer";
+
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [role, setRole] = useState<Role>("admin");
+  const [role, setRoleState] = useState<Role>("admin");
   const [data, setData] = useState<ProductionData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const currentUserIdRef = useRef("");
+
+  // Read after hydration so the server and the first client render agree.
+  useEffect(() => {
+    const stored = window.localStorage.getItem(ROLE_KEY);
+    if (isRole(stored)) setRoleState(stored);
+  }, []);
+
+  const setRole = useCallback((next: Role) => {
+    setRoleState(next);
+    window.localStorage.setItem(ROLE_KEY, next);
+  }, []);
+
 
   const refresh = useCallback(async () => {
     const next = await loadProductionData();
