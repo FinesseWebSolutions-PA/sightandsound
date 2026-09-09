@@ -4,7 +4,7 @@ import { ArrowUpRight, Link2, Lock } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, personById, taskDependencies, useStore } from "@/lib/store";
 import { formatDate, milestoneStatusMeta, taskStatusMeta } from "@/lib/status";
-import type { TaskStatus } from "@/lib/production-data";
+import type { Task, TaskStatus } from "@/lib/production-data";
 
 export const Route = createFileRoute("/projects/$projectId/timeline")({
   head: () => ({
@@ -28,15 +28,126 @@ export const Route = createFileRoute("/projects/$projectId/timeline")({
 // Matches the values the tasks table accepts.
 const statusOptions: TaskStatus[] = ["not_started", "in_progress", "blocked", "complete"];
 
+function TaskTable({
+  rows,
+  canUpdate,
+  onStatus,
+  taskTitle,
+  emptyLabel,
+}: {
+  rows: Task[];
+  canUpdate: boolean;
+  onStatus: (taskId: string, status: TaskStatus) => void;
+  taskTitle: (id: string) => string;
+  emptyLabel: string;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[46rem] text-sm">
+        <thead>
+          <tr className="border-b border-border text-left">
+            <th className="rule-label px-4 py-2">Work item</th>
+            <th className="rule-label px-4 py-2">Department</th>
+            <th className="rule-label px-4 py-2">Team member</th>
+            <th className="rule-label px-4 py-2">Due</th>
+            <th className="rule-label px-4 py-2">Waits on</th>
+            <th className="rule-label px-4 py-2">Status</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {rows.map((task) => {
+            const waitsOn = taskDependencies.filter((d) => d.task_id === task.id);
+            const blocks = taskDependencies.filter((d) => d.depends_on_task_id === task.id);
+            return (
+              <tr key={task.id} className="align-top">
+                <td className="px-4 py-3">
+                  <span className="text-ink">{task.title}</span>
+                  <span className="code-id mt-0.5 block">{task.id}</span>
+                  {blocks.length > 0 && (
+                    <span className="mt-1 inline-flex items-center gap-1 text-xs text-ink-soft">
+                      <ArrowUpRight aria-hidden className="size-3" />
+                      Blocks {blocks.map((b) => taskTitle(b.task_id)).join(", ")}
+                    </span>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-ink-soft">
+                  {departments.find((d) => d.id === task.department_id)?.name}
+                </td>
+                <td className="px-4 py-3 text-ink-soft">
+                  {personById(task.assignee_id)?.full_name}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-ink-soft">
+                  {formatDate(task.due_date)}
+                </td>
+                <td className="px-4 py-3 text-ink-soft">
+                  {waitsOn.length === 0 ? (
+                    "—"
+                  ) : (
+                    <ul className="space-y-1">
+                      {waitsOn.map((d) => (
+                        <li key={d.depends_on_task_id} className="flex items-start gap-1.5">
+                          <Link2 aria-hidden className="mt-0.5 size-3 shrink-0" />
+                          <span>{taskTitle(d.depends_on_task_id)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {canUpdate ? (
+                    <div className="space-y-1.5">
+                      <StatusBadge meta={taskStatusMeta[task.status]} size="sm" />
+                      <select
+                        aria-label={`Status for ${task.title}`}
+                        value={task.status}
+                        onChange={(e) => onStatus(task.id, e.target.value as TaskStatus)}
+                        className="block rounded-md border border-border bg-card px-2 py-1 text-xs text-ink"
+                      >
+                        {statusOptions.map((s) => (
+                          <option key={s} value={s}>
+                            {taskStatusMeta[s].label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <StatusBadge meta={taskStatusMeta[task.status]} size="sm" />
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={6} className="px-4 py-3 text-ink-soft">
+                {emptyLabel}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 function TimelineTab() {
   const { projectId } = Route.useParams();
-  const { projects, milestones, tasks, can, setTaskStatus, setMilestoneDate } = useStore();
+  const { projects, milestones, tasks, can, setTaskStatus, setMilestoneDate, isClosed } =
+    useStore();
   const project = projects.find((p) => p.id === projectId);
   if (!project) throw notFound();
 
+  const locked = isClosed(projectId);
+  const canEditDates = can.editCoreTimeline && !locked;
+  const canUpdate = can.updateWork && !locked;
+
   const projectMilestones = milestones
     .filter((m) => m.project_id === projectId)
+    .sort((a, b) => a.due_date.localeCompare(b.due_date));
+
+  const projectTasks = tasks.filter((t) => t.project_id === projectId);
+  const unscheduled = projectTasks
+    .filter((t) => !t.milestone_id || !projectMilestones.some((m) => m.id === t.milestone_id))
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
 
   const taskTitle = (id: string) => tasks.find((t) => t.id === id)?.title ?? id;
@@ -51,17 +162,19 @@ function TimelineTab() {
             edited by Admins; anyone assigned can move their own work forward.
           </p>
         </div>
-        {!can.editCoreTimeline && (
+        {!canEditDates && (
           <p className="inline-flex items-center gap-1.5 rounded-md border border-border bg-cream px-3 py-1.5 text-xs text-ink-soft">
             <Lock aria-hidden className="size-3.5" />
-            Core milestone dates are read-only in your role
+            {locked
+              ? "This production is closed — the timeline is read-only for everyone"
+              : "Core milestone dates are read-only in your role"}
           </p>
         )}
       </div>
 
       <div className="space-y-5">
         {projectMilestones.map((milestone) => {
-          const milestoneTasks = tasks
+          const milestoneTasks = projectTasks
             .filter((t) => t.milestone_id === milestone.id)
             .sort((a, b) => a.due_date.localeCompare(b.due_date));
           return (
@@ -77,14 +190,18 @@ function TimelineTab() {
                     )}
                   </div>
                   <p className="mt-0.5 text-xs text-ink-soft">
-                    {departments.find((d) => d.id === milestone.department_id)?.name} ·{" "}
-                    {personById(milestone.owner_id)?.full_name}
+                    {[
+                      departments.find((d) => d.id === milestone.department_id)?.name,
+                      personById(milestone.owner_id)?.full_name,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </p>
                 </div>
                 <StatusBadge meta={milestoneStatusMeta[milestone.status]} size="sm" />
                 <div className="ml-auto flex items-center gap-2">
                   <span className="rule-label">Due</span>
-                  {can.editCoreTimeline ? (
+                  {canEditDates ? (
                     <input
                       type="date"
                       aria-label={`Due date for ${milestone.name}`}
@@ -98,101 +215,40 @@ function TimelineTab() {
                 </div>
               </header>
 
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[46rem] text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left">
-                      <th className="rule-label px-4 py-2">Work item</th>
-                      <th className="rule-label px-4 py-2">Department</th>
-                      <th className="rule-label px-4 py-2">Team member</th>
-                      <th className="rule-label px-4 py-2">Due</th>
-                      <th className="rule-label px-4 py-2">Waits on</th>
-                      <th className="rule-label px-4 py-2">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {milestoneTasks.map((task) => {
-                      const waitsOn = taskDependencies.filter((d) => d.task_id === task.id);
-                      const blocks = taskDependencies.filter(
-                        (d) => d.depends_on_task_id === task.id,
-                      );
-                      return (
-                        <tr key={task.id} className="align-top">
-                          <td className="px-4 py-3">
-                            <span className="text-ink">{task.title}</span>
-                            <span className="code-id mt-0.5 block">{task.id}</span>
-                            {blocks.length > 0 && (
-                              <span className="mt-1 inline-flex items-center gap-1 text-xs text-ink-soft">
-                                <ArrowUpRight aria-hidden className="size-3" />
-                                Blocks {blocks.length} {blocks.length === 1 ? "item" : "items"}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-ink-soft">
-                            {departments.find((d) => d.id === task.department_id)?.name}
-                          </td>
-                          <td className="px-4 py-3 text-ink-soft">
-                            {personById(task.assignee_id)?.full_name}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-ink-soft">
-                            {formatDate(task.due_date)}
-                          </td>
-                          <td className="px-4 py-3 text-ink-soft">
-                            {waitsOn.length === 0 ? (
-                              "—"
-                            ) : (
-                              <ul className="space-y-1">
-                                {waitsOn.map((d) => (
-                                  <li
-                                    key={d.depends_on_task_id}
-                                    className="flex items-start gap-1.5"
-                                  >
-                                    <Link2 aria-hidden className="mt-0.5 size-3 shrink-0" />
-                                    <span>{taskTitle(d.depends_on_task_id)}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            {can.updateWork ? (
-                              <div className="space-y-1.5">
-                                <StatusBadge meta={taskStatusMeta[task.status]} size="sm" />
-                                <select
-                                  aria-label={`Status for ${task.title}`}
-                                  value={task.status}
-                                  onChange={(e) =>
-                                    setTaskStatus(task.id, e.target.value as TaskStatus)
-                                  }
-                                  className="block rounded-md border border-border bg-card px-2 py-1 text-xs text-ink"
-                                >
-                                  {statusOptions.map((s) => (
-                                    <option key={s} value={s}>
-                                      {taskStatusMeta[s].label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            ) : (
-                              <StatusBadge meta={taskStatusMeta[task.status]} size="sm" />
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {milestoneTasks.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-3 text-ink-soft">
-                          No work items under this milestone yet.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <TaskTable
+                rows={milestoneTasks}
+                canUpdate={canUpdate}
+                onStatus={setTaskStatus}
+                taskTitle={taskTitle}
+                emptyLabel="No work items under this milestone yet."
+              />
             </section>
           );
         })}
+
+        {unscheduled.length > 0 && (
+          <section className="surface-card overflow-hidden">
+            <header className="flex flex-wrap items-center gap-3 border-b border-border bg-cream-soft px-4 py-3">
+              <h3 className="text-base font-semibold text-ink">Not tied to a milestone yet</h3>
+              <span className="text-xs text-ink-soft">
+                Work items that still need to be placed on the schedule
+              </span>
+            </header>
+            <TaskTable
+              rows={unscheduled}
+              canUpdate={canUpdate}
+              onStatus={setTaskStatus}
+              taskTitle={taskTitle}
+              emptyLabel="Nothing here."
+            />
+          </section>
+        )}
+
+        {projectMilestones.length === 0 && unscheduled.length === 0 && (
+          <p className="surface-card p-4 text-sm text-ink-soft">
+            No milestones or work items on this production yet.
+          </p>
+        )}
       </div>
     </div>
   );

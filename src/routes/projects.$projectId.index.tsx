@@ -62,11 +62,15 @@ function Panel({
 
 function DashboardTab() {
   const { projectId } = Route.useParams();
-  const { projects, tasks, milestones, documents, notifications, can, setPortalUrl } = useStore();
+  const { projects, tasks, milestones, documents, notifications, can, setPortalUrl, isClosed } =
+    useStore();
+
   const project = projects.find((p) => p.id === projectId);
   if (!project) throw notFound();
 
   const [portalDraft, setPortalDraft] = useState(project.portal_url);
+  const canEditPortal = can.adminConfig && !isClosed(projectId);
+
 
   const projectTasks = tasks.filter((t) => t.project_id === projectId);
   const openTasks = projectTasks
@@ -291,10 +295,10 @@ function DashboardTab() {
                   id="portal-url"
                   value={portalDraft}
                   onChange={(e) => setPortalDraft(e.target.value)}
-                  disabled={!can.adminConfig}
+                  disabled={!canEditPortal}
                   className="min-w-0 flex-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs text-ink disabled:bg-muted disabled:text-ink-soft"
                 />
-                {can.adminConfig && (
+                {canEditPortal && (
                   <button
                     type="button"
                     onClick={() => setPortalUrl(projectId, portalDraft)}
@@ -304,9 +308,14 @@ function DashboardTab() {
                   </button>
                 )}
               </div>
-              {!can.adminConfig && (
-                <p className="mt-1.5 text-xs text-ink-soft">Admins can change this link.</p>
+              {!canEditPortal && (
+                <p className="mt-1.5 text-xs text-ink-soft">
+                  {isClosed(projectId)
+                    ? "This production is closed and archived — the link can no longer be changed."
+                    : "Admins can change this link."}
+                </p>
               )}
+
             </div>
           </Panel>
         </div>
