@@ -6,6 +6,7 @@ import { Discussion } from "@/components/Discussion";
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, personById, useStore } from "@/lib/store";
 import { approvalStateMeta, formatDate } from "@/lib/status";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/projects/$projectId/documents")({
   head: () => ({
