@@ -183,7 +183,7 @@ export function Discussion({
   return (
     <section className="space-y-4">
       {heading && (
-        <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
           <div>
             <h2 className="font-display text-2xl text-ink">{heading}</h2>
             {blurb && <p className="mt-1 text-sm text-ink-soft">{blurb}</p>}
@@ -192,7 +192,7 @@ export function Discussion({
             <button
               type="button"
               onClick={() => setShowNew((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-cream"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink transition-colors hover:bg-cream sm:w-auto"
             >
               <MessageSquarePlus aria-hidden className="size-4" />
               {showNew ? "Cancel" : "Start a discussion"}
@@ -218,7 +218,7 @@ export function Discussion({
 
         <div className="space-y-2">
           {needsAnchor && (
-            <div className="surface-card flex flex-wrap items-center gap-2 p-3 text-sm">
+            <div className="surface-card flex flex-col gap-2 p-3 text-sm sm:flex-row sm:flex-wrap sm:items-center">
               <span className="rule-label">
                 {contextType === "task" ? "Work item" : "Document"}
               </span>
@@ -226,7 +226,7 @@ export function Discussion({
                 aria-label={contextType === "task" ? "Choose a work item" : "Choose a document"}
                 value={anchorId}
                 onChange={(e) => setAnchorId(e.target.value)}
-                className="rounded-md border border-border bg-card px-2 py-1 text-sm text-ink"
+                className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:min-h-0 sm:w-auto sm:py-1 sm:text-sm"
               >
                 <option value="">Choose one…</option>
                 {anchorOptions.map((o) => (
@@ -340,7 +340,7 @@ export function Discussion({
                           <button
                             type="button"
                             onClick={() => setReplyTo(root.id)}
-                            className="text-xs font-semibold text-gold-deep hover:underline"
+                            className="inline-flex min-h-11 items-center text-sm font-semibold text-gold-deep hover:underline"
                           >
                             Reply
                           </button>

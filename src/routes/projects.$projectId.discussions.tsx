@@ -41,14 +41,14 @@ function DiscussionsTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-3xl text-ink">Discussions</h2>
+        <h2 className="font-display text-2xl text-ink sm:text-3xl">Discussions</h2>
         <p className="mt-1 max-w-2xl text-sm text-ink-soft">
           One conversation per subject, visible to every department. Mention a team member by name,
           or a department to reach its owner and leads.
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
         {levels.map((option) => (
           <button
             key={option.key}
@@ -57,8 +57,8 @@ function DiscussionsTab() {
             aria-pressed={level === option.key}
             className={
               level === option.key
-                ? "rounded-full border border-ink bg-ink px-3.5 py-1.5 text-xs font-semibold text-cream-soft"
-                : "rounded-full border border-border bg-card px-3.5 py-1.5 text-xs font-medium text-ink-soft hover:bg-cream"
+                ? "min-h-11 shrink-0 snap-start rounded-full border border-ink bg-ink px-4 text-sm font-semibold whitespace-nowrap text-cream-soft sm:min-h-9"
+                : "min-h-11 shrink-0 snap-start rounded-full border border-border bg-card px-4 text-sm font-medium whitespace-nowrap text-ink-soft hover:bg-cream sm:min-h-9"
             }
           >
             {option.label}

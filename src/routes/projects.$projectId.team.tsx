@@ -44,7 +44,7 @@ function TeamTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-3xl text-ink">Team &amp; Departments</h2>
+        <h2 className="font-display text-2xl text-ink sm:text-3xl">Team &amp; Departments</h2>
         <p className="mt-1 max-w-2xl text-sm text-ink-soft">
           Who owns what on this production. Mentioning a department in a discussion notifies its
           owner and leads — not the whole roster.
@@ -56,19 +56,21 @@ function TeamTab() {
           <ExternalLink aria-hidden className="size-3.5" />
           Portal (set simulation) link
         </label>
-        <div className="mt-1.5 flex flex-wrap gap-2">
+        <div className="mt-1.5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <input
             id="team-portal-url"
             value={portalDraft}
             onChange={(e) => setPortalDraft(e.target.value)}
             disabled={!canEditPortal}
-            className="min-w-0 flex-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm text-ink disabled:bg-muted disabled:text-ink-soft"
+            type="url"
+            inputMode="url"
+            className="min-h-11 w-full min-w-0 rounded-md border border-border bg-card px-2.5 text-base text-ink disabled:bg-muted disabled:text-ink-soft sm:flex-1 sm:text-sm"
           />
           {canEditPortal && (
             <button
               type="button"
               onClick={() => setPortalUrl(projectId, portalDraft)}
-              className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-ink-soft"
+              className="min-h-11 shrink-0 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-ink-soft"
             >
               Save link
             </button>
@@ -94,11 +96,11 @@ function TeamTab() {
           );
           return (
             <section key={dept.id} className="surface-card overflow-hidden">
-              <header className="flex items-center gap-2 border-b border-border bg-cream-soft px-4 py-3">
+              <header className="flex flex-wrap items-center gap-2 border-b border-border bg-cream-soft px-4 py-3">
                 <Users aria-hidden className="size-4 text-ink-soft" />
                 <h3 className="text-sm font-semibold text-ink">{dept.name}</h3>
                 <span className="code-id">{dept.code}</span>
-                <span className="ml-auto">
+                <span className="sm:ml-auto">
                   {pd ? (
                     <StatusBadge meta={readinessMeta[pd.readiness]} size="sm" />
                   ) : (
@@ -160,7 +162,19 @@ function TeamTab() {
         <header className="border-b border-border bg-cream-soft px-4 py-3">
           <h3 className="text-sm font-semibold text-ink">Everyone with access</h3>
         </header>
-        <table className="w-full min-w-[38rem] text-sm">
+        <ul className="divide-y divide-border lg:hidden">
+          {people.map((p) => (
+            <li key={p.id} className="px-4 py-3">
+              <p className="text-sm font-medium text-ink">{p.full_name}</p>
+              <p className="mt-0.5 text-xs text-ink-soft">{p.title}</p>
+              <p className="mt-0.5 text-xs text-ink-soft">
+                {departments.find((d) => d.id === p.primary_department_id)?.name} ·{" "}
+                {roleLabels[p.role]}
+              </p>
+            </li>
+          ))}
+        </ul>
+        <table className="hidden w-full min-w-[38rem] text-sm lg:table">
           <thead>
             <tr className="border-b border-border text-left">
               <th className="rule-label px-4 py-2">Team member</th>
