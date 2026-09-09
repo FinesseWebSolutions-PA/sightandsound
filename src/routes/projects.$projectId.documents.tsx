@@ -195,7 +195,7 @@ function DocumentsTab() {
                     className="mt-3 flex min-h-11 items-start gap-2 rounded-md border border-border bg-cream-soft px-3 py-2 text-left hover:bg-cream"
                   >
                     <MessageSquare aria-hidden className="mt-0.5 size-4 shrink-0 text-gold-deep" />
-                    <span className="min-w-0">
+                    <span className="block min-w-0 flex-1">
                       <span className="block text-xs font-semibold text-ink">
                         {a.count === 0
                           ? "No comments yet — start the conversation below"
