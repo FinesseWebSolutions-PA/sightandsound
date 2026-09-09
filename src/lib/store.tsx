@@ -352,6 +352,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [allowed, data, run],
   );
 
+  const markNotifications = useCallback(
+    (ids: string[], read: boolean) => {
+      if (ids.length === 0) return;
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              notifications: prev.notifications.map((n) =>
+                ids.includes(n.id) ? { ...n, read } : n,
+              ),
+            }
+          : prev,
+      );
+      run(() => writeNotificationRead(ids, read));
+    },
+    [run],
+  );
+
 
   const value = useMemo<Store | null>(
     () =>
