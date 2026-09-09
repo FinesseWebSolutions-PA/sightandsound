@@ -1,12 +1,19 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { ArrowUpRight, Link2, Lock } from "lucide-react";
+import { ArrowUpRight, Link2, Lock, MessageSquare } from "lucide-react";
+import { useState } from "react";
 
+import { Discussion } from "@/components/Discussion";
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, personById, taskDependencies, useStore } from "@/lib/store";
-import { formatDate, milestoneStatusMeta, taskStatusMeta } from "@/lib/status";
+import { formatDate, formatDateTime, milestoneStatusMeta, taskStatusMeta } from "@/lib/status";
+import { activityFor, snippet } from "@/lib/threads";
 import type { Task, TaskStatus } from "@/lib/production-data";
 
 export const Route = createFileRoute("/projects/$projectId/timeline")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    task: typeof search['task'] === "string" ? search['task'] : undefined,
+    comment: typeof search['comment'] === "string" ? search['comment'] : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Production timeline — Sight & Sound Show Production" },
@@ -34,7 +41,70 @@ type TaskViewProps = {
   onStatus: (taskId: string, status: TaskStatus) => void;
   taskTitle: (id: string) => string;
   emptyLabel: string;
+  openTaskId: string | null;
+  onToggleThread: (taskId: string) => void;
+  highlightCommentId?: string;
 };
+
+/** The conversation about one work item, shown right where the work item is listed. */
+function TaskConversation({
+  task,
+  open,
+  onToggle,
+  highlightCommentId,
+}: {
+  task: Task;
+  open: boolean;
+  onToggle: () => void;
+  highlightCommentId?: string;
+}) {
+  const { threads, comments } = useStore();
+  const activity = activityFor(threads, comments, {
+    projectId: task.project_id,
+    taskId: task.id,
+  });
+  const latest = activity.latest;
+
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="inline-flex min-h-11 w-full items-start gap-2 rounded-md border border-border bg-cream-soft px-3 py-2 text-left transition-colors hover:bg-cream sm:w-auto"
+      >
+        <MessageSquare aria-hidden className="mt-0.5 size-4 shrink-0 text-gold-deep" />
+        <span className="min-w-0">
+          <span className="block text-xs font-semibold text-ink">
+            {activity.count === 0
+              ? open
+                ? "Hide comments"
+                : "Add a comment"
+              : `${activity.count} comment${activity.count === 1 ? "" : "s"}${open ? " — hide" : ""}`}
+          </span>
+          {latest && !open && (
+            <span className="mt-0.5 block max-w-md truncate text-xs text-ink-soft">
+              {personById(latest.author_id)?.full_name}, {formatDateTime(latest.created_at)}:{" "}
+              {snippet(latest.body, 70)}
+            </span>
+          )}
+        </span>
+      </button>
+      {open && (
+        <div className="rounded-md border border-border bg-card px-3 py-2">
+          <Discussion
+            inline
+            projectId={task.project_id}
+            contextType="task"
+            taskId={task.id}
+            {...(highlightCommentId ? { highlightCommentId } : {})}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function StatusControl({
   task,
