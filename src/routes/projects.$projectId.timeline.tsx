@@ -222,17 +222,17 @@ function TimelineTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2 className="font-display text-3xl text-ink">Timeline</h2>
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <h2 className="font-display text-2xl text-ink sm:text-3xl">Timeline</h2>
           <p className="mt-1 max-w-2xl text-sm text-ink-soft">
             Milestones in date order, with the work items under each one. Core milestone dates are
             edited by Admins; anyone assigned can move their own work forward.
           </p>
         </div>
         {!canEditDates && (
-          <p className="inline-flex items-center gap-1.5 rounded-md border border-border bg-cream px-3 py-1.5 text-xs text-ink-soft">
-            <Lock aria-hidden className="size-3.5" />
+          <p className="flex items-start gap-1.5 rounded-md border border-border bg-cream px-3 py-2 text-xs text-ink-soft">
+            <Lock aria-hidden className="mt-0.5 size-3.5 shrink-0" />
             {locked
               ? "This production is closed — the timeline is read-only for everyone"
               : "Core milestone dates are read-only in your role"}
@@ -247,9 +247,9 @@ function TimelineTab() {
             .sort((a, b) => a.due_date.localeCompare(b.due_date));
           return (
             <section key={milestone.id} className="surface-card overflow-hidden">
-              <header className="flex flex-wrap items-center gap-3 border-b border-border bg-cream-soft px-4 py-3">
-                <div>
-                  <div className="flex items-center gap-2">
+              <header className="border-b border-border bg-cream-soft px-4 py-3 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-base font-semibold text-ink">{milestone.name}</h3>
                     {milestone.is_core && (
                       <span className="rule-label inline-flex items-center gap-1">
@@ -266,8 +266,10 @@ function TimelineTab() {
                       .join(" · ")}
                   </p>
                 </div>
-                <StatusBadge meta={milestoneStatusMeta[milestone.status]} size="sm" />
-                <div className="ml-auto flex items-center gap-2">
+                <div className="mt-2 flex flex-wrap items-center gap-2 sm:mt-0">
+                  <StatusBadge meta={milestoneStatusMeta[milestone.status]} size="sm" />
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2 sm:mt-0 sm:ml-auto">
                   <span className="rule-label">Due</span>
                   {canEditDates ? (
                     <input
@@ -275,7 +277,7 @@ function TimelineTab() {
                       aria-label={`Due date for ${milestone.name}`}
                       value={milestone.due_date}
                       onChange={(e) => setMilestoneDate(milestone.id, e.target.value)}
-                      className="rounded-md border border-border bg-card px-2 py-1 text-xs text-ink"
+                      className="min-h-11 rounded-md border border-border bg-card px-2.5 text-base text-ink sm:min-h-0 sm:py-1 sm:text-xs"
                     />
                   ) : (
                     <span className="text-sm text-ink">{formatDate(milestone.due_date)}</span>
@@ -283,7 +285,7 @@ function TimelineTab() {
                 </div>
               </header>
 
-              <TaskTable
+              <TaskList
                 rows={milestoneTasks}
                 canUpdate={canUpdate}
                 onStatus={setTaskStatus}
@@ -296,13 +298,13 @@ function TimelineTab() {
 
         {unscheduled.length > 0 && (
           <section className="surface-card overflow-hidden">
-            <header className="flex flex-wrap items-center gap-3 border-b border-border bg-cream-soft px-4 py-3">
+            <header className="border-b border-border bg-cream-soft px-4 py-3 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
               <h3 className="text-base font-semibold text-ink">Not tied to a milestone yet</h3>
-              <span className="text-xs text-ink-soft">
+              <span className="mt-0.5 block text-xs text-ink-soft sm:mt-0">
                 Work items that still need to be placed on the schedule
               </span>
             </header>
-            <TaskTable
+            <TaskList
               rows={unscheduled}
               canUpdate={canUpdate}
               onStatus={setTaskStatus}
