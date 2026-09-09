@@ -35,3 +35,11 @@
 - Team: stacked Portal form, wrapped department cards, mobile access list.
 - Verified: no page horizontal scroll, no console errors, all primary controls >= 44px.
 - Note: all three seeded productions are at Lancaster, so the Branson venue filter shows an empty state by design.
+
+## Contextual discussions, Inbox, premium mentions (done)
+- [x] Inline task conversations on Timeline (counts, latest snippet, expand in place, deep links)
+- [x] Document-attached conversation with counts and inline thread
+- [x] Dashboard recent activity includes real comments with author/context/snippet + deep links
+- [x] Personal cross-production Inbox at /inbox (mentions, dept mentions, assigned tasks, approvals) with read state
+- [x] Live @mention picker with keyboard nav, people vs departments, styled mention pills
+- [x] Verified at 375 / 430 / 1280px: no page overflow, no console errors; QA test rows cleaned up
