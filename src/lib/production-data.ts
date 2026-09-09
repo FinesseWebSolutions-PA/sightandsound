@@ -971,3 +971,10 @@ export async function writeThread(input: {
     context_type: input.contextType,
   });
 }
+
+/** Marks personal Inbox items read (or unread again). */
+export async function writeNotificationRead(ids: string[], read: boolean) {
+  if (ids.length === 0) return;
+  const { error } = await supabase.from("notifications").update({ is_read: read }).in("id", ids);
+  if (error) throw new Error(error.message);
+}
