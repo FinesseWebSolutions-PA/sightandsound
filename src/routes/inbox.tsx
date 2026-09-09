@@ -309,8 +309,9 @@ function InboxPage() {
               {group.project?.name ?? "Not tied to a production"}
             </h2>
             {group.project && (
-              <span className="text-xs text-ink-soft">{group.project.venue}</span>
+              <span className="text-xs text-ink-soft">{projectStatusMeta[group.project.status].label}</span>
             )}
+
             {group.rows.some((r) => !r.read) && (
               <span className="ml-auto rounded-full bg-gold-tint px-2 py-0.5 text-xs font-semibold text-gold-deep">
                 {group.rows.filter((r) => !r.read).length} unread
