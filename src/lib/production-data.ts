@@ -218,15 +218,17 @@ function asMilestoneStatus(value: string): MilestoneStatus {
   return "not_started";
 }
 
+/** The tasks table stores not_started / in_progress / blocked / done. */
 function asTaskStatus(value: string): TaskStatus {
-  if (
-    value === "in_progress" ||
-    value === "in_review" ||
-    value === "blocked" ||
-    value === "complete"
-  )
-    return value;
+  if (value === "done" || value === "complete") return "complete";
+  if (value === "in_progress" || value === "in_review" || value === "blocked") return value;
   return "not_started";
+}
+
+function toTaskStatusColumn(status: TaskStatus): string {
+  if (status === "complete") return "done";
+  if (status === "in_review") return "in_progress";
+  return status;
 }
 
 export function asApprovalState(value: string | null | undefined): ApprovalState {
@@ -454,6 +456,36 @@ export async function loadProductionData(): Promise<ProductionData> {
     file_label: (v.storage_key ?? "").split("/").pop() || `version-${v.version_number}`,
   }));
 
+  const versionInfoEarly = new Map(versionRows.map((v) => [v.id, v]));
+  const latestApprovalByDocument = new Map<string, { status: string; version: number }>();
+  for (const a of approvalsRes.data ?? []) {
+    const version = versionInfoEarly.get(a.document_version_id);
+    if (!version) continue;
+    const current = latestApprovalByDocument.get(version.document_id);
+    if (!current || version.version_number >= current.version) {
+      latestApprovalByDocument.set(version.document_id, {
+        status: a.status,
+        version: version.version_number,
+      });
+    }
+  }
+
+  /**
+   * The documents table has no changes_requested state, so the review outcome is
+   * read from the newest approval row for the newest version of the document.
+   */
+  const documentApprovalState = (docStatus: string, documentId: string): ApprovalState => {
+    const latestVersion = versionRows
+      .filter((v) => v.document_id === documentId)
+      .reduce((max, v) => Math.max(max, v.version_number), 0);
+    const approval = latestApprovalByDocument.get(documentId);
+    if (approval && approval.version === latestVersion) {
+      if (approval.status === "pending") return "in_review";
+      return asApprovalState(approval.status);
+    }
+    return asApprovalState(docStatus);
+  };
+
   const documents: Document[] = (documentsRes.data ?? []).map((d) => {
     const task = tasks.find((t) => t.id === d.task_id);
     const mine = documentVersions.filter((v) => v.document_id === d.id);
@@ -466,7 +498,7 @@ export async function loadProductionData(): Promise<ProductionData> {
       kind: dept ? `${dept} document` : "Production document",
       department_id: task?.department_id ?? "",
       owner_id: d.created_by ?? "",
-      approval_state: asApprovalState(d.status),
+      approval_state: documentApprovalState(d.status, d.id),
       current_version: latest || 1,
       updated_at:
         mine.length > 0 ? mine[mine.length - 1]!.uploaded_at : dateOnly(d.created_at),
@@ -649,7 +681,7 @@ async function recordAudit(
 export async function writeTaskStatus(taskId: string, status: TaskStatus, actorId: string) {
   const { error } = await supabase
     .from("tasks")
-    .update({ status, updated_at: new Date().toISOString() })
+    .update({ status: toTaskStatusColumn(status), updated_at: new Date().toISOString() })
     .eq("id", taskId);
   if (error) throw new Error(error.message);
   await recordAudit("task", taskId, actorId, "status_changed", { status });
@@ -722,7 +754,9 @@ export async function writeApproval(
   const versionId = versions?.[0]?.id;
   if (!versionId) throw new Error("This document has no versions to review yet.");
 
-  const nextState: ApprovalState = decision === "requested" ? "in_review" : decision;
+  // The documents table accepts draft / in_review / approved / rejected / superseded.
+  const documentStatus =
+    decision === "requested" ? "in_review" : decision === "changes_requested" ? "draft" : decision;
 
   if (decision === "requested") {
     const { error } = await supabase.from("approvals").insert({
@@ -761,7 +795,7 @@ export async function writeApproval(
 
   const { error: docError } = await supabase
     .from("documents")
-    .update({ status: nextState })
+    .update({ status: documentStatus })
     .eq("id", documentId);
   if (docError) throw new Error(docError.message);
 
