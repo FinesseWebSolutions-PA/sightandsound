@@ -64,8 +64,8 @@ function Composer({
         placeholder={placeholder}
         rows={compact ? 3 : 4}
         ariaLabel="Message"
-        className={autoFocus ? undefined : undefined}
       />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <p className="flex items-center gap-1.5 text-xs text-ink-soft">
           <AtSign aria-hidden className="size-3.5" />
