@@ -60,7 +60,7 @@ function DocumentsTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-3xl text-ink">Documents</h2>
+        <h2 className="font-display text-2xl text-ink sm:text-3xl">Documents</h2>
         <p className="mt-1 max-w-2xl text-sm text-ink-soft">
           Every drawing set, package, and plan with its version history and review record. Nothing
           is hidden between departments.
@@ -68,48 +68,77 @@ function DocumentsTab() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
-        <section className="surface-card overflow-x-auto">
-          <table className="w-full min-w-[34rem] text-sm">
-            <thead>
-              <tr className="border-b border-border bg-cream-soft text-left">
-                <th className="rule-label px-4 py-2.5">Document</th>
-                <th className="rule-label px-4 py-2.5">Department</th>
-                <th className="rule-label px-4 py-2.5">Ver.</th>
-                <th className="rule-label px-4 py-2.5">Review</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {projectDocs.map((doc) => (
-                <tr
-                  key={doc.id}
-                  className={
-                    doc.id === selected?.id
-                      ? "cursor-pointer bg-cream-soft"
-                      : "cursor-pointer hover:bg-cream-soft"
-                  }
+        <section className="surface-card overflow-hidden">
+          {/* Phones get full-width tappable rows instead of a table. */}
+          <ul className="divide-y divide-border lg:hidden">
+            {projectDocs.map((doc) => (
+              <li key={doc.id}>
+                <button
+                  type="button"
                   onClick={() => setSelectedId(doc.id)}
+                  aria-pressed={doc.id === selected?.id}
+                  className={cn(
+                    "w-full px-4 py-4 text-left",
+                    doc.id === selected?.id ? "bg-cream-soft" : "",
+                  )}
                 >
-                  <td className="px-4 py-3">
-                    <button type="button" className="text-left font-medium text-ink">
-                      {doc.title}
-                    </button>
-                    <span className="block text-xs text-ink-soft">
-                      {doc.kind} · updated {formatDate(doc.updated_at)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-ink-soft">
-                    {departments.find((d) => d.id === doc.department_id)?.name}
-                  </td>
-                  <td className="px-4 py-3">
+                  <p className="text-sm font-medium text-ink">{doc.title}</p>
+                  <p className="mt-0.5 text-xs text-ink-soft">
+                    {doc.kind} · {departments.find((d) => d.id === doc.department_id)?.name} ·
+                    updated {formatDate(doc.updated_at)}
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
                     <span className="code-id">v{doc.current_version}</span>
-                  </td>
-                  <td className="px-4 py-3">
                     <StatusBadge meta={approvalStateMeta[doc.approval_state]} size="sm" />
-                  </td>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden overflow-x-auto lg:block">
+            <table className="w-full min-w-[34rem] text-sm">
+              <thead>
+                <tr className="border-b border-border bg-cream-soft text-left">
+                  <th className="rule-label px-4 py-2.5">Document</th>
+                  <th className="rule-label px-4 py-2.5">Department</th>
+                  <th className="rule-label px-4 py-2.5">Ver.</th>
+                  <th className="rule-label px-4 py-2.5">Review</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {projectDocs.map((doc) => (
+                  <tr
+                    key={doc.id}
+                    className={
+                      doc.id === selected?.id
+                        ? "cursor-pointer bg-cream-soft"
+                        : "cursor-pointer hover:bg-cream-soft"
+                    }
+                    onClick={() => setSelectedId(doc.id)}
+                  >
+                    <td className="px-4 py-3">
+                      <button type="button" className="text-left font-medium text-ink">
+                        {doc.title}
+                      </button>
+                      <span className="block text-xs text-ink-soft">
+                        {doc.kind} · updated {formatDate(doc.updated_at)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-ink-soft">
+                      {departments.find((d) => d.id === doc.department_id)?.name}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="code-id">v{doc.current_version}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge meta={approvalStateMeta[doc.approval_state]} size="sm" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
 
         {selected && (
@@ -137,34 +166,34 @@ function DocumentsTab() {
                     placeholder="What did you check, or what needs to change?"
                     className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-ink focus:ring-2 focus:ring-ring focus:outline-none"
                   />
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <button
                       type="button"
                       onClick={() => act("requested")}
-                      className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-ink-soft"
+                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-ink-soft"
                     >
-                      <Send aria-hidden className="size-3.5" /> Request review
+                      <Send aria-hidden className="size-4" /> Request review
                     </button>
                     <button
                       type="button"
                       onClick={() => act("approved")}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-success/30 bg-success-bg px-3 py-1.5 text-sm font-medium text-success hover:brightness-98"
+                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-success/30 bg-success-bg px-3 text-sm font-medium text-success hover:brightness-98"
                     >
-                      <CheckCircle2 aria-hidden className="size-3.5" /> Approve
+                      <CheckCircle2 aria-hidden className="size-4" /> Approve
                     </button>
                     <button
                       type="button"
                       onClick={() => act("changes_requested")}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-warning/30 bg-warning-bg px-3 py-1.5 text-sm font-medium text-warning hover:brightness-98"
+                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-warning/30 bg-warning-bg px-3 text-sm font-medium text-warning hover:brightness-98"
                     >
-                      <ThumbsDown aria-hidden className="size-3.5" /> Request changes
+                      <ThumbsDown aria-hidden className="size-4" /> Request changes
                     </button>
                     <button
                       type="button"
                       onClick={() => act("rejected")}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-danger/30 bg-danger-bg px-3 py-1.5 text-sm font-medium text-danger hover:brightness-98"
+                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-danger/30 bg-danger-bg px-3 text-sm font-medium text-danger hover:brightness-98"
                     >
-                      <XCircle aria-hidden className="size-3.5" /> Reject
+                      <XCircle aria-hidden className="size-4" /> Reject
                     </button>
                   </div>
                   {canUpload && (
@@ -174,9 +203,9 @@ function DocumentsTab() {
                         addDocumentVersion(selected.id, note);
                         setNote("");
                       }}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium text-ink hover:bg-cream"
+                      className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream sm:w-auto"
                     >
-                      <FileUp aria-hidden className="size-3.5" /> Upload new version
+                      <FileUp aria-hidden className="size-4" /> Upload new version
                     </button>
                   )}
                 </div>
