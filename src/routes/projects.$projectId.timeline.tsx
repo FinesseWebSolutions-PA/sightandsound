@@ -143,7 +143,16 @@ function StatusControl({
 }
 
 /** Phone view: each work item is its own stacked card, dependencies written out as text. */
-function TaskCards({ rows, canUpdate, onStatus, taskTitle, emptyLabel }: TaskViewProps) {
+function TaskCards({
+  rows,
+  canUpdate,
+  onStatus,
+  taskTitle,
+  emptyLabel,
+  openTaskId,
+  onToggleThread,
+  highlightCommentId,
+}: TaskViewProps) {
   if (rows.length === 0) {
     return <p className="px-4 py-3 text-sm text-ink-soft lg:hidden">{emptyLabel}</p>;
   }
