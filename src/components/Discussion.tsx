@@ -14,14 +14,12 @@ function Composer({
   onSubmit,
   withSubject = false,
   compact = false,
-  autoFocus = false,
 }: {
   placeholder: string;
   submitLabel: string;
   onSubmit: (body: string, subject: string) => void;
   withSubject?: boolean;
   compact?: boolean;
-  autoFocus?: boolean;
 }) {
   const [body, setBody] = useState("");
   const [subject, setSubject] = useState("");
