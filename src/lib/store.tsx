@@ -404,7 +404,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
+  return (
+    <StoreContext.Provider value={value}>
+      {error && (
+        <div
+          role="alert"
+          className="border-b border-border bg-[var(--ss-danger-bg,#FCE8E6)] px-6 py-2 text-sm text-ink"
+        >
+          <span className="font-semibold">That change was not saved.</span> {error}{" "}
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="font-semibold underline hover:no-underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+      {children}
+    </StoreContext.Provider>
+  );
+
 }
 
 export function useStore(): Store {
