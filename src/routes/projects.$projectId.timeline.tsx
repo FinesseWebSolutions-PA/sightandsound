@@ -25,13 +25,9 @@ export const Route = createFileRoute("/projects/$projectId/timeline")({
   component: TimelineTab,
 });
 
-const statusOptions: TaskStatus[] = [
-  "not_started",
-  "in_progress",
-  "in_review",
-  "blocked",
-  "complete",
-];
+// Matches the values the tasks table accepts.
+const statusOptions: TaskStatus[] = ["not_started", "in_progress", "blocked", "complete"];
+
 
 function TimelineTab() {
   const { projectId } = Route.useParams();

@@ -1,27 +1,44 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { Loader2 } from "lucide-react";
 
-import * as seed from "./production-data";
-import type {
-  Approval,
-  ApprovalState,
-  Comment,
-  DiscussionThread,
-  Document,
-  DocumentVersion,
-  Mention,
-  Notification,
-  Project,
-  Role,
-  Task,
-  TaskStatus,
-  ThreadContext,
+import {
+  loadProductionData,
+  writeApproval,
+  writeComment,
+  writeDocumentVersion,
+  writeMilestoneDate,
+  writePortalUrl,
+  writeTaskStatus,
+  writeThread,
+  type Approval,
+  type AuditEntry,
+  type Comment,
+  type Department,
+  type DiscussionThread,
+  type Document,
+  type DocumentVersion,
+  type Mention,
+  type Milestone,
+  type Notification,
+  type Person,
+  type ProductionData,
+  type Project,
+  type ProjectDepartment,
+  type Role,
+  type Task,
+  type TaskDependency,
+  type TaskStatus,
+  type ThreadContext,
 } from "./production-data";
-
-const roleUser: Record<Role, string> = {
-  admin: "per-arden",
-  contributor: "per-nina",
-  viewer: "per-lyle",
-};
 
 export const roleLabels: Record<Role, string> = {
   admin: "Admin",
@@ -49,6 +66,7 @@ type Store = {
   };
   projects: Project[];
   tasks: Task[];
+  milestones: Milestone[];
   documents: Document[];
   documentVersions: DocumentVersion[];
   approvals: Approval[];
@@ -56,16 +74,12 @@ type Store = {
   comments: Comment[];
   mentions: Mention[];
   notifications: Notification[];
+  saving: boolean;
   setTaskStatus: (taskId: string, status: TaskStatus) => void;
   setMilestoneDate: (milestoneId: string, dueDate: string) => void;
-  milestones: typeof seed.milestones;
   setPortalUrl: (projectId: string, url: string) => void;
   addDocumentVersion: (documentId: string, note: string) => void;
-  recordApproval: (
-    documentId: string,
-    decision: Approval["decision"],
-    note: string,
-  ) => void;
+  recordApproval: (documentId: string, decision: Approval["decision"], note: string) => void;
   addComment: (threadId: string, parentCommentId: string | null, body: string) => void;
   createThread: (input: {
     projectId: string;
@@ -79,280 +93,237 @@ type Store = {
 
 const StoreContext = createContext<Store | null>(null);
 
-let counter = 0;
-const nextId = (prefix: string) => `${prefix}-new-${++counter}`;
+/**
+ * Reference data the screens import directly. These are live bindings kept in
+ * sync with the database read; children only render once the first read lands.
+ */
+export let departments: Department[] = [];
+export let people: Person[] = [];
+export let projectDepartments: ProjectDepartment[] = [];
+export let taskDependencies: TaskDependency[] = [];
+export let auditLog: AuditEntry[] = [];
 
-const decisionToState: Record<Approval["decision"], ApprovalState> = {
-  requested: "in_review",
-  approved: "approved",
-  changes_requested: "changes_requested",
-  rejected: "rejected",
-};
+export const personById = (id: string) => people.find((p) => p.id === id);
+export const departmentById = (id: string) => departments.find((d) => d.id === id);
 
-/** Resolves @mentions in a comment body into mention rows + notification rows. */
-function resolveMentions(body: string, commentId: string, projectId: string, authorId: string) {
-  const newMentions: Mention[] = [];
-  const newNotifications: Notification[] = [];
-  const author = seed.people.find((p) => p.id === authorId);
-  const now = new Date().toISOString();
+function applyReferenceData(data: ProductionData) {
+  departments = data.departments;
+  people = data.people;
+  projectDepartments = data.projectDepartments;
+  taskDependencies = data.taskDependencies;
+  auditLog = data.auditLog;
+}
 
-  for (const department of seed.departments) {
-    if (!body.includes(`@${department.name}`)) continue;
-    newMentions.push({
-      id: nextId("mn"),
-      comment_id: commentId,
-      person_id: null,
-      department_id: department.id,
-    });
-    // A department mention reaches the designated owner and any leads — never the whole roster.
-    for (const recipient of [department.owner_id, ...department.lead_ids]) {
-      newNotifications.push({
-        id: nextId("ntf"),
-        project_id: projectId,
-        recipient_id: recipient,
-        kind: "mention",
-        summary: `${author?.full_name ?? "Someone"} mentioned ${department.name}`,
-        created_at: now,
-        read: false,
-      });
-    }
-  }
-
-  for (const person of seed.people) {
-    if (!body.includes(`@${person.full_name}`)) continue;
-    newMentions.push({
-      id: nextId("mn"),
-      comment_id: commentId,
-      person_id: person.id,
-      department_id: null,
-    });
-    newNotifications.push({
-      id: nextId("ntf"),
-      project_id: projectId,
-      recipient_id: person.id,
-      kind: "mention",
-      summary: `${author?.full_name ?? "Someone"} mentioned you`,
-      created_at: now,
-      read: false,
-    });
-  }
-
-  return { newMentions, newNotifications };
+function personForRole(roster: Person[], role: Role): string {
+  return (roster.find((p) => p.role === role) ?? roster[0])?.id ?? "";
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role>("admin");
-  const [projects, setProjects] = useState(seed.projects);
-  const [tasks, setTasks] = useState(seed.tasks);
-  const [milestones, setMilestones] = useState(seed.milestones);
-  const [documents, setDocuments] = useState(seed.documents);
-  const [documentVersions, setDocumentVersions] = useState(seed.documentVersions);
-  const [approvals, setApprovals] = useState(seed.approvals);
-  const [threads, setThreads] = useState(seed.discussionThreads);
-  const [comments, setComments] = useState(seed.comments);
-  const [mentions, setMentions] = useState(seed.mentions);
-  const [notifications, setNotifications] = useState(seed.notifications);
+  const [data, setData] = useState<ProductionData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const currentUserIdRef = useRef("");
 
-  const currentUserId = roleUser[role];
-
-  const setTaskStatus = useCallback((taskId: string, status: TaskStatus) => {
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status } : t)));
+  const refresh = useCallback(async () => {
+    const next = await loadProductionData();
+    applyReferenceData(next);
+    setData(next);
+    return next;
   }, []);
 
-  const setMilestoneDate = useCallback((milestoneId: string, dueDate: string) => {
-    setMilestones((prev) =>
-      prev.map((m) => (m.id === milestoneId ? { ...m, due_date: dueDate } : m)),
-    );
+  useEffect(() => {
+    let cancelled = false;
+    loadProductionData()
+      .then((next) => {
+        if (cancelled) return;
+        applyReferenceData(next);
+        setData(next);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Could not load the data.");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const setPortalUrl = useCallback((projectId: string, url: string) => {
-    setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, portal_url: url } : p)));
-  }, []);
+  const currentUserId = data ? personForRole(data.people, role) : "";
+  currentUserIdRef.current = currentUserId;
+
+  const run = useCallback(
+    (work: () => Promise<unknown>) => {
+      setSaving(true);
+      void work()
+        .then(() => refresh())
+        .catch((e: unknown) => {
+          setError(e instanceof Error ? e.message : "That change could not be saved.");
+        })
+        .finally(() => setSaving(false));
+    },
+    [refresh],
+  );
+
+  const setTaskStatus = useCallback(
+    (taskId: string, status: TaskStatus) => {
+      setData((prev) =>
+        prev
+          ? { ...prev, tasks: prev.tasks.map((t) => (t.id === taskId ? { ...t, status } : t)) }
+          : prev,
+      );
+      run(() => writeTaskStatus(taskId, status, currentUserIdRef.current));
+    },
+    [run],
+  );
+
+  const setMilestoneDate = useCallback(
+    (milestoneId: string, dueDate: string) => {
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              milestones: prev.milestones.map((m) =>
+                m.id === milestoneId ? { ...m, due_date: dueDate } : m,
+              ),
+            }
+          : prev,
+      );
+      run(() => writeMilestoneDate(milestoneId, dueDate, currentUserIdRef.current));
+    },
+    [run],
+  );
+
+  const setPortalUrl = useCallback(
+    (projectId: string, url: string) => {
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              projects: prev.projects.map((p) =>
+                p.id === projectId ? { ...p, portal_url: url } : p,
+              ),
+            }
+          : prev,
+      );
+      run(() => writePortalUrl(projectId, url, currentUserIdRef.current));
+    },
+    [run],
+  );
 
   const addDocumentVersion = useCallback(
     (documentId: string, note: string) => {
-      setDocuments((prevDocs) => {
-        const doc = prevDocs.find((d) => d.id === documentId);
-        if (!doc) return prevDocs;
-        const version = doc.current_version + 1;
-        setDocumentVersions((prev) => [
-          ...prev,
-          {
-            id: nextId("dv"),
-            document_id: documentId,
-            version,
-            uploaded_by_id: currentUserId,
-            uploaded_at: new Date().toISOString().slice(0, 10),
-            note: note || "New version uploaded",
-            file_label: `${doc.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-v${version}.pdf`,
-          },
-        ]);
-        return prevDocs.map((d) =>
-          d.id === documentId
-            ? {
-                ...d,
-                current_version: version,
-                approval_state: "draft" as ApprovalState,
-                updated_at: new Date().toISOString().slice(0, 10),
-              }
-            : d,
-        );
-      });
+      const doc = data?.documents.find((d) => d.id === documentId);
+      if (!doc) return;
+      run(() =>
+        writeDocumentVersion(
+          documentId,
+          doc.title,
+          doc.current_version + 1,
+          note,
+          currentUserIdRef.current,
+        ),
+      );
     },
-    [currentUserId],
+    [data, run],
   );
 
   const recordApproval = useCallback(
     (documentId: string, decision: Approval["decision"], note: string) => {
-      setDocuments((prevDocs) => {
-        const doc = prevDocs.find((d) => d.id === documentId);
-        if (!doc) return prevDocs;
-        setApprovals((prev) => [
-          ...prev,
-          {
-            id: nextId("apr"),
-            document_id: documentId,
-            version: doc.current_version,
-            decision,
-            actor_id: currentUserId,
-            created_at: new Date().toISOString().slice(0, 10),
-            note,
-          },
-        ]);
-        setNotifications((prev) => [
-          {
-            id: nextId("ntf"),
-            project_id: doc.project_id,
-            recipient_id: doc.owner_id,
-            kind: "approval",
-            summary: `${doc.title} v${doc.current_version}: ${decision.replace("_", " ")}`,
-            created_at: new Date().toISOString(),
-            read: false,
-          },
-          ...prev,
-        ]);
-        return prevDocs.map((d) =>
-          d.id === documentId ? { ...d, approval_state: decisionToState[decision] } : d,
-        );
-      });
+      const doc = data?.documents.find((d) => d.id === documentId);
+      if (!doc) return;
+      run(() =>
+        writeApproval(
+          documentId,
+          decision,
+          note,
+          currentUserIdRef.current,
+          doc.owner_id,
+          doc.project_id,
+        ),
+      );
     },
-    [currentUserId],
+    [data, run],
   );
 
   const addComment = useCallback(
-    (threadId: string, parentCommentId: string | null, body: string) => {
-      const id = nextId("cmt");
-      const thread = threads.find((t) => t.id === threadId);
-      setComments((prev) => [
-        ...prev,
-        {
-          id,
-          thread_id: threadId,
-          parent_comment_id: parentCommentId,
-          author_id: currentUserId,
+    (threadId: string, _parentCommentId: string | null, body: string) => {
+      const thread = data?.discussionThreads.find((t) => t.id === threadId);
+      if (!thread) return;
+      run(() =>
+        writeComment({
+          threadId,
           body,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-      if (thread) {
-        const { newMentions, newNotifications } = resolveMentions(
-          body,
-          id,
-          thread.project_id,
-          currentUserId,
-        );
-        if (newMentions.length) setMentions((prev) => [...prev, ...newMentions]);
-        if (newNotifications.length)
-          setNotifications((prev) => [...newNotifications, ...prev]);
-      }
+          authorId: currentUserIdRef.current,
+          projectId: thread.project_id,
+          sourceEntityType: thread.context_type,
+          sourceEntityId: thread.task_id ?? thread.document_id ?? thread.project_id,
+          departments: data?.departments ?? [],
+          people: data?.people ?? [],
+        }),
+      );
     },
-    [currentUserId, threads],
+    [data, run],
   );
 
   const createThread = useCallback<Store["createThread"]>(
     ({ projectId, contextType, taskId = null, documentId = null, subject, body }) => {
-      const threadId = nextId("thr");
-      const commentId = nextId("cmt");
-      setThreads((prev) => [
-        ...prev,
-        {
-          id: threadId,
-          project_id: projectId,
-          context_type: contextType,
-          task_id: taskId,
-          document_id: documentId,
+      run(() =>
+        writeThread({
+          projectId,
+          contextType,
+          taskId,
+          documentId,
           subject,
-          created_by_id: currentUserId,
-          created_at: new Date().toISOString().slice(0, 10),
-        },
-      ]);
-      setComments((prev) => [
-        ...prev,
-        {
-          id: commentId,
-          thread_id: threadId,
-          parent_comment_id: null,
-          author_id: currentUserId,
           body,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-      const { newMentions, newNotifications } = resolveMentions(
-        body,
-        commentId,
-        projectId,
-        currentUserId,
+          authorId: currentUserIdRef.current,
+          departments: data?.departments ?? [],
+          people: data?.people ?? [],
+        }),
       );
-      if (newMentions.length) setMentions((prev) => [...prev, ...newMentions]);
-      if (newNotifications.length) setNotifications((prev) => [...newNotifications, ...prev]);
     },
-    [currentUserId],
+    [data, run],
   );
 
-  const value = useMemo<Store>(
-    () => ({
-      role,
-      setRole,
-      currentUserId,
-      can: {
-        editCoreTimeline: role === "admin",
-        adminConfig: role === "admin",
-        updateWork: role !== "viewer",
-        comment: role !== "viewer",
-        upload: role !== "viewer",
-        decideApproval: role !== "viewer",
-      },
-      projects,
-      tasks,
-      milestones,
-      documents,
-      documentVersions,
-      approvals,
-      threads,
-      comments,
-      mentions,
-      notifications,
-      setTaskStatus,
-      setMilestoneDate,
-      setPortalUrl,
-      addDocumentVersion,
-      recordApproval,
-      addComment,
-      createThread,
-    }),
+  const value = useMemo<Store | null>(
+    () =>
+      data
+        ? {
+            role,
+            setRole,
+            currentUserId,
+            can: {
+              editCoreTimeline: role === "admin",
+              adminConfig: role === "admin",
+              updateWork: role !== "viewer",
+              comment: role !== "viewer",
+              upload: role !== "viewer",
+              decideApproval: role !== "viewer",
+            },
+            projects: data.projects,
+            tasks: data.tasks,
+            milestones: data.milestones,
+            documents: data.documents,
+            documentVersions: data.documentVersions,
+            approvals: data.approvals,
+            threads: data.discussionThreads,
+            comments: data.comments,
+            mentions: data.mentions,
+            notifications: data.notifications,
+            saving,
+            setTaskStatus,
+            setMilestoneDate,
+            setPortalUrl,
+            addDocumentVersion,
+            recordApproval,
+            addComment,
+            createThread,
+          }
+        : null,
     [
       role,
       currentUserId,
-      projects,
-      tasks,
-      milestones,
-      documents,
-      documentVersions,
-      approvals,
-      threads,
-      comments,
-      mentions,
-      notifications,
+      data,
+      saving,
       setTaskStatus,
       setMilestoneDate,
       setPortalUrl,
@@ -363,6 +334,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     ],
   );
 
+  if (error && !value) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-24 text-center">
+        <h1 className="font-display text-2xl text-ink">The production data could not be loaded</h1>
+        <p className="mt-2 text-sm text-ink-soft">{error}</p>
+      </div>
+    );
+  }
+
+  if (!value) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center gap-2 text-sm text-ink-soft">
+        <Loader2 aria-hidden className="size-4 animate-spin" />
+        Loading the production portfolio…
+      </div>
+    );
+  }
+
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 
@@ -371,12 +360,3 @@ export function useStore(): Store {
   if (!store) throw new Error("useStore must be used inside StoreProvider");
   return store;
 }
-
-export const departments = seed.departments;
-export const people = seed.people;
-export const projectDepartments = seed.projectDepartments;
-export const taskDependencies = seed.taskDependencies;
-export const auditLog = seed.auditLog;
-
-export const personById = (id: string) => seed.people.find((p) => p.id === id);
-export const departmentById = (id: string) => seed.departments.find((d) => d.id === id);
