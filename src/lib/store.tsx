@@ -16,9 +16,11 @@ import {
   writeComment,
   writeDocumentVersion,
   writeMilestoneDate,
+  writeNotificationRead,
   writePortalUrl,
   writeTaskStatus,
   writeThread,
+
   type Approval,
   type AuditEntry,
   type Comment,
@@ -91,7 +93,10 @@ type Store = {
     subject: string;
     body: string;
   }) => void;
+  /** Personal Inbox read state; works on any production, closed ones included. */
+  markNotifications: (ids: string[], read: boolean) => void;
 };
+
 
 
 const StoreContext = createContext<Store | null>(null);
