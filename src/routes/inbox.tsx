@@ -145,7 +145,12 @@ function InboxPage() {
             : n.kind === "approval"
               ? "Approval"
               : n.kind.replace("_", " "),
-        title: n.summary,
+        // Name the actual document or work item rather than "a document".
+        title: target
+          ? n.summary.replace(/ (?:on|for) an? document\b/i, ` on ${target.title}`)
+          : task
+            ? n.summary.replace(/ (?:on|for) an? task\b/i, ` on ${task.title}`)
+            : n.summary,
         ...(comment ? { detail: `“${snippet(comment.body, 140)}”` } : {}),
         link,
       });
