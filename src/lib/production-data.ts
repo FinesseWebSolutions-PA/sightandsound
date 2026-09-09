@@ -529,9 +529,12 @@ export async function loadProductionData(): Promise<ProductionData> {
       version: version?.version_number ?? 1,
       decision,
       actor_id: (a.decided_by ?? a.requested_by) ?? "",
+      requested_by_id: a.requested_by ?? "",
+      decided_by_id: a.decided_by ?? "",
       created_at: dateOnly(a.decided_at ?? a.requested_at),
       note: a.decision_note ?? "",
     };
+
   });
 
   const commentRows = commentsRes.data ?? [];
@@ -602,8 +605,13 @@ export async function loadProductionData(): Promise<ProductionData> {
       summary,
       created_at: n.created_at,
       read: n.is_read,
+      source_comment_id: n.source_comment_id,
+      source_entity_type: n.source_entity_type,
+      source_entity_id: n.source_entity_id,
+      via_department: n.type.includes("department"),
     };
   });
+
 
   const threadProject = new Map(discussionThreads.map((t) => [t.id, t.project_id]));
   const commentProject = new Map(
