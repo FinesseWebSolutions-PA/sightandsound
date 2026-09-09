@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, notFound } from "@tanstack/react-router";
-import { Archive, CalendarDays, ExternalLink, MapPin } from "lucide-react";
+import { Archive, CalendarDays, ExternalLink } from "lucide-react";
 
 import { StatusBadge } from "@/components/StatusBadge";
 import { personById, useStore } from "@/lib/store";
@@ -72,13 +72,6 @@ function ProjectWorkspace() {
             </div>
 
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:flex sm:flex-wrap sm:gap-x-8">
-              <div className="min-w-0">
-                <dt className="rule-label">Venue</dt>
-                <dd className="mt-0.5 flex items-center gap-1.5 text-ink">
-                  <MapPin aria-hidden className="size-3.5 shrink-0 text-ink-soft" />
-                  {project.venue}
-                </dd>
-              </div>
               <div className="min-w-0">
                 <dt className="rule-label">Production owner</dt>
                 <dd className="mt-0.5 text-ink">{personById(project.owner_id)?.full_name}</dd>
