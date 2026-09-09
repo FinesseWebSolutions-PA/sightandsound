@@ -131,6 +131,8 @@ function InboxPage() {
         </Link>
       );
 
+      const cleanSummary = n.summary.replace(/^Approval /i, (m) => "").replace(/^(\w)/, (c) => c.toUpperCase());
+
       out.push({
         id: `n-${n.id}`,
         projectId: n.project_id,
@@ -147,10 +149,10 @@ function InboxPage() {
               : n.kind.replace("_", " "),
         // Name the actual document or work item rather than "a document".
         title: target
-          ? n.summary.replace(/ (?:on|for) an? document\b/i, ` on ${target.title}`)
+          ? cleanSummary.replace(/ (?:on|for) an? document\b/i, ` on ${target.title}`)
           : task
-            ? n.summary.replace(/ (?:on|for) an? task\b/i, ` on ${task.title}`)
-            : n.summary,
+            ? cleanSummary.replace(/ (?:on|for) an? task\b/i, ` on ${task.title}`)
+            : cleanSummary,
         ...(comment ? { detail: `“${snippet(comment.body, 140)}”` } : {}),
         link,
       });
