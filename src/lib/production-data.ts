@@ -396,7 +396,7 @@ export async function loadProductionData(): Promise<ProductionData> {
       id: p.id,
       code: projectCode(p.name, p.target_close_date ?? p.start_date),
       name: p.name,
-      subtitle: `${p.venue} · ${projectStatusLabels[status]}`,
+      subtitle: projectStatusLabels[status],
       status,
       venue: p.venue,
       owner_id: p.owner_id ?? "",
@@ -406,7 +406,7 @@ export async function loadProductionData(): Promise<ProductionData> {
       portal_url: p.portal_link_url ?? "",
       summary: `${mine.length} key milestone${mine.length === 1 ? "" : "s"} and ${workCount} work item${
         workCount === 1 ? "" : "s"
-      } across ${deptCount} department${deptCount === 1 ? "" : "s"} at ${p.venue}. Build window ${
+      } across ${deptCount} department${deptCount === 1 ? "" : "s"}. Build window ${
         dateOnly(p.start_date) || "TBD"
       } to ${dateOnly(p.target_close_date) || "TBD"}.`,
     };

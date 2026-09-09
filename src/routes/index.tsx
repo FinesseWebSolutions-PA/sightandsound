@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowRight, CalendarDays, MapPin, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, CalendarDays, SlidersHorizontal } from "lucide-react";
 
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, projectDepartments, personById, useStore } from "@/lib/store";
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Every show-production build in one place: status, owner, departments involved, and the next key date for Lancaster and Branson.",
+          "Every show-production build in one place: status, owner, departments involved, and the next key date.",
       },
       { property: "og:title", content: "Production Portfolio — Sight & Sound Show Production" },
       {
@@ -33,7 +33,6 @@ const statusFilters: ("all" | ProjectStatus)[] = ["all", "active", "planning", "
 function PortfolioPage() {
   const { projects, milestones } = useStore();
   const [status, setStatus] = useState<"all" | ProjectStatus>("all");
-  const [venue, setVenue] = useState("all");
   const [department, setDepartment] = useState("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -41,7 +40,6 @@ function PortfolioPage() {
     () =>
       projects.filter((project) => {
         if (status !== "all" && project.status !== status) return false;
-        if (venue !== "all" && project.venue !== venue) return false;
         if (
           department !== "all" &&
           !projectDepartments.some(
@@ -51,7 +49,7 @@ function PortfolioPage() {
           return false;
         return true;
       }),
-    [projects, status, venue, department],
+    [projects, status, department],
   );
 
   const nextKeyDate = (projectId: string) => {
@@ -62,7 +60,7 @@ function PortfolioPage() {
   };
 
   const activeFilters =
-    (status !== "all" ? 1 : 0) + (venue !== "all" ? 1 : 0) + (department !== "all" ? 1 : 0);
+    (status !== "all" ? 1 : 0) + (department !== "all" ? 1 : 0);
 
   return (
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-10">
@@ -72,14 +70,14 @@ function PortfolioPage() {
           Production Portfolio
         </h1>
         <p className="mt-3 text-base leading-relaxed text-ink-soft">
-          Every show build across Lancaster and Branson, with the department readiness and key
+          Every show build in one place, with the department readiness and key
           dates that leadership asks about first. Open a production to see its dashboard, timeline,
           documents, and discussions.
         </p>
       </div>
       <div className="gold-rule mt-6 w-24" />
 
-      {/* Status chips scroll sideways on a phone; venue and department move into a filter panel. */}
+      {/* Status chips scroll sideways on a phone; department moves into a filter panel. */}
       <div className="mt-6 space-y-3 sm:mt-8">
         <div className="-mx-4 flex snap-x items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
           <span className="rule-label shrink-0">Status</span>
@@ -108,7 +106,7 @@ function PortfolioPage() {
           className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-ink sm:hidden"
         >
           <SlidersHorizontal aria-hidden className="size-4" />
-          {filtersOpen ? "Hide filters" : "Venue & department filters"}
+          {filtersOpen ? "Hide filters" : "Department filter"}
           {activeFilters > 0 && (
             <span className="rounded-full bg-ink px-2 py-0.5 text-xs text-cream-soft">
               {activeFilters}
@@ -123,19 +121,6 @@ function PortfolioPage() {
             filtersOpen ? "flex" : "hidden",
           )}
         >
-          <label className="flex flex-col gap-1.5 text-sm sm:flex-row sm:items-center sm:gap-2">
-            <span className="rule-label">Venue</span>
-            <select
-              value={venue}
-              onChange={(e) => setVenue(e.target.value)}
-              className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:min-h-9 sm:w-auto sm:text-sm"
-            >
-              <option value="all">All venues</option>
-              <option value="Lancaster, PA">Lancaster, PA</option>
-              <option value="Branson, MO">Branson, MO</option>
-            </select>
-          </label>
-
           <label className="flex flex-col gap-1.5 text-sm sm:flex-row sm:items-center sm:gap-2">
             <span className="rule-label">Department</span>
             <select
@@ -181,13 +166,6 @@ function PortfolioPage() {
                 </div>
 
                 <dl className="grid gap-3 text-sm">
-                  <div className="min-w-0">
-                    <dt className="rule-label">Venue</dt>
-                    <dd className="mt-0.5 flex items-center gap-1.5 text-ink">
-                      <MapPin aria-hidden className="size-3.5 shrink-0 text-ink-soft" />
-                      {project.venue}
-                    </dd>
-                  </div>
                   <div className="min-w-0">
                     <dt className="rule-label">Production owner</dt>
                     <dd className="mt-0.5 text-ink">{personById(project.owner_id)?.full_name}</dd>
