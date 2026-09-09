@@ -265,12 +265,12 @@ function DashboardTab() {
           </Panel>
 
           <Panel title="Quick links" icon={FileText}>
-            <ul className="space-y-2 text-sm">
+            <ul className="text-sm">
               <li>
                 <Link
                   to="/projects/$projectId/documents"
                   params={{ projectId }}
-                  className="font-semibold text-gold-deep hover:underline"
+                  className="inline-flex min-h-11 items-center font-semibold text-gold-deep hover:underline"
                 >
                   Documents &amp; versions
                 </Link>
@@ -279,7 +279,7 @@ function DashboardTab() {
                 <Link
                   to="/projects/$projectId/documents"
                   params={{ projectId }}
-                  className="font-semibold text-gold-deep hover:underline"
+                  className="inline-flex min-h-11 items-center font-semibold text-gold-deep hover:underline"
                 >
                   Approvals awaiting review ({pendingReview.length})
                 </Link>
@@ -288,7 +288,7 @@ function DashboardTab() {
                 <Link
                   to="/projects/$projectId/discussions"
                   params={{ projectId }}
-                  className="font-semibold text-gold-deep hover:underline"
+                  className="inline-flex min-h-11 items-center font-semibold text-gold-deep hover:underline"
                 >
                   Discussions
                 </Link>
@@ -298,7 +298,7 @@ function DashboardTab() {
                   href={project.portal_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 font-semibold text-gold-deep hover:underline"
+                  className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-gold-deep hover:underline"
                 >
                   Portal (set simulation)
                   <ExternalLink aria-hidden className="size-3.5" />
