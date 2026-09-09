@@ -174,7 +174,7 @@ export function Discussion({
             <h2 className="font-display text-2xl text-ink">{heading}</h2>
             {blurb && <p className="mt-1 text-sm text-ink-soft">{blurb}</p>}
           </div>
-          {canPost && (
+          {canStart && (
             <button
               type="button"
               onClick={() => setShowNew((v) => !v)}
@@ -183,6 +183,12 @@ export function Discussion({
               <MessageSquarePlus aria-hidden className="size-4" />
               {showNew ? "Cancel" : "Start a discussion"}
             </button>
+          )}
+          {canPost && !canStart && (
+            <p className="max-w-xs text-xs text-ink-soft">
+              Every {contextType === "task" ? "work item" : "document"} here already has its own
+              discussion — add your message to the one below.
+            </p>
           )}
         </div>
       )}
@@ -194,7 +200,8 @@ export function Discussion({
         </p>
       )}
 
-      {showNew && canPost && (
+      {showNew && canStart && (
+
         <div className="space-y-2">
           {needsAnchor && (
             <div className="surface-card flex flex-wrap items-center gap-2 p-3 text-sm">
