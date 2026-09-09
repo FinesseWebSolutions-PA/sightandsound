@@ -19,14 +19,14 @@
 - None.
 
 ## QA pass (browser-driven)
-- Portfolio filters (status / venue / department) verified against live data.
+- Portfolio filters (status / department) verified against live data.
 - Document review verified end to end: Rev B approved and the status updated on screen without a reload.
 - Discussions verified at production, work-item and document level, with mentions creating notices.
 - Fixed: one discussion per work item / document (matches the database rule), all seven departments on the Team tab, editable Portal link there, closed productions fully read-only with an archive banner, work items with no milestone now listed, and failed saves now show a message instead of silently sticking.
 
 ## Mobile pass (tested at 375px and 430px)
 - Header: brand + bell + hamburger menu (portfolio link + role switcher inside).
-- Portfolio: scrollable status chips, collapsible venue/department filters, stacked cards.
+- Portfolio: scrollable status chips, collapsible department filter, stacked cards.
 - Workspace: scrollable tabs, two-column meta, tappable Portal link.
 - Dashboard: single-column summary, stacked open-work list.
 - Timeline: stacked milestone/task cards with "Waits on:" / "Blocks:" text (no Gantt).
@@ -34,7 +34,7 @@
 - Discussions: stacked mention pickers, composer scrolls into view on focus, full-width Post.
 - Team: stacked Portal form, wrapped department cards, mobile access list.
 - Verified: no page horizontal scroll, no console errors, all primary controls >= 44px.
-- Note: all three seeded productions are at Lancaster, so the Branson venue filter shows an empty state by design.
+- Note: single-location build — location/venue is never displayed in the UI (schema field retained).
 
 ## Contextual discussions, Inbox, premium mentions (done)
 - [x] Inline task conversations on Timeline (counts, latest snippet, expand in place, deep links)
@@ -43,3 +43,7 @@
 - [x] Personal cross-production Inbox at /inbox (mentions, dept mentions, assigned tasks, approvals) with read state
 - [x] Live @mention picker with keyboard nav, people vs departments, styled mention pills
 - [x] Verified at 375 / 430 / 1280px: no page overflow, no console errors; QA test rows cleaned up
+
+## Single-location pass (done)
+- [x] Venue filter, venue fields, and location copy removed from Portfolio, workspace header, project subtitles/summaries, and Inbox
+- [x] Verified at 375 and 1280px: no location text on any screen, no console errors
