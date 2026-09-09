@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { Crown, Users } from "lucide-react";
+import { Crown, ExternalLink, Users } from "lucide-react";
 
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, people, personById, projectDepartments, useStore } from "@/lib/store";
 import { readinessMeta } from "@/lib/status";
 import { roleLabels } from "@/lib/store";
+
 
 export const Route = createFileRoute("/projects/$projectId/team")({
   head: () => ({
@@ -27,11 +29,17 @@ export const Route = createFileRoute("/projects/$projectId/team")({
 
 function TeamTab() {
   const { projectId } = Route.useParams();
-  const { projects } = useStore();
+  const { projects, can, setPortalUrl, isClosed } = useStore();
   const project = projects.find((p) => p.id === projectId);
   if (!project) throw notFound();
 
-  const involved = projectDepartments.filter((pd) => pd.project_id === projectId);
+  const [portalDraft, setPortalDraft] = useState(project.portal_url);
+  const canEditPortal = can.adminConfig && !isClosed(projectId);
+
+  const involvement = (departmentId: string) =>
+    projectDepartments.find(
+      (pd) => pd.project_id === projectId && pd.department_id === departmentId,
+    );
 
   return (
     <div className="space-y-6">
@@ -43,10 +51,41 @@ function TeamTab() {
         </p>
       </div>
 
+      <section className="surface-card p-4">
+        <label htmlFor="team-portal-url" className="rule-label flex items-center gap-1.5">
+          <ExternalLink aria-hidden className="size-3.5" />
+          Portal (set simulation) link
+        </label>
+        <div className="mt-1.5 flex flex-wrap gap-2">
+          <input
+            id="team-portal-url"
+            value={portalDraft}
+            onChange={(e) => setPortalDraft(e.target.value)}
+            disabled={!canEditPortal}
+            className="min-w-0 flex-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm text-ink disabled:bg-muted disabled:text-ink-soft"
+          />
+          {canEditPortal && (
+            <button
+              type="button"
+              onClick={() => setPortalUrl(projectId, portalDraft)}
+              className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-ink-soft"
+            >
+              Save link
+            </button>
+          )}
+        </div>
+        <p className="mt-1.5 text-xs text-ink-soft">
+          {canEditPortal
+            ? "Opens the external set-simulation Portal in a new tab."
+            : isClosed(projectId)
+              ? "This production is closed and archived — the link can no longer be changed."
+              : "Admins can change this link."}
+        </p>
+      </section>
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {involved.map((pd) => {
-          const dept = departments.find((d) => d.id === pd.department_id);
-          if (!dept) return null;
+        {departments.map((dept) => {
+          const pd = involvement(dept.id);
           const members = people.filter(
             (p) =>
               p.primary_department_id === dept.id &&
@@ -60,16 +99,24 @@ function TeamTab() {
                 <h3 className="text-sm font-semibold text-ink">{dept.name}</h3>
                 <span className="code-id">{dept.code}</span>
                 <span className="ml-auto">
-                  <StatusBadge meta={readinessMeta[pd.readiness]} size="sm" />
+                  {pd ? (
+                    <StatusBadge meta={readinessMeta[pd.readiness]} size="sm" />
+                  ) : (
+                    <span className="rounded-md border border-border px-2 py-0.5 text-xs text-ink-soft">
+                      Not on this production
+                    </span>
+                  )}
                 </span>
               </header>
               <div className="space-y-3 p-4 text-sm">
-                <p className="text-ink-soft">{pd.note}</p>
+                <p className="text-ink-soft">
+                  {pd?.note ?? "This department has no work assigned on this production yet."}
+                </p>
                 <div>
                   <p className="rule-label">Department owner</p>
                   <p className="mt-0.5 flex items-center gap-1.5 text-ink">
                     <Crown aria-hidden className="size-3.5 text-gold" />
-                    {personById(dept.owner_id)?.full_name}
+                    {personById(dept.owner_id)?.full_name ?? "No owner named"}
                     <span className="text-xs text-ink-soft">
                       {personById(dept.owner_id)?.title}
                     </span>
@@ -96,8 +143,7 @@ function TeamTab() {
                     <ul className="mt-0.5 space-y-0.5">
                       {members.map((m) => (
                         <li key={m.id} className="text-ink">
-                          {m.full_name}{" "}
-                          <span className="text-xs text-ink-soft">{m.title}</span>
+                          {m.full_name} <span className="text-xs text-ink-soft">{m.title}</span>
                         </li>
                       ))}
                     </ul>
@@ -108,6 +154,7 @@ function TeamTab() {
           );
         })}
       </div>
+
 
       <section className="surface-card overflow-x-auto">
         <header className="border-b border-border bg-cream-soft px-4 py-3">

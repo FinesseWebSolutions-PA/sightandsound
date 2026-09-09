@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, notFound } from "@tanstack/react-router";
-import { CalendarDays, ExternalLink, MapPin } from "lucide-react";
+import { Archive, CalendarDays, ExternalLink, MapPin } from "lucide-react";
 
 import { StatusBadge } from "@/components/StatusBadge";
 import { personById, useStore } from "@/lib/store";
@@ -34,9 +34,11 @@ const tabs = [
 
 function ProjectWorkspace() {
   const { projectId } = Route.useParams();
-  const { projects } = useStore();
+  const { projects, isClosed } = useStore();
   const project = projects.find((p) => p.id === projectId);
   if (!project) throw notFound();
+
+  const closed = isClosed(projectId);
 
   return (
     <div>
@@ -45,6 +47,18 @@ function ProjectWorkspace() {
           <Link to="/" className="rule-label hover:text-ink">
             Production Portfolio
           </Link>
+          {closed && (
+            <p
+              role="status"
+              className="mt-3 flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm text-ink"
+            >
+              <Archive aria-hidden className="size-4 text-ink-soft" />
+              <span>
+                <strong className="font-semibold">Closed &amp; archived.</strong> This production is
+                a read-only record — nothing can be edited, added, or commented on, in any role.
+              </span>
+            </p>
+          )}
           <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
@@ -54,6 +68,7 @@ function ProjectWorkspace() {
               <h1 className="mt-1 font-display text-4xl text-ink">{project.name}</h1>
               <p className="mt-1 text-sm text-ink-soft">{project.subtitle}</p>
             </div>
+
             <dl className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
               <div>
                 <dt className="rule-label">Venue</dt>

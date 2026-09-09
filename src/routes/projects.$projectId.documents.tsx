@@ -36,9 +36,14 @@ function DocumentsTab() {
     can,
     recordApproval,
     addDocumentVersion,
+    isClosed,
   } = useStore();
   const project = projects.find((p) => p.id === projectId);
   if (!project) throw notFound();
+
+  const locked = isClosed(projectId);
+  const canReview = can.decideApproval && !locked;
+  const canUpload = can.upload && !locked;
 
   const projectDocs = documents.filter((d) => d.project_id === projectId);
   const [selectedId, setSelectedId] = useState(projectDocs[0]?.id ?? "");
@@ -50,6 +55,7 @@ function DocumentsTab() {
     recordApproval(selected.id, decision, note || "No note added.");
     setNote("");
   };
+
 
   return (
     <div className="space-y-6">
@@ -118,7 +124,7 @@ function DocumentsTab() {
                 <StatusBadge meta={approvalStateMeta[selected.approval_state]} />
               </div>
 
-              {can.decideApproval ? (
+              {canReview ? (
                 <div className="mt-4 space-y-2 border-t border-border pt-3">
                   <label htmlFor="review-note" className="rule-label">
                     Review note
@@ -161,7 +167,7 @@ function DocumentsTab() {
                       <XCircle aria-hidden className="size-3.5" /> Reject
                     </button>
                   </div>
-                  {can.upload && (
+                  {canUpload && (
                     <button
                       type="button"
                       onClick={() => {
@@ -176,9 +182,12 @@ function DocumentsTab() {
                 </div>
               ) : (
                 <p className="mt-4 border-t border-border pt-3 text-xs text-ink-soft">
-                  Viewers can read documents and their review history.
+                  {locked
+                    ? "This production is closed and archived — documents and their review history stay readable, but no new reviews or versions can be added."
+                    : "Viewers can read documents and their review history."}
                 </p>
               )}
+
             </div>
 
             <div className="surface-card overflow-hidden">

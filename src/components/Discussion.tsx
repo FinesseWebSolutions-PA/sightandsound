@@ -124,9 +124,32 @@ export function Discussion({
   heading?: string;
   blurb?: string;
 }) {
-  const { threads, comments, addComment, createThread, can, tasks, documents } = useStore();
+  const { threads, comments, addComment, createThread, can, tasks, documents, isClosed } =
+    useStore();
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [anchorId, setAnchorId] = useState("");
+
+  const locked = isClosed(projectId);
+  const canPost = can.comment && !locked;
+
+  const projectTasks = tasks.filter((t) => t.project_id === projectId);
+  const projectDocuments = documents.filter((d) => d.project_id === projectId);
+  const needsAnchor =
+    (contextType === "task" && !taskId) || (contextType === "document" && !documentId);
+  // Each work item and each document carries exactly one discussion, so anything
+  // that already has one is not offered again — you add to it instead.
+  const anchorOptions = (contextType === "task" ? projectTasks : projectDocuments).filter((o) =>
+    contextType === "task"
+      ? !threads.some((t) => t.task_id === o.id)
+      : !threads.some((t) => t.document_id === o.id),
+  );
+  const resolvedTaskId = contextType === "task" ? (taskId ?? (anchorId || null)) : taskId;
+  const resolvedDocumentId =
+    contextType === "document" ? (documentId ?? (anchorId || null)) : documentId;
+  const canStart = canPost && (!needsAnchor || anchorOptions.length > 0);
+
+
 
   const visible = threads.filter(
     (t) =>
@@ -151,7 +174,7 @@ export function Discussion({
             <h2 className="font-display text-2xl text-ink">{heading}</h2>
             {blurb && <p className="mt-1 text-sm text-ink-soft">{blurb}</p>}
           </div>
-          {can.comment && (
+          {canStart && (
             <button
               type="button"
               onClick={() => setShowNew((v) => !v)}
@@ -161,26 +184,79 @@ export function Discussion({
               {showNew ? "Cancel" : "Start a discussion"}
             </button>
           )}
+          {canPost && !canStart && (
+            <p className="max-w-xs text-xs text-ink-soft">
+              Every {contextType === "task" ? "work item" : "document"} here already has its own
+              discussion — add your message to the one below.
+            </p>
+          )}
         </div>
       )}
 
-      {showNew && can.comment && (
-        <Composer
-          withSubject
-          placeholder="Write the first message. Use @ to bring in a department or a team member."
-          submitLabel="Post discussion"
-          onSubmit={(body, subject) =>
-            createThread({ projectId, contextType, taskId, documentId, subject, body })
-          }
-        />
+      {locked && heading && (
+        <p className="surface-card p-3 text-sm text-ink-soft">
+          This production is closed and archived — the conversation stays readable, but nothing new
+          can be posted.
+        </p>
+      )}
+
+      {showNew && canStart && (
+
+        <div className="space-y-2">
+          {needsAnchor && (
+            <div className="surface-card flex flex-wrap items-center gap-2 p-3 text-sm">
+              <span className="rule-label">
+                {contextType === "task" ? "Work item" : "Document"}
+              </span>
+              <select
+                aria-label={contextType === "task" ? "Choose a work item" : "Choose a document"}
+                value={anchorId}
+                onChange={(e) => setAnchorId(e.target.value)}
+                className="rounded-md border border-border bg-card px-2 py-1 text-sm text-ink"
+              >
+                <option value="">Choose one…</option>
+                {anchorOptions.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.title}
+                  </option>
+                ))}
+              </select>
+              {!anchorId && (
+                <span className="text-xs text-ink-soft">
+                  Pick what this discussion is attached to before posting.
+                </span>
+              )}
+            </div>
+          )}
+          {(!needsAnchor || anchorId) && (
+            <Composer
+              withSubject
+              placeholder="Write the first message. Use @ to bring in a department or a team member."
+              submitLabel="Post discussion"
+              onSubmit={(body, subject) => {
+                createThread({
+                  projectId,
+                  contextType,
+                  taskId: resolvedTaskId,
+                  documentId: resolvedDocumentId,
+                  subject,
+                  body,
+                });
+                setAnchorId("");
+                setShowNew(false);
+              }}
+            />
+          )}
+        </div>
       )}
 
       {visible.length === 0 && (
         <p className="surface-card p-4 text-sm text-ink-soft">
           No discussion here yet.
-          {can.comment ? " Start one to bring the right departments in." : ""}
+          {canPost ? " Start one to bring the right departments in." : ""}
         </p>
       )}
+
 
       {visible.map((thread) => {
         const threadComments = comments.filter((c) => c.thread_id === thread.id);
@@ -234,7 +310,7 @@ export function Discussion({
                       </div>
                     )}
 
-                    {can.comment && (
+                    {canPost && (
                       <div className="mt-2">
                         {replyTo === root.id ? (
                           <Composer
@@ -261,7 +337,7 @@ export function Discussion({
                 );
               })}
             </div>
-            {can.comment && (
+            {canPost && (
               <div className="border-t border-border bg-cream-soft px-4 py-3">
                 <Composer
                   compact

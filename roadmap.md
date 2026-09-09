@@ -17,3 +17,9 @@
 
 ## Open
 - None.
+
+## QA pass (browser-driven)
+- Portfolio filters (status / venue / department) verified against live data.
+- Document review verified end to end: Rev B approved and the status updated on screen without a reload.
+- Discussions verified at production, work-item and document level, with mentions creating notices.
+- Fixed: one discussion per work item / document (matches the database rule), all seven departments on the Team tab, editable Portal link there, closed productions fully read-only with an archive banner, work items with no milestone now listed, and failed saves now show a message instead of silently sticking.
