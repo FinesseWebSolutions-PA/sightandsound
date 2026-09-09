@@ -406,7 +406,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             recordApproval,
             addComment,
             createThread,
+            markNotifications,
           }
+
         : null,
     [
       role,
