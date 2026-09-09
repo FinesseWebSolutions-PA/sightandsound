@@ -112,9 +112,12 @@ export type Approval = {
   version: number;
   decision: "requested" | "approved" | "changes_requested" | "rejected";
   actor_id: string;
+  requested_by_id: string;
+  decided_by_id: string;
   created_at: string;
   note: string;
 };
+
 
 export type ThreadContext = "project" | "task" | "document";
 
@@ -153,7 +156,14 @@ export type Notification = {
   summary: string;
   created_at: string;
   read: boolean;
+  /** Where the notice came from, so the Inbox can jump straight to it. */
+  source_comment_id: string | null;
+  source_entity_type: string | null;
+  source_entity_id: string | null;
+  /** True when the notice came from a department mention rather than a direct one. */
+  via_department: boolean;
 };
+
 
 export type AuditEntry = {
   id: string;
