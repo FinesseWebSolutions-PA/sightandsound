@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, notFound } from "@tanstack/react-router";
-import { Archive, CalendarDays, ExternalLink, MapPin } from "lucide-react";
+import { Archive, CalendarDays, ExternalLink } from "lucide-react";
 
 import { StatusBadge } from "@/components/StatusBadge";
 import { personById, useStore } from "@/lib/store";
