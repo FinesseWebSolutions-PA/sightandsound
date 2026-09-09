@@ -90,8 +90,8 @@ function DashboardTab() {
 
   return (
     <div className="space-y-6">
-      <section className="surface-card p-5">
-        <div className="grid gap-6 md:grid-cols-4">
+      <section className="surface-card p-4 sm:p-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 md:grid-cols-4">
           <div>
             <p className="rule-label">Design lock</p>
             <p className="mt-1 text-lg text-ink">{formatDate(project.design_lock_date)}</p>
@@ -121,16 +121,15 @@ function DashboardTab() {
               {involved.map((pd) => {
                 const dept = departments.find((d) => d.id === pd.department_id);
                 return (
-                  <li
-                    key={pd.department_id}
-                    className="flex flex-wrap items-center gap-3 py-2.5 first:pt-0 last:pb-0"
-                  >
-                    <span className="min-w-40 text-sm font-medium text-ink">{dept?.name}</span>
-                    <StatusBadge meta={readinessMeta[pd.readiness]} size="sm" />
-                    <span className="text-sm text-ink-soft">{pd.note}</span>
-                    <span className="ml-auto text-xs text-ink-soft">
+                  <li key={pd.department_id} className="py-3 first:pt-0 last:pb-0">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                      <span className="text-sm font-medium text-ink sm:min-w-40">{dept?.name}</span>
+                      <StatusBadge meta={readinessMeta[pd.readiness]} size="sm" />
+                    </div>
+                    <p className="mt-1 text-sm text-ink-soft">{pd.note}</p>
+                    <p className="mt-0.5 text-xs text-ink-soft">
                       Owner: {personById(dept?.owner_id ?? "")?.full_name}
-                    </span>
+                    </p>
                   </li>
                 );
               })}
@@ -144,13 +143,34 @@ function DashboardTab() {
               <Link
                 to="/projects/$projectId/timeline"
                 params={{ projectId }}
-                className="text-xs font-semibold text-gold-deep hover:underline"
+                className="inline-flex min-h-11 items-center text-sm font-semibold text-gold-deep hover:underline"
               >
                 View timeline
               </Link>
             }
           >
-            <table className="w-full text-sm">
+            {/* Phones get a stacked list; the table appears once there is room for it. */}
+            <ul className="divide-y divide-border sm:hidden">
+              {openTasks.slice(0, 8).map((task) => (
+                <li key={task.id} className="py-3 first:pt-0 last:pb-0">
+                  <p className="text-sm font-medium text-ink">{task.title}</p>
+                  <p className="mt-0.5 text-xs text-ink-soft">
+                    {departments.find((d) => d.id === task.department_id)?.name} ·{" "}
+                    {personById(task.assignee_id)?.full_name} · due {formatDate(task.due_date)}
+                  </p>
+                  <div className="mt-1.5">
+                    <StatusBadge meta={taskStatusMeta[task.status]} size="sm" />
+                  </div>
+                </li>
+              ))}
+              {openTasks.length === 0 && (
+                <li className="py-2 text-sm text-ink-soft">
+                  Nothing open — this production is complete.
+                </li>
+              )}
+            </ul>
+
+            <table className="hidden w-full text-sm sm:table">
               <thead>
                 <tr className="border-b border-border text-left">
                   <th className="rule-label pb-2">Item</th>
@@ -192,12 +212,12 @@ function DashboardTab() {
           <Panel title="Recent activity" icon={Activity}>
             <ul className="space-y-3">
               {activity.map((entry) => (
-                <li key={entry.id} className="flex flex-wrap gap-x-2 text-sm">
+                <li key={entry.id} className="text-sm">
                   <span className="font-medium text-ink">
                     {personById(entry.actor_id)?.full_name}
-                  </span>
+                  </span>{" "}
                   <span className="text-ink-soft">{entry.action}</span>
-                  <span className="ml-auto text-xs text-ink-soft">
+                  <span className="block text-xs text-ink-soft sm:inline sm:pl-2">
                     {formatDateTime(entry.created_at)}
                   </span>
                 </li>
@@ -245,12 +265,12 @@ function DashboardTab() {
           </Panel>
 
           <Panel title="Quick links" icon={FileText}>
-            <ul className="space-y-2 text-sm">
+            <ul className="text-sm">
               <li>
                 <Link
                   to="/projects/$projectId/documents"
                   params={{ projectId }}
-                  className="font-semibold text-gold-deep hover:underline"
+                  className="inline-flex min-h-11 items-center font-semibold text-gold-deep hover:underline"
                 >
                   Documents &amp; versions
                 </Link>
@@ -259,7 +279,7 @@ function DashboardTab() {
                 <Link
                   to="/projects/$projectId/documents"
                   params={{ projectId }}
-                  className="font-semibold text-gold-deep hover:underline"
+                  className="inline-flex min-h-11 items-center font-semibold text-gold-deep hover:underline"
                 >
                   Approvals awaiting review ({pendingReview.length})
                 </Link>
@@ -268,7 +288,7 @@ function DashboardTab() {
                 <Link
                   to="/projects/$projectId/discussions"
                   params={{ projectId }}
-                  className="font-semibold text-gold-deep hover:underline"
+                  className="inline-flex min-h-11 items-center font-semibold text-gold-deep hover:underline"
                 >
                   Discussions
                 </Link>
@@ -278,7 +298,7 @@ function DashboardTab() {
                   href={project.portal_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 font-semibold text-gold-deep hover:underline"
+                  className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-gold-deep hover:underline"
                 >
                   Portal (set simulation)
                   <ExternalLink aria-hidden className="size-3.5" />
@@ -290,19 +310,21 @@ function DashboardTab() {
               <label htmlFor="portal-url" className="rule-label">
                 Portal (set simulation) link
               </label>
-              <div className="mt-1.5 flex gap-2">
+              <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
                 <input
                   id="portal-url"
+                  type="url"
+                  inputMode="url"
                   value={portalDraft}
                   onChange={(e) => setPortalDraft(e.target.value)}
                   disabled={!canEditPortal}
-                  className="min-w-0 flex-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs text-ink disabled:bg-muted disabled:text-ink-soft"
+                  className="min-h-11 w-full min-w-0 rounded-md border border-border bg-card px-2.5 text-base text-ink disabled:bg-muted disabled:text-ink-soft sm:flex-1 sm:text-xs"
                 />
                 {canEditPortal && (
                   <button
                     type="button"
                     onClick={() => setPortalUrl(projectId, portalDraft)}
-                    className="rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground hover:bg-ink-soft"
+                    className="min-h-11 shrink-0 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-ink-soft sm:text-xs"
                   >
                     Save
                   </button>

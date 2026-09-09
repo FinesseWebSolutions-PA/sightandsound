@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AtSign, CornerDownRight, MessageSquarePlus, Send } from "lucide-react";
 
 import { MentionText } from "@/components/MentionText";
@@ -8,8 +8,10 @@ import { formatDateTime } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
 function MentionPicker({ onInsert }: { onInsert: (token: string) => void }) {
+  const selectClass =
+    "min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:min-h-0 sm:w-auto sm:py-1 sm:text-xs";
   return (
-    <div className="flex flex-wrap items-center gap-2 text-xs">
+    <div className="w-full space-y-2 text-xs sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-2 sm:space-y-0">
       <span className="rule-label flex items-center gap-1">
         <AtSign aria-hidden className="size-3" /> Mention
       </span>
@@ -20,7 +22,7 @@ function MentionPicker({ onInsert }: { onInsert: (token: string) => void }) {
           if (e.target.value) onInsert(e.target.value);
           e.target.value = "";
         }}
-        className="rounded-md border border-border bg-card px-2 py-1 text-xs text-ink"
+        className={selectClass}
       >
         <option value="">Department…</option>
         {departments.map((d) => (
@@ -36,7 +38,7 @@ function MentionPicker({ onInsert }: { onInsert: (token: string) => void }) {
           if (e.target.value) onInsert(e.target.value);
           e.target.value = "";
         }}
-        className="rounded-md border border-border bg-card px-2 py-1 text-xs text-ink"
+        className={selectClass}
       >
         <option value="">Team member…</option>
         {people.map((p) => (
@@ -45,7 +47,7 @@ function MentionPicker({ onInsert }: { onInsert: (token: string) => void }) {
           </option>
         ))}
       </select>
-      <span className="text-ink-soft">
+      <span className="block text-ink-soft">
         A department mention notifies its owner and leads only.
       </span>
     </div>
@@ -67,9 +69,19 @@ function Composer({
 }) {
   const [body, setBody] = useState("");
   const [subject, setSubject] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // On a phone the on-screen keyboard slides up over the bottom of the page, so
+  // bring the whole composer (including the send button) into view on focus.
+  const keepInView = () => {
+    window.setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 350);
+  };
 
   return (
     <form
+      ref={formRef}
       className={cn("space-y-2", compact ? "pt-2" : "surface-card p-4")}
       onSubmit={(e) => {
         e.preventDefault();
@@ -83,25 +95,27 @@ function Composer({
         <input
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
+          onFocus={keepInView}
           placeholder="What is this discussion about?"
           aria-label="Discussion subject"
-          className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-ink focus:ring-2 focus:ring-ring focus:outline-none"
+          className="min-h-11 w-full rounded-md border border-border bg-card px-3 py-2 text-base text-ink focus:ring-2 focus:ring-ring focus:outline-none sm:text-sm"
         />
       )}
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
+        onFocus={keepInView}
         placeholder={placeholder}
-        rows={compact ? 2 : 3}
-        className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-ink focus:ring-2 focus:ring-ring focus:outline-none"
+        rows={compact ? 3 : 4}
+        className="w-full rounded-md border border-border bg-card px-3 py-2 text-base text-ink focus:ring-2 focus:ring-ring focus:outline-none sm:text-sm"
       />
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <MentionPicker onInsert={(token) => setBody((b) => (b ? `${b} ${token} ` : `${token} `))} />
         <button
           type="submit"
-          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-ink-soft"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-ink-soft sm:w-auto"
         >
-          <Send aria-hidden className="size-3.5" />
+          <Send aria-hidden className="size-4" />
           {submitLabel}
         </button>
       </div>
@@ -169,7 +183,7 @@ export function Discussion({
   return (
     <section className="space-y-4">
       {heading && (
-        <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
           <div>
             <h2 className="font-display text-2xl text-ink">{heading}</h2>
             {blurb && <p className="mt-1 text-sm text-ink-soft">{blurb}</p>}
@@ -178,7 +192,7 @@ export function Discussion({
             <button
               type="button"
               onClick={() => setShowNew((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-cream"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink transition-colors hover:bg-cream sm:w-auto"
             >
               <MessageSquarePlus aria-hidden className="size-4" />
               {showNew ? "Cancel" : "Start a discussion"}
@@ -204,7 +218,7 @@ export function Discussion({
 
         <div className="space-y-2">
           {needsAnchor && (
-            <div className="surface-card flex flex-wrap items-center gap-2 p-3 text-sm">
+            <div className="surface-card flex flex-col gap-2 p-3 text-sm sm:flex-row sm:flex-wrap sm:items-center">
               <span className="rule-label">
                 {contextType === "task" ? "Work item" : "Document"}
               </span>
@@ -212,7 +226,7 @@ export function Discussion({
                 aria-label={contextType === "task" ? "Choose a work item" : "Choose a document"}
                 value={anchorId}
                 onChange={(e) => setAnchorId(e.target.value)}
-                className="rounded-md border border-border bg-card px-2 py-1 text-sm text-ink"
+                className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:min-h-0 sm:w-auto sm:py-1 sm:text-sm"
               >
                 <option value="">Choose one…</option>
                 {anchorOptions.map((o) => (
@@ -326,7 +340,7 @@ export function Discussion({
                           <button
                             type="button"
                             onClick={() => setReplyTo(root.id)}
-                            className="text-xs font-semibold text-gold-deep hover:underline"
+                            className="inline-flex min-h-11 items-center text-sm font-semibold text-gold-deep hover:underline"
                           >
                             Reply
                           </button>
