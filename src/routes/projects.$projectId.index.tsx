@@ -143,7 +143,7 @@ function DashboardTab() {
               <Link
                 to="/projects/$projectId/timeline"
                 params={{ projectId }}
-                className="text-xs font-semibold text-gold-deep hover:underline"
+                className="inline-flex min-h-11 items-center text-sm font-semibold text-gold-deep hover:underline"
               >
                 View timeline
               </Link>

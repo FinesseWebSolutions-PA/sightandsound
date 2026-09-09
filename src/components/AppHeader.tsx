@@ -31,7 +31,7 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-cream-soft/95 backdrop-blur">
       <div className="mx-auto grid max-w-[1400px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5 sm:px-6 sm:py-3 md:flex md:gap-4">
-        <Link to="/" className="flex min-w-0 items-baseline gap-2 sm:gap-3">
+        <Link to="/" className="flex min-h-11 min-w-0 items-baseline gap-2 py-2 sm:gap-3">
           <span className="truncate font-display text-xl leading-none text-ink sm:text-2xl">
             Sight &amp; Sound
           </span>
