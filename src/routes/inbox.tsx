@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { useMemo } from "react";
 import {
   AtSign,
@@ -63,7 +64,11 @@ function InboxPage() {
     markNotifications,
   } = useStore();
 
-  const me = people.find((p) => p.id === currentUserId);
+  // Leadership demo: the Inbox opens on whoever you are viewing as, and you can
+  // look at any team member's inbox to see how it works for the shop or lighting.
+  const [personId, setPersonId] = useState(currentUserId);
+  const viewedId = people.some((p) => p.id === personId) ? personId : currentUserId;
+  const me = people.find((p) => p.id === viewedId);
 
   // Departments this person belongs to, leads, or owns — department mentions land here too.
   const myDepartmentIds = useMemo(
@@ -72,18 +77,18 @@ function InboxPage() {
         .filter(
           (d) =>
             d.id === me?.primary_department_id ||
-            d.owner_id === currentUserId ||
-            d.lead_ids.includes(currentUserId),
+            d.owner_id === viewedId ||
+            d.lead_ids.includes(viewedId),
         )
         .map((d) => d.id),
-    [me?.primary_department_id, currentUserId],
+    [me?.primary_department_id, viewedId],
   );
 
   const items = useMemo<Item[]>(() => {
     const out: Item[] = [];
 
     // 1 & 2: direct @mentions and department mentions, wherever they were written.
-    for (const n of notifications.filter((n) => n.recipient_id === currentUserId)) {
+    for (const n of notifications.filter((n) => n.recipient_id === viewedId)) {
       const comment = n.source_comment_id
         ? comments.find((c) => c.id === n.source_comment_id)
         : undefined;
@@ -148,7 +153,7 @@ function InboxPage() {
 
     // 3: work assigned to this person that is still open.
     for (const task of tasks.filter(
-      (t) => t.assignee_id === currentUserId && t.status !== "complete",
+      (t) => t.assignee_id === viewedId && t.status !== "complete",
     )) {
       out.push({
         id: `t-${task.id}`,
@@ -180,10 +185,10 @@ function InboxPage() {
       const waitingOnMe =
         a.decision === "requested" &&
         doc.approval_state === "in_review" &&
-        (dept?.owner_id === currentUserId ||
-          (dept ? dept.lead_ids.includes(currentUserId) : false) ||
+        (dept?.owner_id === viewedId ||
+          (dept ? dept.lead_ids.includes(viewedId) : false) ||
           myDepartmentIds.includes(doc.department_id));
-      const mySubmission = a.requested_by_id === currentUserId && a.decision !== "requested";
+      const mySubmission = a.requested_by_id === viewedId && a.decision !== "requested";
       if (!waitingOnMe && !mySubmission) continue;
 
       out.push({
@@ -214,7 +219,7 @@ function InboxPage() {
       (x, y) => Number(x.read) - Number(y.read) || y.created_at.localeCompare(x.created_at),
     );
   }, [
-    currentUserId,
+    viewedId,
     myDepartmentIds,
     notifications,
     comments,
@@ -251,6 +256,23 @@ function InboxPage() {
             Across every production: mentions of you, mentions of your department, work assigned to
             you, reviews waiting on you, and decisions on what you submitted.
           </p>
+        </div>
+        <div className="flex flex-col gap-2 sm:items-end">
+          <label htmlFor="inbox-person" className="rule-label">
+            Inbox for
+          </label>
+          <select
+            id="inbox-person"
+            value={viewedId}
+            onChange={(e) => setPersonId(e.target.value)}
+            className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:w-64 sm:text-sm"
+          >
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.full_name} — {p.title}
+              </option>
+            ))}
+          </select>
         </div>
         {unreadIds.length > 0 && (
           <button
