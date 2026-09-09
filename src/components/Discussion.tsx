@@ -1,58 +1,12 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AtSign, CornerDownRight, MessageSquarePlus, Send } from "lucide-react";
 
+import { MentionInput } from "@/components/MentionInput";
 import { MentionText } from "@/components/MentionText";
-import { departments, people, personById, useStore } from "@/lib/store";
+import { personById, useStore } from "@/lib/store";
 import type { ThreadContext } from "@/lib/production-data";
 import { formatDateTime } from "@/lib/status";
 import { cn } from "@/lib/utils";
-
-function MentionPicker({ onInsert }: { onInsert: (token: string) => void }) {
-  const selectClass =
-    "min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:min-h-0 sm:w-auto sm:py-1 sm:text-xs";
-  return (
-    <div className="w-full space-y-2 text-xs sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-2 sm:space-y-0">
-      <span className="rule-label flex items-center gap-1">
-        <AtSign aria-hidden className="size-3" /> Mention
-      </span>
-      <select
-        aria-label="Mention a department"
-        defaultValue=""
-        onChange={(e) => {
-          if (e.target.value) onInsert(e.target.value);
-          e.target.value = "";
-        }}
-        className={selectClass}
-      >
-        <option value="">Department…</option>
-        {departments.map((d) => (
-          <option key={d.id} value={`@${d.name}`}>
-            {d.name}
-          </option>
-        ))}
-      </select>
-      <select
-        aria-label="Mention a team member"
-        defaultValue=""
-        onChange={(e) => {
-          if (e.target.value) onInsert(e.target.value);
-          e.target.value = "";
-        }}
-        className={selectClass}
-      >
-        <option value="">Team member…</option>
-        {people.map((p) => (
-          <option key={p.id} value={`@${p.full_name}`}>
-            {p.full_name}
-          </option>
-        ))}
-      </select>
-      <span className="block text-ink-soft">
-        A department mention notifies its owner and leads only.
-      </span>
-    </div>
-  );
-}
 
 function Composer({
   placeholder,
@@ -101,16 +55,21 @@ function Composer({
           className="min-h-11 w-full rounded-md border border-border bg-card px-3 py-2 text-base text-ink focus:ring-2 focus:ring-ring focus:outline-none sm:text-sm"
         />
       )}
-      <textarea
+      <MentionInput
         value={body}
-        onChange={(e) => setBody(e.target.value)}
+        onChange={setBody}
         onFocus={keepInView}
         placeholder={placeholder}
         rows={compact ? 3 : 4}
-        className="w-full rounded-md border border-border bg-card px-3 py-2 text-base text-ink focus:ring-2 focus:ring-ring focus:outline-none sm:text-sm"
+        ariaLabel="Message"
       />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <MentionPicker onInsert={(token) => setBody((b) => (b ? `${b} ${token} ` : `${token} `))} />
+        <p className="flex items-center gap-1.5 text-xs text-ink-soft">
+          <AtSign aria-hidden className="size-3.5" />
+          Type @ to mention a team member or a department. Department mentions reach its owner and
+          leads only.
+        </p>
         <button
           type="submit"
           className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-ink-soft sm:w-auto"
@@ -130,6 +89,8 @@ export function Discussion({
   documentId = null,
   heading,
   blurb,
+  inline = false,
+  highlightCommentId,
 }: {
   projectId: string;
   contextType: ThreadContext;
@@ -137,6 +98,9 @@ export function Discussion({
   documentId?: string | null;
   heading?: string;
   blurb?: string;
+  /** Inline mode is used where the thing itself is shown (a work item, a document). */
+  inline?: boolean;
+  highlightCommentId?: string;
 }) {
   const { threads, comments, addComment, createThread, can, tasks, documents, isClosed } =
     useStore();
@@ -163,8 +127,6 @@ export function Discussion({
     contextType === "document" ? (documentId ?? (anchorId || null)) : documentId;
   const canStart = canPost && (!needsAnchor || anchorOptions.length > 0);
 
-
-
   const visible = threads.filter(
     (t) =>
       t.project_id === projectId &&
@@ -172,6 +134,13 @@ export function Discussion({
       (taskId === null || t.task_id === taskId) &&
       (documentId === null || t.document_id === documentId),
   );
+
+  // Jumping in from the Inbox lands on a specific message.
+  useEffect(() => {
+    if (!highlightCommentId) return;
+    const el = document.getElementById(`comment-${highlightCommentId}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlightCommentId, visible.length]);
 
   const contextLabel = (threadTaskId: string | null, threadDocumentId: string | null) => {
     if (threadTaskId) return tasks.find((t) => t.id === threadTaskId)?.title ?? "Task";
@@ -215,7 +184,6 @@ export function Discussion({
       )}
 
       {showNew && canStart && (
-
         <div className="space-y-2">
           {needsAnchor && (
             <div className="surface-card flex flex-col gap-2 p-3 text-sm sm:flex-row sm:flex-wrap sm:items-center">
@@ -264,30 +232,70 @@ export function Discussion({
         </div>
       )}
 
-      {visible.length === 0 && (
+      {visible.length === 0 && !inline && (
         <p className="surface-card p-4 text-sm text-ink-soft">
           No discussion here yet.
           {canPost ? " Start one to bring the right departments in." : ""}
         </p>
       )}
 
+      {/* Inline: the first message starts the thread for this exact thing, no picking required. */}
+      {visible.length === 0 && inline && (
+        <div>
+          {canPost ? (
+            <Composer
+              compact
+              placeholder="Start the conversation about this — type @ to bring someone in…"
+              submitLabel="Post comment"
+              onSubmit={(body) =>
+                createThread({
+                  projectId,
+                  contextType,
+                  taskId: resolvedTaskId,
+                  documentId: resolvedDocumentId,
+                  subject: "",
+                  body,
+                })
+              }
+            />
+          ) : (
+            <p className="text-sm text-ink-soft">
+              No comments here yet
+              {locked ? " — this production is closed and archived." : "."}
+            </p>
+          )}
+        </div>
+      )}
 
       {visible.map((thread) => {
         const threadComments = comments.filter((c) => c.thread_id === thread.id);
         const roots = threadComments.filter((c) => !c.parent_comment_id);
         return (
-          <article key={thread.id} className="surface-card overflow-hidden">
-            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-cream-soft px-4 py-3">
-              <h3 className="text-sm font-semibold text-ink">{thread.subject}</h3>
-              <span className="code-id">
-                {contextType} · {contextLabel(thread.task_id, thread.document_id)}
-              </span>
-            </header>
+          <article
+            key={thread.id}
+            className={inline ? "overflow-hidden" : "surface-card overflow-hidden"}
+          >
+            {!inline && (
+              <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-cream-soft px-4 py-3">
+                <h3 className="text-sm font-semibold text-ink">{thread.subject}</h3>
+                <span className="code-id">
+                  {contextType} · {contextLabel(thread.task_id, thread.document_id)}
+                </span>
+              </header>
+            )}
             <div className="divide-y divide-border">
               {roots.map((root) => {
                 const replies = threadComments.filter((c) => c.parent_comment_id === root.id);
                 return (
-                  <div key={root.id} className="px-4 py-3">
+                  <div
+                    key={root.id}
+                    id={`comment-${root.id}`}
+                    className={cn(
+                      inline ? "py-3 first:pt-0" : "px-4 py-3",
+                      highlightCommentId === root.id &&
+                        "-mx-2 rounded-md bg-gold-tint/60 px-2 ring-1 ring-gold",
+                    )}
+                  >
                     <div className="flex items-baseline gap-2">
                       <span className="text-sm font-semibold text-ink">
                         {personById(root.author_id)?.full_name}
@@ -306,7 +314,7 @@ export function Discussion({
                     {replies.length > 0 && (
                       <div className="mt-3 space-y-3 border-l-2 border-cream pl-4">
                         {replies.map((reply) => (
-                          <div key={reply.id}>
+                          <div key={reply.id} id={`comment-${reply.id}`}>
                             <div className="flex items-baseline gap-2">
                               <CornerDownRight aria-hidden className="size-3.5 text-ink-soft" />
                               <span className="text-sm font-semibold text-ink">
@@ -352,7 +360,13 @@ export function Discussion({
               })}
             </div>
             {canPost && (
-              <div className="border-t border-border bg-cream-soft px-4 py-3">
+              <div
+                className={
+                  inline
+                    ? "border-t border-border pt-2"
+                    : "border-t border-border bg-cream-soft px-4 py-3"
+                }
+              >
                 <Composer
                   compact
                   placeholder="Add to this discussion…"

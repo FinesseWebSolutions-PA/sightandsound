@@ -1,12 +1,14 @@
+import { Users } from "lucide-react";
+
 import { departments, people } from "@/lib/store";
 
-const targets = [
-  ...departments.map((d) => d.name),
-  ...people.map((p) => p.full_name),
-].sort((a, b) => b.length - a.length);
-
-/** Renders comment text with @mentions of people and departments picked out. */
+/** Renders comment text with @mentions of people and departments as chips. */
 export function MentionText({ body }: { body: string }) {
+  // Built per render because the roster is loaded after this module is imported.
+  const targets = [...departments.map((d) => d.name), ...people.map((p) => p.full_name)].sort(
+    (a, b) => b.length - a.length,
+  );
+
   const nodes: (string | { mention: string })[] = [];
   let rest = body;
 
@@ -29,23 +31,23 @@ export function MentionText({ body }: { body: string }) {
 
   return (
     <p className="text-sm leading-relaxed text-ink">
-      {nodes.map((node, i) =>
-        typeof node === "string" ? (
-          <span key={i}>{node}</span>
-        ) : (
+      {nodes.map((node, i) => {
+        if (typeof node === "string") return <span key={i}>{node}</span>;
+        const isDepartment = departments.some((d) => d.name === node.mention);
+        return (
           <span
             key={i}
-            className="rounded bg-gold-tint px-1 font-medium text-gold-deep"
+            className="mx-0.5 inline-flex items-center gap-1 rounded-full bg-gold-tint px-2 py-0.5 align-baseline text-sm font-medium text-gold-deep"
             title={
-              departments.some((d) => d.name === node.mention)
+              isDepartment
                 ? "Department mention — notifies the department owner and leads"
                 : "Team member mention"
             }
           >
-            @{node.mention}
+            {isDepartment && <Users aria-hidden className="size-3" />}@{node.mention}
           </span>
-        ),
-      )}
+        );
+      })}
     </p>
   );
 }

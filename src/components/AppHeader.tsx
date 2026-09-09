@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Bell, Menu, ShieldCheck } from "lucide-react";
+import { Bell, Inbox, Menu, ShieldCheck } from "lucide-react";
 
 import { people, roleDescriptions, roleLabels, useStore } from "@/lib/store";
 import type { Role } from "@/lib/production-data";
@@ -11,6 +11,8 @@ export function AppHeader() {
   const { role, setRole, currentUserId, notifications } = useStore();
   const person = people.find((p) => p.id === currentUserId);
   const unread = notifications.filter((n) => !n.read).length;
+  // What is unread for this person specifically, which is what the Inbox shows.
+  const myUnread = notifications.filter((n) => !n.read && n.recipient_id === currentUserId).length;
   const [menuOpen, setMenuOpen] = useState(false);
 
   const roleSelect = (id: string) => (
@@ -50,10 +52,30 @@ export function AppHeader() {
           >
             Production Portfolio
           </Link>
+          <Link
+            to="/inbox"
+            className="flex min-h-11 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-ink-soft transition-colors hover:bg-cream hover:text-ink"
+            activeProps={{
+              className:
+                "flex min-h-11 items-center gap-1.5 rounded-md px-3 text-sm font-semibold text-ink bg-cream border-b-2 border-gold",
+            }}
+          >
+            <Inbox aria-hidden className="size-4" />
+            My Inbox
+            {myUnread > 0 && (
+              <span className="rounded-full bg-gold-tint px-1.5 text-xs font-semibold text-gold-deep">
+                {myUnread}
+              </span>
+            )}
+          </Link>
         </nav>
 
         <div className="flex items-center justify-end gap-2 md:ml-auto md:gap-4">
-          <span className="flex items-center gap-1.5 text-sm text-ink-soft">
+          <Link
+            to="/inbox"
+            aria-label="My Inbox"
+            className="flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm text-ink-soft hover:bg-cream hover:text-ink"
+          >
             <Bell aria-hidden className="size-4 shrink-0" />
             <span className="hidden sm:inline">
               {unread} unread {unread === 1 ? "notice" : "notices"}
@@ -61,7 +83,7 @@ export function AppHeader() {
             <span className="sm:hidden" aria-label={`${unread} unread notices`}>
               {unread}
             </span>
-          </span>
+          </Link>
 
           <div className="hidden items-center gap-2 md:flex">
             <ShieldCheck aria-hidden className="size-4 text-ink-soft" />
@@ -92,6 +114,19 @@ export function AppHeader() {
             className="flex min-h-11 items-center rounded-md px-3 text-base font-medium text-ink hover:bg-cream"
           >
             Production Portfolio
+          </Link>
+          <Link
+            to="/inbox"
+            onClick={() => setMenuOpen(false)}
+            className="flex min-h-11 items-center gap-2 rounded-md px-3 text-base font-medium text-ink hover:bg-cream"
+          >
+            <Inbox aria-hidden className="size-4" />
+            My Inbox
+            {myUnread > 0 && (
+              <span className="rounded-full bg-gold-tint px-1.5 text-xs font-semibold text-gold-deep">
+                {myUnread}
+              </span>
+            )}
           </Link>
           <div className="mt-3 border-t border-border pt-3">
             <label

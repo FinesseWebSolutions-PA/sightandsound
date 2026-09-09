@@ -1,12 +1,20 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { ArrowUpRight, Link2, Lock } from "lucide-react";
+import { ArrowUpRight, Link2, Lock, MessageSquare } from "lucide-react";
+import { Fragment, useEffect, useState } from "react";
 
+import { Discussion } from "@/components/Discussion";
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, personById, taskDependencies, useStore } from "@/lib/store";
-import { formatDate, milestoneStatusMeta, taskStatusMeta } from "@/lib/status";
+import { formatDate, formatDateTime, milestoneStatusMeta, taskStatusMeta } from "@/lib/status";
+import { activityFor, snippet } from "@/lib/threads";
 import type { Task, TaskStatus } from "@/lib/production-data";
 
 export const Route = createFileRoute("/projects/$projectId/timeline")({
+  validateSearch: (search: Record<string, unknown>): { task?: string; comment?: string } => ({
+    ...(typeof search['task'] === "string" ? { task: search['task'] } : {}),
+    ...(typeof search['comment'] === "string" ? { comment: search['comment'] } : {}),
+  }),
+
   head: () => ({
     meta: [
       { title: "Production timeline — Sight & Sound Show Production" },
@@ -34,7 +42,70 @@ type TaskViewProps = {
   onStatus: (taskId: string, status: TaskStatus) => void;
   taskTitle: (id: string) => string;
   emptyLabel: string;
+  openTaskId: string | null;
+  onToggleThread: (taskId: string) => void;
+  highlightCommentId?: string;
 };
+
+/** The conversation about one work item, shown right where the work item is listed. */
+function TaskConversation({
+  task,
+  open,
+  onToggle,
+  highlightCommentId,
+}: {
+  task: Task;
+  open: boolean;
+  onToggle: () => void;
+  highlightCommentId?: string;
+}) {
+  const { threads, comments } = useStore();
+  const activity = activityFor(threads, comments, {
+    projectId: task.project_id,
+    taskId: task.id,
+  });
+  const latest = activity.latest;
+
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="inline-flex min-h-11 w-full items-start gap-2 rounded-md border border-border bg-cream-soft px-3 py-2 text-left transition-colors hover:bg-cream sm:w-auto"
+      >
+        <MessageSquare aria-hidden className="mt-0.5 size-4 shrink-0 text-gold-deep" />
+        <span className="block min-w-0 flex-1">
+          <span className="block text-xs font-semibold text-ink">
+            {activity.count === 0
+              ? open
+                ? "Hide comments"
+                : "Add a comment"
+              : `${activity.count} comment${activity.count === 1 ? "" : "s"}${open ? " — hide" : ""}`}
+          </span>
+          {latest && !open && (
+            <span className="mt-0.5 block text-xs break-words text-ink-soft">
+              {personById(latest.author_id)?.full_name}, {formatDateTime(latest.created_at)}:{" "}
+              {snippet(latest.body, 70)}
+            </span>
+          )}
+        </span>
+      </button>
+      {open && (
+        <div className="rounded-md border border-border bg-card px-3 py-2">
+          <Discussion
+            inline
+            projectId={task.project_id}
+            contextType="task"
+            taskId={task.id}
+            {...(highlightCommentId ? { highlightCommentId } : {})}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function StatusControl({
   task,
@@ -72,7 +143,16 @@ function StatusControl({
 }
 
 /** Phone view: each work item is its own stacked card, dependencies written out as text. */
-function TaskCards({ rows, canUpdate, onStatus, taskTitle, emptyLabel }: TaskViewProps) {
+function TaskCards({
+  rows,
+  canUpdate,
+  onStatus,
+  taskTitle,
+  emptyLabel,
+  openTaskId,
+  onToggleThread,
+  highlightCommentId,
+}: TaskViewProps) {
   if (rows.length === 0) {
     return <p className="px-4 py-3 text-sm text-ink-soft lg:hidden">{emptyLabel}</p>;
   }
@@ -110,6 +190,12 @@ function TaskCards({ rows, canUpdate, onStatus, taskTitle, emptyLabel }: TaskVie
               </p>
             )}
             <StatusControl task={task} canUpdate={canUpdate} onStatus={onStatus} size="touch" />
+            <TaskConversation
+              task={task}
+              open={openTaskId === task.id}
+              onToggle={() => onToggleThread(task.id)}
+              {...(highlightCommentId ? { highlightCommentId } : {})}
+            />
           </li>
         );
       })}
@@ -117,7 +203,16 @@ function TaskCards({ rows, canUpdate, onStatus, taskTitle, emptyLabel }: TaskVie
   );
 }
 
-function TaskTable({ rows, canUpdate, onStatus, taskTitle, emptyLabel }: TaskViewProps) {
+function TaskTable({
+  rows,
+  canUpdate,
+  onStatus,
+  taskTitle,
+  emptyLabel,
+  openTaskId,
+  onToggleThread,
+  highlightCommentId,
+}: TaskViewProps) {
   return (
     <div className="hidden overflow-x-auto lg:block">
       <table className="w-full min-w-[46rem] text-sm">
@@ -136,7 +231,9 @@ function TaskTable({ rows, canUpdate, onStatus, taskTitle, emptyLabel }: TaskVie
             const waitsOn = taskDependencies.filter((d) => d.task_id === task.id);
             const blocks = taskDependencies.filter((d) => d.depends_on_task_id === task.id);
             return (
-              <tr key={task.id} className="align-top">
+              <Fragment key={task.id}>
+              <tr className="align-top">
+
                 <td className="px-4 py-3">
                   <span className="text-ink">{task.title}</span>
                   <span className="code-id mt-0.5 block">{task.id}</span>
@@ -174,7 +271,19 @@ function TaskTable({ rows, canUpdate, onStatus, taskTitle, emptyLabel }: TaskVie
                   <StatusControl task={task} canUpdate={canUpdate} onStatus={onStatus} size="sm" />
                 </td>
               </tr>
+              <tr>
+                <td colSpan={6} className="px-4 pb-3">
+                  <TaskConversation
+                    task={task}
+                    open={openTaskId === task.id}
+                    onToggle={() => onToggleThread(task.id)}
+                    {...(highlightCommentId ? { highlightCommentId } : {})}
+                  />
+                </td>
+              </tr>
+              </Fragment>
             );
+
           })}
           {rows.length === 0 && (
             <tr>
@@ -200,6 +309,7 @@ function TaskList(props: TaskViewProps) {
 
 function TimelineTab() {
   const { projectId } = Route.useParams();
+  const search = Route.useSearch();
   const { projects, milestones, tasks, can, setTaskStatus, setMilestoneDate, isClosed } =
     useStore();
   const project = projects.find((p) => p.id === projectId);
@@ -219,6 +329,18 @@ function TimelineTab() {
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
 
   const taskTitle = (id: string) => tasks.find((t) => t.id === id)?.title ?? id;
+
+  // Arriving from the Inbox or the Dashboard opens that work item's thread straight away.
+  const [openTaskId, setOpenTaskId] = useState<string | null>(search.task ?? null);
+  useEffect(() => {
+    if (search.task) setOpenTaskId(search.task);
+  }, [search.task]);
+
+  const threadProps = {
+    openTaskId,
+    onToggleThread: (id: string) => setOpenTaskId((cur) => (cur === id ? null : id)),
+    ...(search.comment ? { highlightCommentId: search.comment } : {}),
+  };
 
   return (
     <div className="space-y-6">
@@ -291,6 +413,7 @@ function TimelineTab() {
                 onStatus={setTaskStatus}
                 taskTitle={taskTitle}
                 emptyLabel="No work items under this milestone yet."
+                {...threadProps}
               />
             </section>
           );
@@ -310,6 +433,7 @@ function TimelineTab() {
               onStatus={setTaskStatus}
               taskTitle={taskTitle}
               emptyLabel="Nothing here."
+              {...threadProps}
             />
           </section>
         )}

@@ -1,14 +1,27 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { useState } from "react";
-import { CheckCircle2, FileUp, History, Send, ThumbsDown, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  CheckCircle2,
+  FileUp,
+  History,
+  MessageSquare,
+  Send,
+  ThumbsDown,
+  XCircle,
+} from "lucide-react";
 
 import { Discussion } from "@/components/Discussion";
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, personById, useStore } from "@/lib/store";
-import { approvalStateMeta, formatDate } from "@/lib/status";
+import { approvalStateMeta, formatDate, formatDateTime } from "@/lib/status";
+import { activityFor, snippet } from "@/lib/threads";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/projects/$projectId/documents")({
+  validateSearch: (search: Record<string, unknown>): { document?: string; comment?: string } => ({
+    ...(typeof search['document'] === "string" ? { document: search['document'] } : {}),
+    ...(typeof search['comment'] === "string" ? { comment: search['comment'] } : {}),
+  }),
   head: () => ({
     meta: [
       { title: "Documents & approvals — Sight & Sound Show Production" },
@@ -29,6 +42,7 @@ export const Route = createFileRoute("/projects/$projectId/documents")({
 
 function DocumentsTab() {
   const { projectId } = Route.useParams();
+  const search = Route.useSearch();
   const {
     projects,
     documents,
@@ -38,6 +52,8 @@ function DocumentsTab() {
     recordApproval,
     addDocumentVersion,
     isClosed,
+    threads,
+    comments,
   } = useStore();
   const project = projects.find((p) => p.id === projectId);
   if (!project) throw notFound();
@@ -47,7 +63,11 @@ function DocumentsTab() {
   const canUpload = can.upload && !locked;
 
   const projectDocs = documents.filter((d) => d.project_id === projectId);
-  const [selectedId, setSelectedId] = useState(projectDocs[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState(search.document ?? projectDocs[0]?.id ?? "");
+  // Arriving from the Inbox or the Dashboard opens that exact document.
+  useEffect(() => {
+    if (search.document) setSelectedId(search.document);
+  }, [search.document]);
   const selected = projectDocs.find((d) => d.id === selectedId) ?? projectDocs[0];
   const [note, setNote] = useState("");
 
@@ -91,6 +111,10 @@ function DocumentsTab() {
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <span className="code-id">v{doc.current_version}</span>
                     <StatusBadge meta={approvalStateMeta[doc.approval_state]} size="sm" />
+                    <span className="inline-flex items-center gap-1 text-xs text-ink-soft">
+                      <MessageSquare aria-hidden className="size-3.5" />
+                      {activityFor(threads, comments, { projectId, documentId: doc.id }).count}
+                    </span>
                   </div>
                 </button>
               </li>
@@ -105,6 +129,7 @@ function DocumentsTab() {
                   <th className="rule-label px-4 py-2.5">Department</th>
                   <th className="rule-label px-4 py-2.5">Ver.</th>
                   <th className="rule-label px-4 py-2.5">Review</th>
+                  <th className="rule-label px-4 py-2.5">Comments</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -135,6 +160,12 @@ function DocumentsTab() {
                     <td className="px-4 py-3">
                       <StatusBadge meta={approvalStateMeta[doc.approval_state]} size="sm" />
                     </td>
+                    <td className="px-4 py-3 text-ink-soft">
+                      <span className="inline-flex items-center gap-1 text-xs">
+                        <MessageSquare aria-hidden className="size-3.5" />
+                        {activityFor(threads, comments, { projectId, documentId: doc.id }).count}
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -153,6 +184,33 @@ function DocumentsTab() {
               <div className="mt-3">
                 <StatusBadge meta={approvalStateMeta[selected.approval_state]} />
               </div>
+              {(() => {
+                const a = activityFor(threads, comments, {
+                  projectId,
+                  documentId: selected.id,
+                });
+                return (
+                  <a
+                    href="#document-discussion"
+                    className="mt-3 flex min-h-11 items-start gap-2 rounded-md border border-border bg-cream-soft px-3 py-2 text-left hover:bg-cream"
+                  >
+                    <MessageSquare aria-hidden className="mt-0.5 size-4 shrink-0 text-gold-deep" />
+                    <span className="block min-w-0 flex-1">
+                      <span className="block text-xs font-semibold text-ink">
+                        {a.count === 0
+                          ? "No comments yet — start the conversation below"
+                          : `${a.count} comment${a.count === 1 ? "" : "s"} on this document`}
+                      </span>
+                      {a.latest && (
+                        <span className="mt-0.5 block text-xs break-words text-ink-soft">
+                          {personById(a.latest.author_id)?.full_name},{" "}
+                          {formatDateTime(a.latest.created_at)}: {snippet(a.latest.body, 60)}
+                        </span>
+                      )}
+                    </span>
+                  </a>
+                );
+              })()}
 
               {canReview ? (
                 <div className="mt-4 space-y-2 border-t border-border pt-3">
@@ -278,12 +336,16 @@ function DocumentsTab() {
       </div>
 
       {selected && (
+        <div id="document-discussion" />
+      )}
+      {selected && (
         <Discussion
           projectId={projectId}
           contextType="document"
           documentId={selected.id}
           heading={`Discussion on ${selected.title}`}
-          blurb="Document-level conversation, kept with the file rather than in a separate chat."
+          blurb="The conversation lives with the file itself — no separate chat to hunt for."
+          {...(search.comment ? { highlightCommentId: search.comment } : {})}
         />
       )}
     </div>

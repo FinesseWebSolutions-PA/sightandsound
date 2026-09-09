@@ -112,9 +112,12 @@ export type Approval = {
   version: number;
   decision: "requested" | "approved" | "changes_requested" | "rejected";
   actor_id: string;
+  requested_by_id: string;
+  decided_by_id: string;
   created_at: string;
   note: string;
 };
+
 
 export type ThreadContext = "project" | "task" | "document";
 
@@ -153,7 +156,14 @@ export type Notification = {
   summary: string;
   created_at: string;
   read: boolean;
+  /** Where the notice came from, so the Inbox can jump straight to it. */
+  source_comment_id: string | null;
+  source_entity_type: string | null;
+  source_entity_id: string | null;
+  /** True when the notice came from a department mention rather than a direct one. */
+  via_department: boolean;
 };
+
 
 export type AuditEntry = {
   id: string;
@@ -519,9 +529,12 @@ export async function loadProductionData(): Promise<ProductionData> {
       version: version?.version_number ?? 1,
       decision,
       actor_id: (a.decided_by ?? a.requested_by) ?? "",
+      requested_by_id: a.requested_by ?? "",
+      decided_by_id: a.decided_by ?? "",
       created_at: dateOnly(a.decided_at ?? a.requested_at),
       note: a.decision_note ?? "",
     };
+
   });
 
   const commentRows = commentsRes.data ?? [];
@@ -592,8 +605,13 @@ export async function loadProductionData(): Promise<ProductionData> {
       summary,
       created_at: n.created_at,
       read: n.is_read,
+      source_comment_id: n.source_comment_id,
+      source_entity_type: n.source_entity_type,
+      source_entity_id: n.source_entity_id,
+      via_department: n.type.includes("department"),
     };
   });
+
 
   const threadProject = new Map(discussionThreads.map((t) => [t.id, t.project_id]));
   const commentProject = new Map(
@@ -952,4 +970,11 @@ export async function writeThread(input: {
   await recordAudit("discussion_thread", data.id, input.authorId, "thread_started", {
     context_type: input.contextType,
   });
+}
+
+/** Marks personal Inbox items read (or unread again). */
+export async function writeNotificationRead(ids: string[], read: boolean) {
+  if (ids.length === 0) return;
+  const { error } = await supabase.from("notifications").update({ is_read: read }).in("id", ids);
+  if (error) throw new Error(error.message);
 }

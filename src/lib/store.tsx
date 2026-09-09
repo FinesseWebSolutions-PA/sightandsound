@@ -16,9 +16,11 @@ import {
   writeComment,
   writeDocumentVersion,
   writeMilestoneDate,
+  writeNotificationRead,
   writePortalUrl,
   writeTaskStatus,
   writeThread,
+
   type Approval,
   type AuditEntry,
   type Comment,
@@ -91,7 +93,10 @@ type Store = {
     subject: string;
     body: string;
   }) => void;
+  /** Personal Inbox read state; works on any production, closed ones included. */
+  markNotifications: (ids: string[], read: boolean) => void;
 };
+
 
 
 const StoreContext = createContext<Store | null>(null);
@@ -347,6 +352,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [allowed, data, run],
   );
 
+  const markNotifications = useCallback(
+    (ids: string[], read: boolean) => {
+      if (ids.length === 0) return;
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              notifications: prev.notifications.map((n) =>
+                ids.includes(n.id) ? { ...n, read } : n,
+              ),
+            }
+          : prev,
+      );
+      run(() => writeNotificationRead(ids, read));
+    },
+    [run],
+  );
+
 
   const value = useMemo<Store | null>(
     () =>
@@ -383,7 +406,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             recordApproval,
             addComment,
             createThread,
+            markNotifications,
           }
+
         : null,
     [
       role,
@@ -401,7 +426,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       recordApproval,
       addComment,
       createThread,
+      markNotifications,
     ],
+
   );
 
   if (error && !value) {

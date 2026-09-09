@@ -1,6 +1,14 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
-import { Activity, Bell, CalendarDays, ExternalLink, FileText, ListChecks } from "lucide-react";
+import {
+  Activity,
+  Bell,
+  CalendarDays,
+  ExternalLink,
+  FileText,
+  ListChecks,
+  MessageSquare,
+} from "lucide-react";
 
 import { StatusBadge } from "@/components/StatusBadge";
 import {
@@ -17,6 +25,7 @@ import {
   readinessMeta,
   taskStatusMeta,
 } from "@/lib/status";
+import { snippet } from "@/lib/threads";
 
 export const Route = createFileRoute("/projects/$projectId/")({
   head: () => ({
@@ -62,8 +71,18 @@ function Panel({
 
 function DashboardTab() {
   const { projectId } = Route.useParams();
-  const { projects, tasks, milestones, documents, notifications, can, setPortalUrl, isClosed } =
-    useStore();
+  const {
+    projects,
+    tasks,
+    milestones,
+    documents,
+    notifications,
+    threads,
+    comments,
+    can,
+    setPortalUrl,
+    isClosed,
+  } = useStore();
 
   const project = projects.find((p) => p.id === projectId);
   if (!project) throw notFound();
@@ -79,9 +98,38 @@ function DashboardTab() {
   const upcoming = milestones
     .filter((m) => m.project_id === projectId && m.status !== "complete")
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
-  const activity = auditLog
+  // Recent activity mixes real conversation with status changes, so the dashboard
+  // shows what people are actually saying and where they said it.
+  const projectThreadIds = threads.filter((t) => t.project_id === projectId).map((t) => t.id);
+  const commentFeed = comments
+    .filter((c) => projectThreadIds.includes(c.thread_id))
+    .map((c) => {
+      const thread = threads.find((t) => t.id === c.thread_id)!;
+      const task = thread.task_id ? tasks.find((t) => t.id === thread.task_id) : undefined;
+      const doc = thread.document_id
+        ? documents.find((d) => d.id === thread.document_id)
+        : undefined;
+      return {
+        kind: "comment" as const,
+        id: c.id,
+        actorId: c.author_id,
+        created_at: c.created_at,
+        where: task
+          ? `on ${task.title}`
+          : doc
+            ? `on ${doc.title}`
+            : `in ${thread.subject || "the production discussion"}`,
+        body: c.body,
+        task,
+        doc,
+      };
+    });
+  const auditFeed = auditLog
     .filter((a) => a.project_id === projectId)
-    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+    .map((a) => ({ kind: "audit" as const, ...a }));
+  const activity = [...commentFeed, ...auditFeed].sort((a, b) =>
+    b.created_at.localeCompare(a.created_at),
+  );
   const notices = notifications.filter((n) => n.project_id === projectId);
   const pendingReview = documents.filter(
     (d) => d.project_id === projectId && d.approval_state === "in_review",
@@ -211,17 +259,67 @@ function DashboardTab() {
 
           <Panel title="Recent activity" icon={Activity}>
             <ul className="space-y-3">
-              {activity.map((entry) => (
-                <li key={entry.id} className="text-sm">
-                  <span className="font-medium text-ink">
-                    {personById(entry.actor_id)?.full_name}
-                  </span>{" "}
-                  <span className="text-ink-soft">{entry.action}</span>
-                  <span className="block text-xs text-ink-soft sm:inline sm:pl-2">
-                    {formatDateTime(entry.created_at)}
-                  </span>
-                </li>
-              ))}
+              {activity.slice(0, 12).map((entry) =>
+                entry.kind === "comment" ? (
+                  <li key={entry.id} className="text-sm">
+                    <div className="flex flex-wrap items-baseline gap-x-2">
+                      <MessageSquare aria-hidden className="size-3.5 text-gold-deep" />
+                      <span className="font-medium text-ink">
+                        {personById(entry.actorId)?.full_name}
+                      </span>
+                      <span className="text-ink-soft">commented {entry.where}</span>
+                      <span className="text-xs text-ink-soft">
+                        {formatDateTime(entry.created_at)}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 pl-5 text-ink-soft italic">
+                      “{snippet(entry.body, 120)}”
+                    </p>
+                    <div className="pl-5">
+                      {entry.task ? (
+                        <Link
+                          to="/projects/$projectId/timeline"
+                          params={{ projectId }}
+                          search={{ task: entry.task.id, comment: entry.id }}
+                          className="inline-flex min-h-11 items-center text-xs font-semibold text-gold-deep hover:underline"
+                        >
+                          Open the conversation
+                        </Link>
+                      ) : entry.doc ? (
+                        <Link
+                          to="/projects/$projectId/documents"
+                          params={{ projectId }}
+                          search={{ document: entry.doc.id, comment: entry.id }}
+                          className="inline-flex min-h-11 items-center text-xs font-semibold text-gold-deep hover:underline"
+                        >
+                          Open the conversation
+                        </Link>
+                      ) : (
+                        <Link
+                          to="/projects/$projectId/discussions"
+                          params={{ projectId }}
+                          className="inline-flex min-h-11 items-center text-xs font-semibold text-gold-deep hover:underline"
+                        >
+                          Open the conversation
+                        </Link>
+                      )}
+                    </div>
+                  </li>
+                ) : (
+                  <li key={entry.id} className="text-sm">
+                    <span className="font-medium text-ink">
+                      {personById(entry.actor_id)?.full_name}
+                    </span>{" "}
+                    <span className="text-ink-soft">{entry.action}</span>
+                    <span className="block text-xs text-ink-soft sm:inline sm:pl-2">
+                      {formatDateTime(entry.created_at)}
+                    </span>
+                  </li>
+                ),
+              )}
+              {activity.length === 0 && (
+                <li className="text-sm text-ink-soft">No activity on this production yet.</li>
+              )}
             </ul>
           </Panel>
         </div>
