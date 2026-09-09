@@ -28,21 +28,98 @@ export const Route = createFileRoute("/projects/$projectId/timeline")({
 // Matches the values the tasks table accepts.
 const statusOptions: TaskStatus[] = ["not_started", "in_progress", "blocked", "complete"];
 
-function TaskTable({
-  rows,
-  canUpdate,
-  onStatus,
-  taskTitle,
-  emptyLabel,
-}: {
+type TaskViewProps = {
   rows: Task[];
   canUpdate: boolean;
   onStatus: (taskId: string, status: TaskStatus) => void;
   taskTitle: (id: string) => string;
   emptyLabel: string;
+};
+
+function StatusControl({
+  task,
+  canUpdate,
+  onStatus,
+  size,
+}: {
+  task: Task;
+  canUpdate: boolean;
+  onStatus: (taskId: string, status: TaskStatus) => void;
+  size: "sm" | "touch";
 }) {
+  if (!canUpdate) return <StatusBadge meta={taskStatusMeta[task.status]} size="sm" />;
   return (
-    <div className="overflow-x-auto">
+    <div className="space-y-1.5">
+      <StatusBadge meta={taskStatusMeta[task.status]} size="sm" />
+      <select
+        aria-label={`Status for ${task.title}`}
+        value={task.status}
+        onChange={(e) => onStatus(task.id, e.target.value as TaskStatus)}
+        className={
+          size === "touch"
+            ? "block min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink"
+            : "block rounded-md border border-border bg-card px-2 py-1 text-xs text-ink"
+        }
+      >
+        {statusOptions.map((s) => (
+          <option key={s} value={s}>
+            {taskStatusMeta[s].label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/** Phone view: each work item is its own stacked card, dependencies written out as text. */
+function TaskCards({ rows, canUpdate, onStatus, taskTitle, emptyLabel }: TaskViewProps) {
+  if (rows.length === 0) {
+    return <p className="px-4 py-3 text-sm text-ink-soft lg:hidden">{emptyLabel}</p>;
+  }
+  return (
+    <ul className="divide-y divide-border lg:hidden">
+      {rows.map((task) => {
+        const waitsOn = taskDependencies.filter((d) => d.task_id === task.id);
+        const blocks = taskDependencies.filter((d) => d.depends_on_task_id === task.id);
+        return (
+          <li key={task.id} className="space-y-2 px-4 py-4">
+            <div>
+              <p className="text-sm font-semibold text-ink">{task.title}</p>
+              <p className="mt-0.5 text-xs text-ink-soft">
+                {departments.find((d) => d.id === task.department_id)?.name} ·{" "}
+                {personById(task.assignee_id)?.full_name}
+              </p>
+            </div>
+            <p className="text-xs text-ink-soft">Due {formatDate(task.due_date)}</p>
+            {waitsOn.length > 0 && (
+              <p className="flex items-start gap-1.5 text-xs text-ink-soft">
+                <Link2 aria-hidden className="mt-0.5 size-3 shrink-0" />
+                <span>
+                  <span className="font-semibold">Waits on:</span>{" "}
+                  {waitsOn.map((d) => taskTitle(d.depends_on_task_id)).join(", ")}
+                </span>
+              </p>
+            )}
+            {blocks.length > 0 && (
+              <p className="flex items-start gap-1.5 text-xs text-ink-soft">
+                <ArrowUpRight aria-hidden className="mt-0.5 size-3 shrink-0" />
+                <span>
+                  <span className="font-semibold">Blocks:</span>{" "}
+                  {blocks.map((b) => taskTitle(b.task_id)).join(", ")}
+                </span>
+              </p>
+            )}
+            <StatusControl task={task} canUpdate={canUpdate} onStatus={onStatus} size="touch" />
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function TaskTable({ rows, canUpdate, onStatus, taskTitle, emptyLabel }: TaskViewProps) {
+  return (
+    <div className="hidden overflow-x-auto lg:block">
       <table className="w-full min-w-[46rem] text-sm">
         <thead>
           <tr className="border-b border-border text-left">
@@ -94,25 +171,7 @@ function TaskTable({
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  {canUpdate ? (
-                    <div className="space-y-1.5">
-                      <StatusBadge meta={taskStatusMeta[task.status]} size="sm" />
-                      <select
-                        aria-label={`Status for ${task.title}`}
-                        value={task.status}
-                        onChange={(e) => onStatus(task.id, e.target.value as TaskStatus)}
-                        className="block rounded-md border border-border bg-card px-2 py-1 text-xs text-ink"
-                      >
-                        {statusOptions.map((s) => (
-                          <option key={s} value={s}>
-                            {taskStatusMeta[s].label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : (
-                    <StatusBadge meta={taskStatusMeta[task.status]} size="sm" />
-                  )}
+                  <StatusControl task={task} canUpdate={canUpdate} onStatus={onStatus} size="sm" />
                 </td>
               </tr>
             );
@@ -127,6 +186,15 @@ function TaskTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+function TaskList(props: TaskViewProps) {
+  return (
+    <>
+      <TaskCards {...props} />
+      <TaskTable {...props} />
+    </>
   );
 }
 
