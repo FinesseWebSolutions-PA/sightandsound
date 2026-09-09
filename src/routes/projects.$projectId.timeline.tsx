@@ -203,7 +203,16 @@ function TaskCards({
   );
 }
 
-function TaskTable({ rows, canUpdate, onStatus, taskTitle, emptyLabel }: TaskViewProps) {
+function TaskTable({
+  rows,
+  canUpdate,
+  onStatus,
+  taskTitle,
+  emptyLabel,
+  openTaskId,
+  onToggleThread,
+  highlightCommentId,
+}: TaskViewProps) {
   return (
     <div className="hidden overflow-x-auto lg:block">
       <table className="w-full min-w-[46rem] text-sm">
@@ -222,7 +231,9 @@ function TaskTable({ rows, canUpdate, onStatus, taskTitle, emptyLabel }: TaskVie
             const waitsOn = taskDependencies.filter((d) => d.task_id === task.id);
             const blocks = taskDependencies.filter((d) => d.depends_on_task_id === task.id);
             return (
-              <tr key={task.id} className="align-top">
+              <Fragment key={task.id}>
+              <tr className="align-top">
+
                 <td className="px-4 py-3">
                   <span className="text-ink">{task.title}</span>
                   <span className="code-id mt-0.5 block">{task.id}</span>
