@@ -271,7 +271,19 @@ function TaskTable({
                   <StatusControl task={task} canUpdate={canUpdate} onStatus={onStatus} size="sm" />
                 </td>
               </tr>
+              <tr>
+                <td colSpan={6} className="px-4 pb-3">
+                  <TaskConversation
+                    task={task}
+                    open={openTaskId === task.id}
+                    onToggle={() => onToggleThread(task.id)}
+                    {...(highlightCommentId ? { highlightCommentId } : {})}
+                  />
+                </td>
+              </tr>
+              </Fragment>
             );
+
           })}
           {rows.length === 0 && (
             <tr>
