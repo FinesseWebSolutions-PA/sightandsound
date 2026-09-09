@@ -309,6 +309,7 @@ function TaskList(props: TaskViewProps) {
 
 function TimelineTab() {
   const { projectId } = Route.useParams();
+  const search = Route.useSearch();
   const { projects, milestones, tasks, can, setTaskStatus, setMilestoneDate, isClosed } =
     useStore();
   const project = projects.find((p) => p.id === projectId);
@@ -328,6 +329,18 @@ function TimelineTab() {
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
 
   const taskTitle = (id: string) => tasks.find((t) => t.id === id)?.title ?? id;
+
+  // Arriving from the Inbox or the Dashboard opens that work item's thread straight away.
+  const [openTaskId, setOpenTaskId] = useState<string | null>(search.task ?? null);
+  useEffect(() => {
+    if (search.task) setOpenTaskId(search.task);
+  }, [search.task]);
+
+  const threadProps = {
+    openTaskId,
+    onToggleThread: (id: string) => setOpenTaskId((cur) => (cur === id ? null : id)),
+    ...(search.comment ? { highlightCommentId: search.comment } : {}),
+  };
 
   return (
     <div className="space-y-6">
@@ -400,6 +413,7 @@ function TimelineTab() {
                 onStatus={setTaskStatus}
                 taskTitle={taskTitle}
                 emptyLabel="No work items under this milestone yet."
+                {...threadProps}
               />
             </section>
           );
@@ -419,6 +433,7 @@ function TimelineTab() {
               onStatus={setTaskStatus}
               taskTitle={taskTitle}
               emptyLabel="Nothing here."
+              {...threadProps}
             />
           </section>
         )}
