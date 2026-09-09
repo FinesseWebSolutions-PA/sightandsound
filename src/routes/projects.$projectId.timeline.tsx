@@ -10,10 +10,11 @@ import { activityFor, snippet } from "@/lib/threads";
 import type { Task, TaskStatus } from "@/lib/production-data";
 
 export const Route = createFileRoute("/projects/$projectId/timeline")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    task: typeof search['task'] === "string" ? search['task'] : undefined,
-    comment: typeof search['comment'] === "string" ? search['comment'] : undefined,
+  validateSearch: (search: Record<string, unknown>): { task?: string; comment?: string } => ({
+    ...(typeof search['task'] === "string" ? { task: search['task'] } : {}),
+    ...(typeof search['comment'] === "string" ? { comment: search['comment'] } : {}),
   }),
+
   head: () => ({
     meta: [
       { title: "Production timeline — Sight & Sound Show Production" },
