@@ -32,32 +32,36 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-cream-soft/95 backdrop-blur">
-      <div className="mx-auto grid max-w-[1400px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5 sm:px-6 sm:py-3 md:flex md:gap-4">
-        <Link to="/" className="flex min-h-11 min-w-0 items-baseline gap-2 py-2 sm:gap-3">
-          <span className="truncate font-display text-xl leading-none text-ink sm:text-2xl">
-            Sight &amp; Sound
-          </span>
-          <span className="rule-label hidden sm:inline">Show Production</span>
-        </Link>
+      <div className="mx-auto flex max-w-[1400px] items-stretch px-4 sm:px-6">
+        {/* Brand zone */}
+        <div className="flex min-w-0 items-center py-2.5 md:border-r md:border-border md:pr-6 lg:pr-8">
+          <Link to="/" className="flex min-h-11 min-w-0 flex-col justify-center gap-0.5 py-1">
+            <span className="truncate font-display text-xl leading-none text-ink sm:text-2xl">
+              Sight &amp; Sound
+            </span>
+            <span className="rule-label leading-none">Show Production</span>
+          </Link>
+        </div>
 
-        <nav className="ml-2 hidden items-center gap-1 md:flex">
+        {/* Navigation zone */}
+        <nav className="hidden flex-1 items-stretch gap-1 px-4 md:flex lg:px-8">
           <Link
             to="/"
-            className="flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-ink-soft transition-colors hover:bg-cream hover:text-ink"
+            className="relative flex min-h-11 items-center px-3 text-sm font-medium text-ink-soft transition-colors hover:text-ink"
             activeOptions={{ exact: true }}
             activeProps={{
               className:
-                "flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-ink bg-cream border-b-2 border-gold",
+                "relative flex min-h-11 items-center px-3 text-sm font-semibold text-ink after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-gold",
             }}
           >
             Production Portfolio
           </Link>
           <Link
             to="/inbox"
-            className="flex min-h-11 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-ink-soft transition-colors hover:bg-cream hover:text-ink"
+            className="relative flex min-h-11 items-center gap-1.5 px-3 text-sm font-medium text-ink-soft transition-colors hover:text-ink"
             activeProps={{
               className:
-                "flex min-h-11 items-center gap-1.5 rounded-md px-3 text-sm font-semibold text-ink bg-cream border-b-2 border-gold",
+                "relative flex min-h-11 items-center gap-1.5 px-3 text-sm font-semibold text-ink after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-gold",
             }}
           >
             <Inbox aria-hidden className="size-4" />
@@ -70,27 +74,38 @@ export function AppHeader() {
           </Link>
         </nav>
 
-        <div className="flex items-center justify-end gap-2 md:ml-auto md:gap-4">
+        {/* Utilities zone */}
+        <div className="ml-auto flex items-center gap-3 py-2.5 md:gap-5 md:border-l md:border-border md:pl-6 lg:pl-8">
           <Link
             to="/inbox"
-            aria-label="My Inbox"
-            className="flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm text-ink-soft hover:bg-cream hover:text-ink"
+            aria-label={`${unread} unread notices`}
+            className="group flex min-h-11 items-center gap-2 rounded-md px-1.5 text-ink-soft hover:text-ink"
           >
-            <Bell aria-hidden className="size-4 shrink-0" />
-            <span className="hidden sm:inline">
-              {unread} unread {unread === 1 ? "notice" : "notices"}
+            <span className="relative flex items-center">
+              <Bell aria-hidden className="size-5 shrink-0" />
+              {unread > 0 && (
+                <span
+                  aria-hidden
+                  className="absolute -top-1.5 -right-2 inline-flex min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-bold text-cream-soft"
+                >
+                  {unread}
+                </span>
+              )}
             </span>
-            <span className="sm:hidden" aria-label={`${unread} unread notices`}>
-              {unread}
-            </span>
+            <span className="hidden text-xs font-semibold sm:inline">Notices</span>
           </Link>
 
-          <div className="hidden items-center gap-2 md:flex">
-            <ShieldCheck aria-hidden className="size-4 text-ink-soft" />
-            <label htmlFor="role-switcher" className="rule-label">
-              Viewing as
-            </label>
-            {roleSelect("role-switcher")}
+          <div className="hidden items-center gap-3 md:flex">
+            <div className="text-right">
+              <p className="text-sm leading-none font-semibold text-ink">{person?.full_name}</p>
+              <p className="rule-label mt-1 leading-none">{person?.title}</p>
+            </div>
+            <div className="flex flex-col">
+              <label htmlFor="role-switcher" className="rule-label mb-1 leading-none">
+                Viewing as
+              </label>
+              {roleSelect("role-switcher")}
+            </div>
           </div>
 
           <button
@@ -129,21 +144,20 @@ export function AppHeader() {
             )}
           </Link>
           <div className="mt-3 border-t border-border pt-3">
+            <p className="text-sm font-semibold text-ink">{person?.full_name}</p>
+            <p className="text-xs text-ink-soft">{person?.title}</p>
             <label
               htmlFor="role-switcher-mobile"
-              className="rule-label flex items-center gap-1.5 pb-1.5"
+              className="rule-label flex items-center gap-1.5 pt-3 pb-1.5"
             >
               <ShieldCheck aria-hidden className="size-3.5" />
               Viewing as
             </label>
             {roleSelect("role-switcher-mobile")}
+            <p className="pt-1.5 text-xs text-ink-soft">{roleDescriptions[role]}.</p>
           </div>
         </div>
       )}
-
-      <div className="mx-auto max-w-[1400px] px-4 pb-2 text-xs leading-relaxed text-ink-soft sm:px-6">
-        {person?.full_name} — {person?.title}. {roleDescriptions[role]}.
-      </div>
     </header>
   );
 }
