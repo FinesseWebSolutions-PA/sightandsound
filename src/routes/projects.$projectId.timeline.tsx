@@ -84,7 +84,7 @@ function TaskConversation({
               : `${activity.count} comment${activity.count === 1 ? "" : "s"}${open ? " — hide" : ""}`}
           </span>
           {latest && !open && (
-            <span className="mt-0.5 block max-w-md truncate text-xs text-ink-soft">
+            <span className="mt-0.5 block text-xs break-words text-ink-soft">
               {personById(latest.author_id)?.full_name}, {formatDateTime(latest.created_at)}:{" "}
               {snippet(latest.body, 70)}
             </span>

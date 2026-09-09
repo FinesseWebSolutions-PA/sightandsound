@@ -202,7 +202,7 @@ function DocumentsTab() {
                           : `${a.count} comment${a.count === 1 ? "" : "s"} on this document`}
                       </span>
                       {a.latest && (
-                        <span className="mt-0.5 block truncate text-xs text-ink-soft">
+                        <span className="mt-0.5 block text-xs break-words text-ink-soft">
                           {personById(a.latest.author_id)?.full_name},{" "}
                           {formatDateTime(a.latest.created_at)}: {snippet(a.latest.body, 60)}
                         </span>
