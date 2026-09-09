@@ -137,10 +137,18 @@ export function Discussion({
   const projectDocuments = documents.filter((d) => d.project_id === projectId);
   const needsAnchor =
     (contextType === "task" && !taskId) || (contextType === "document" && !documentId);
-  const anchorOptions = contextType === "task" ? projectTasks : projectDocuments;
+  // Each work item and each document carries exactly one discussion, so anything
+  // that already has one is not offered again — you add to it instead.
+  const anchorOptions = (contextType === "task" ? projectTasks : projectDocuments).filter((o) =>
+    contextType === "task"
+      ? !threads.some((t) => t.task_id === o.id)
+      : !threads.some((t) => t.document_id === o.id),
+  );
   const resolvedTaskId = contextType === "task" ? (taskId ?? (anchorId || null)) : taskId;
   const resolvedDocumentId =
     contextType === "document" ? (documentId ?? (anchorId || null)) : documentId;
+  const canStart = canPost && (!needsAnchor || anchorOptions.length > 0);
+
 
 
   const visible = threads.filter(
