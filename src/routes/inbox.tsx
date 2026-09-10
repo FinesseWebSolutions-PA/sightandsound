@@ -309,42 +309,23 @@ function MyWorkPage() {
 
   return (
     <div className="mx-auto max-w-[1100px] space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <p className="rule-label">My Work</p>
-          <h1 className="mt-1 font-display text-3xl text-ink sm:text-4xl">
-            {me?.full_name?.split(" ")[0] ?? "You"}
-            {"’"}s day
-          </h1>
-        </div>
-        <div className="flex flex-col gap-2 sm:items-end">
-          <label htmlFor="inbox-person" className="rule-label">
-            Viewing as
-          </label>
-          <select
-            id="inbox-person"
-            value={viewedId}
-            onChange={(e) => setPersonId(e.target.value)}
-            className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:w-64 sm:text-sm"
-          >
-            {people.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.full_name} — {p.title}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="min-w-0 font-display text-3xl text-ink sm:text-4xl">
+          {me?.full_name?.split(" ")[0] ?? "You"}
+          {"’"}s day
+        </h1>
         {unreadIds.length > 0 && (
           <button
             type="button"
             onClick={() => markNotifications(unreadIds, true)}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream sm:w-auto"
+            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream"
           >
             <MailOpen aria-hidden className="size-4" />
             Mark {unreadIds.length} as read
           </button>
         )}
       </div>
+
 
       {items.length === 0 && (
         <p className="surface-card p-4 text-sm text-ink-soft">
