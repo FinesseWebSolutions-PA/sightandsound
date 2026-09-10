@@ -94,10 +94,6 @@ function DashboardTab() {
     projectTasks.length === 0
       ? "No work items yet — add the first one on the Timeline."
       : "Nothing open — this production is complete.";
-  const projectMilestones = milestones.filter((m) => m.project_id === projectId);
-  const upcoming = milestones
-    .filter((m) => m.project_id === projectId && m.status !== "complete")
-    .sort((a, b) => a.due_date.localeCompare(b.due_date));
   // Recent activity mixes real conversation with status changes, so the dashboard
   // shows what people are actually saying and where they said it.
   const projectThreadIds = threads.filter((t) => t.project_id === projectId).map((t) => t.id);
@@ -167,16 +163,6 @@ function DashboardTab() {
       taskId: null as string | null,
       documentId: d.id,
     })),
-    ...milestones
-      .filter((m) => m.project_id === projectId && m.status === "at_risk")
-      .map((m) => ({
-        id: `risk-${m.id}`,
-        label: "Milestone at risk",
-        title: m.name,
-        detail: `Due ${formatDate(m.due_date)}`,
-        taskId: null as string | null,
-        documentId: null as string | null,
-      })),
   ].slice(0, 6);
 
   return (
@@ -424,28 +410,7 @@ function DashboardTab() {
         </div>
 
         <div className="space-y-6">
-          <Panel title="Upcoming milestones" icon={CalendarDays}>
-            <ul className="space-y-3">
-              {upcoming.map((m) => (
-                <li key={m.id} className="space-y-1">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-sm font-medium text-ink">{m.name}</span>
-                    <span className="text-xs whitespace-nowrap text-ink-soft">
-                      {formatDate(m.due_date)}
-                    </span>
-                  </div>
-                  <StatusBadge meta={milestoneStatusMeta[m.status]} size="sm" />
-                </li>
-              ))}
-              {upcoming.length === 0 && (
-                <li className="text-sm text-ink-soft">
-                  {projectMilestones.length === 0
-                    ? "No key dates set yet."
-                    : "All milestones complete."}
-                </li>
-              )}
-            </ul>
-          </Panel>
+
 
           <Panel title="Notifications" icon={Bell}>
             <p className="text-sm text-ink-soft">
