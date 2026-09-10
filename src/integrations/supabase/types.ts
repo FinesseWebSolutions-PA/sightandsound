@@ -1049,6 +1049,10 @@ export type Database = {
           shift_days: number
         }[]
       }
+      recompute_milestone_status: {
+        Args: { p_milestone_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
