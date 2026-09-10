@@ -497,6 +497,16 @@ function TimelineTab() {
           </p>
         )}
       </div>
+
+      {openTaskId && (
+        <TaskDetailPanel
+          taskId={openTaskId}
+          onClose={() => setOpenTaskId(null)}
+          {...(search.comment ? { highlightCommentId: search.comment } : {})}
+          {...(search.ask ? { askDepartmentId: search.ask } : {})}
+        />
+      )}
     </div>
   );
+
 }
