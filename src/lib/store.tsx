@@ -251,6 +251,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [allowed, run],
   );
 
+  const setTaskDates = useCallback(
+    (taskId: string, startDate: string, dueDate: string) => {
+      if (!allowed(projectOfTask(taskId), "admin")) return;
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              tasks: prev.tasks.map((t) =>
+                t.id === taskId ? { ...t, start_date: startDate, due_date: dueDate } : t,
+              ),
+            }
+          : prev,
+      );
+      run(() => writeTaskDates(taskId, startDate, dueDate, currentUserIdRef.current));
+    },
+    [allowed, run],
+  );
+
+  const previewReschedule = useCallback(
+    (taskId: string, startDate: string, dueDate: string) =>
+      previewTaskReschedule(taskId, startDate, dueDate),
+    [],
+  );
+
+
+
   const setMilestoneDate = useCallback(
     (milestoneId: string, dueDate: string) => {
       if (!allowed(projectOfMilestone(milestoneId), "admin")) return;
