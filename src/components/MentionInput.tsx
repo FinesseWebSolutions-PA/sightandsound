@@ -174,42 +174,63 @@ export function MentionInput({
       />
 
       {open && (
-        <ul
-          role="listbox"
-          aria-label="Mention suggestions"
-          className="absolute z-40 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-lg sm:w-80"
-        >
-          {suggestions.map((s, i) => (
-            <li key={`${s.kind}-${s.id}`}>
-              <button
-                type="button"
-                role="option"
-                aria-selected={i === highlight}
-                onMouseEnter={() => setHighlight(i)}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => insert(s)}
-                className={cn(
-                  "flex min-h-11 w-full items-center gap-2.5 px-3 py-2 text-left",
-                  i === highlight ? "bg-cream" : "hover:bg-cream-soft",
-                )}
-              >
-                {s.kind === "person" ? (
-                  <span className="grid size-7 shrink-0 place-items-center rounded-full bg-ink text-[0.625rem] font-semibold text-cream-soft">
-                    {initials(s.label)}
-                  </span>
-                ) : (
-                  <span className="grid size-7 shrink-0 place-items-center rounded-md bg-gold-tint text-gold-deep">
-                    <Users aria-hidden className="size-3.5" />
-                  </span>
-                )}
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium text-ink">{s.label}</span>
-                  <span className="block truncate text-xs text-ink-soft">{s.hint}</span>
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className="absolute z-40 mt-1 w-full overflow-hidden rounded-lg border border-border bg-popover shadow-lg sm:w-80">
+          <ul
+            role="listbox"
+            aria-label="Mention suggestions"
+            className="max-h-60 overflow-y-auto py-1"
+          >
+            {groups.map((group) => (
+              <li key={group.label} role="presentation">
+                <p className="rule-label px-3 pt-2 pb-1">{group.label}</p>
+                <ul role="presentation">
+                  {group.items.map((s) => {
+                    const i = suggestions.indexOf(s);
+                    return (
+                      <li key={`${s.kind}-${s.id}`}>
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={i === highlight}
+                          onMouseEnter={() => setHighlight(i)}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => insert(s)}
+                          className={cn(
+                            "flex min-h-11 w-full items-center gap-2.5 px-3 py-2 text-left",
+                            i === highlight ? "bg-cream" : "hover:bg-cream-soft",
+                          )}
+                        >
+                          {s.kind === "person" ? (
+                            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-ink text-[0.625rem] font-semibold text-cream-soft">
+                              {initials(s.label)}
+                            </span>
+                          ) : (
+                            <span className="grid size-7 shrink-0 place-items-center rounded-md bg-gold-tint text-gold-deep">
+                              <Users aria-hidden className="size-3.5" />
+                            </span>
+                          )}
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-medium text-ink">
+                              {s.label}
+                            </span>
+                            <span className="block truncate text-xs text-ink-soft">{s.hint}</span>
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </li>
+            ))}
+          </ul>
+          {highlighted?.kind === "department" && (
+            <p className="flex items-start gap-1.5 border-t border-border bg-cream-soft px-3 py-2 text-xs text-ink-soft">
+              <Users aria-hidden className="mt-0.5 size-3 shrink-0" />
+              Notifies {highlighted.label}&apos;s owner and leads — not the whole roster.
+            </p>
+          )}
+        </div>
+
       )}
     </div>
   );
