@@ -123,6 +123,27 @@ export function TaskDetailPanel({
     if (ok) setSubTitle("");
   }
 
+  /** Files attach straight to this work item — no folders to choose. */
+  async function addFiles(files: File[]) {
+    if (files.length === 0 || uploading || !task) return;
+    setUploading(true);
+    try {
+      for (const file of files) {
+        await uploadDocument({
+          projectId: task.project_id,
+          file,
+          folder: null,
+          sceneId: task.scene_id,
+          taskId: task.id,
+          requiresApproval: needsApproval,
+        });
+      }
+    } finally {
+      setUploading(false);
+    }
+  }
+
+
   const askDept =
     askDepartmentId && !askUsed ? departments.find((d) => d.id === askDepartmentId) : undefined;
   const draft = askDept ? `@${askDept.name} ` : "";
