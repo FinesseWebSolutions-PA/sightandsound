@@ -1,12 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowRight, CalendarDays, SlidersHorizontal } from "lucide-react";
+import { CalendarDays, SlidersHorizontal } from "lucide-react";
 
-import { StatusBadge } from "@/components/StatusBadge";
 import { departments, projectDepartments, personById, useStore } from "@/lib/store";
-import { formatDate, projectStatusMeta, readinessMeta } from "@/lib/status";
+import { formatDate, projectStatusMeta, readinessMeta, type Tone } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import type { ProjectStatus } from "@/lib/production-data";
+
+/** Status colour as text only — quieter than a filled chip, still label + icon. */
+const toneText: Record<Tone, string> = {
+  success: "text-success",
+  warning: "text-warning",
+  danger: "text-danger",
+  info: "text-info",
+  neutral: "text-ink-soft",
+};
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -138,65 +146,81 @@ function PortfolioPage() {
         {rows.map((project) => {
           const involved = projectDepartments.filter((pd) => pd.project_id === project.id);
           const next = nextKeyDate(project.id);
+          const status = projectStatusMeta[project.status];
+          const owner = personById(project.owner_id);
+          const initials = (owner?.full_name ?? "")
+            .split(" ")
+            .map((part) => part[0])
+            .filter(Boolean)
+            .slice(0, 2)
+            .join("");
           return (
             <Link
               key={project.id}
               to="/projects/$projectId"
               params={{ projectId: project.id }}
-              className="surface-card group block p-4 transition-colors hover:border-gold sm:p-5"
+              className={cn(
+                "surface-card group block p-5 shadow-sm transition-colors hover:border-gold",
+                project.status === "closed" && "opacity-80",
+              )}
             >
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="code-id">{project.code}</span>
-                    <StatusBadge meta={projectStatusMeta[project.status]} size="sm" />
-                  </div>
-                  <h2 className="mt-1.5 font-display text-xl leading-tight text-ink sm:text-2xl">
-                    {project.name}
-                  </h2>
-                  <p className="mt-1 text-sm text-ink-soft">{project.subtitle}</p>
-                  <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft">
-                    {project.summary}
-                  </p>
-                </div>
-
-                <dl className="grid gap-3 text-sm">
-                  <div className="min-w-0">
-                    <dt className="rule-label">Production owner</dt>
-                    <dd className="mt-0.5 text-ink">{personById(project.owner_id)?.full_name}</dd>
-                  </div>
-                  <div className="min-w-0">
-                    <dt className="rule-label">Next key date</dt>
-                    <dd className="mt-0.5 flex items-start gap-1.5 text-ink">
-                      <CalendarDays aria-hidden className="mt-0.5 size-3.5 shrink-0 text-ink-soft" />
-                      <span>
-                        {next
-                          ? `${formatDate(next.due_date)} — ${next.name}`
-                          : `Opened ${formatDate(project.opening_date)}`}
-                      </span>
-                    </dd>
-                  </div>
-                </dl>
+              {/* Quiet meta line: identity and state, no competing chips. */}
+              <div className="flex items-center justify-between gap-3">
+                <span className="code-id">{project.code}</span>
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-wide uppercase",
+                    toneText[status.tone],
+                  )}
+                >
+                  <status.Icon aria-hidden className="size-3" />
+                  {status.label}
+                </span>
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
-                <span className="rule-label mr-1">Departments</span>
+              {/* Primary content */}
+              <div className="mt-3">
+                <h2 className="font-display text-2xl leading-tight text-ink">{project.name}</h2>
+                <p className="mt-0.5 text-xs font-medium tracking-tight text-ink-soft uppercase">
+                  {project.subtitle}
+                </p>
+                <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">{project.summary}</p>
+              </div>
+
+              {/* Secondary detail: owner and next date, demoted */}
+              <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-4">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span
+                    aria-hidden
+                    className="flex size-6 shrink-0 items-center justify-center rounded-full bg-cream text-[10px] font-bold text-ink"
+                  >
+                    {initials}
+                  </span>
+                  <span className="truncate text-xs font-medium text-ink">{owner?.full_name}</span>
+                </span>
+                <span className="flex shrink-0 items-center gap-1.5 text-xs text-ink-soft">
+                  <CalendarDays aria-hidden className="size-3.5" />
+                  {next ? formatDate(next.due_date) : formatDate(project.opening_date)}
+                </span>
+              </div>
+
+              {/* Department readiness, condensed to one quiet line */}
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3">
                 {involved.map((pd) => {
                   const dept = departments.find((d) => d.id === pd.department_id);
+                  const meta = readinessMeta[pd.readiness];
                   return (
                     <span
                       key={pd.department_id}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-cream-soft px-2 py-1 text-xs text-ink"
+                      className="flex items-center gap-1.5 text-[10px] font-bold tracking-wide uppercase"
+                      title={`${dept?.name}: ${meta.label}`}
                     >
-                      {dept?.name}
-                      <StatusBadge meta={readinessMeta[pd.readiness]} size="sm" />
+                      <meta.Icon aria-hidden className={cn("size-3", toneText[meta.tone])} />
+                      <span className="text-ink">{dept?.name}</span>
+                      <span className={cn("font-semibold", toneText[meta.tone])}>{meta.label}</span>
                     </span>
                   );
                 })}
-                <span className="inline-flex w-full items-center gap-1 text-sm font-semibold text-gold-deep sm:ml-auto sm:w-auto">
-                  Open workspace
-                  <ArrowRight aria-hidden className="size-4 transition-transform group-hover:translate-x-0.5" />
-                </span>
               </div>
             </Link>
           );
