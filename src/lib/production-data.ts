@@ -192,6 +192,28 @@ export type Comment = {
   created_at: string;
 };
 
+/** A file or photo shared inside a conversation. */
+export type CommentAttachment = {
+  id: string;
+  comment_id: string;
+  storage_key: string;
+  file_name: string;
+  mime_type: string;
+  byte_size: number;
+  uploaded_by_id: string;
+  /** Set once someone files it into the production's documents. */
+  saved_document_id: string | null;
+  created_at: string;
+};
+
+/** A file already uploaded to storage but not yet attached to a message. */
+export type StagedAttachment = {
+  storage_key: string;
+  file_name: string;
+  mime_type: string;
+  byte_size: number;
+};
+
 export type Mention = {
   id: string;
   comment_id: string;
