@@ -703,3 +703,108 @@ export function Discussion({
     </section>
   );
 }
+
+/**
+ * One conversation on its own, for the Slack-style layout where the list of
+ * conversations lives on the left and the chosen one opens on the right.
+ */
+export function ConversationView({
+  projectId,
+  threadId,
+  highlightCommentId,
+}: {
+  projectId: string;
+  threadId: string;
+  highlightCommentId?: string | undefined;
+}) {
+  const { threads, comments, tasks, documents, addComment, can, isClosed, currentUserId } =
+    useStore();
+  const endRef = useRef<HTMLDivElement>(null);
+  const thread = threads.find((t) => t.id === threadId);
+
+  const threadComments = comments
+    .filter((c) => c.thread_id === threadId)
+    .slice()
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+
+  useEffect(() => {
+    if (!highlightCommentId) return;
+    const el = document.getElementById(`comment-${highlightCommentId}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlightCommentId, threadId]);
+
+  useEffect(() => {
+    if (highlightCommentId) return;
+    endRef.current?.scrollIntoView({ block: "nearest" });
+  }, [threadId, threadComments.length, highlightCommentId]);
+
+  if (!thread) {
+    return (
+      <ChatPanel>
+        <Transcript>
+          <p className="py-6 text-center text-sm text-ink-soft">
+            Pick a conversation on the left to open it here.
+          </p>
+        </Transcript>
+      </ChatPanel>
+    );
+  }
+
+  const contextText = thread.task_id
+    ? (tasks.find((t) => t.id === thread.task_id)?.title ?? "Work item")
+    : thread.document_id
+      ? (documents.find((d) => d.id === thread.document_id)?.title ?? "Document")
+      : "Whole production";
+
+  return (
+    <ThreadPanel
+      projectId={projectId}
+      inline={false}
+      title={thread.subject || contextText}
+      contextText={contextText}
+      threadId={thread.id}
+      threadComments={threadComments}
+      currentUserId={currentUserId}
+      highlightCommentId={highlightCommentId}
+      canPost={can.comment && !isClosed(projectId)}
+      initialDraft=""
+      autoFocusComposer={false}
+      endRef={endRef}
+      onSend={async (body, attachments) => addComment(thread.id, body, attachments)}
+    />
+  );
+}
+
+/** Starts a new production-wide conversation (subject + first message). */
+export function NewProjectConversation({
+  projectId,
+  onCreated,
+}: {
+  projectId: string;
+  onCreated?: (() => void) | undefined;
+}) {
+  const { createThread } = useStore();
+  return (
+    <Composer
+      projectId={projectId}
+      threadKey="new"
+      withSubject
+      placeholder="Write the first message…"
+      submitLabel="Send"
+      onSubmit={async (body, subject, attachments) => {
+        const ok = await createThread({
+          projectId,
+          contextType: "project",
+          taskId: null,
+          documentId: null,
+          subject,
+          body,
+          attachments,
+        });
+        if (!ok) return false;
+        onCreated?.();
+        return true;
+      }}
+    />
+  );
+}
