@@ -82,3 +82,66 @@ export function slipDays(planned: string, forecast: string): number {
   if (!planned || !forecast) return 0;
   return daysBetween(planned, forecast);
 }
+
+/* ------------------------------------------------------------------ *
+ * Pixel layout — used by the zoomable, scrollable Gantt chart.
+ * ------------------------------------------------------------------ */
+
+export const ZOOM_MIN = 2;
+export const ZOOM_MAX = 48;
+
+/** Horizontal pixel offset of a date inside the chart window. */
+export function xAt(span: Span, date: string, pxPerDay: number): number {
+  return daysBetween(span.start, date) * pxPerDay;
+}
+
+/** Pixel offset and width of a date range inside the chart window. */
+export function placePx(span: Span, start: string, end: string, pxPerDay: number) {
+  const left = xAt(span, start, pxPerDay);
+  const width = Math.max(pxPerDay, Math.max(1, daysBetween(start, end)) * pxPerDay);
+  return { left, width };
+}
+
+/** The date sitting at a pixel offset in the chart window. */
+export function dateAtX(span: Span, x: number, pxPerDay: number): string {
+  return addDays(span.start, Math.round(x / pxPerDay));
+}
+
+export type AxisTick = { key: string; label: string; left: number; major: boolean };
+
+/**
+ * Tick marks across the top of the chart. Zoomed in far enough, each week gets
+ * a dated tick; zoomed out, months carry the axis on their own.
+ */
+export function axisTicks(span: Span, pxPerDay: number): AxisTick[] {
+  const ticks: AxisTick[] = [];
+  const last = toDate(span.end);
+  const weekly = pxPerDay >= 10;
+
+  const cursor = toDate(span.start);
+  if (weekly) {
+    // Start on the Sunday at or before the window start.
+    cursor.setUTCDate(cursor.getUTCDate() - cursor.getUTCDay());
+  } else {
+    cursor.setUTCDate(1);
+  }
+
+  while (cursor <= last) {
+    const iso = toISO(cursor);
+    if (iso >= span.start) {
+      const isMonthStart = cursor.getUTCDate() <= 7;
+      ticks.push({
+        key: iso,
+        label: weekly
+          ? cursor.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
+          : cursor.toLocaleDateString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" }),
+        left: xAt(span, iso, pxPerDay),
+        major: weekly ? isMonthStart : true,
+      });
+    }
+    if (weekly) cursor.setUTCDate(cursor.getUTCDate() + 7);
+    else cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+  }
+  return ticks;
+}
+
