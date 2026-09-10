@@ -491,6 +491,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [allowed, data, run],
   );
 
+  const uploadDocument = useCallback(
+    async (input: {
+      projectId: string;
+      file: File;
+      folder: string | null;
+      sceneId: string | null;
+      requiresApproval: boolean;
+    }) => {
+      if (!allowed(input.projectId, "contribute")) return false;
+      setSaving(true);
+      try {
+        await writeNewDocument({ ...input, actorId: currentUserIdRef.current });
+        await refresh();
+        return true;
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "That file could not be uploaded.");
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [allowed, refresh],
+  );
+
   const recordApproval = useCallback(
     (documentId: string, decision: Approval["decision"], note: string) => {
       const doc = data?.documents.find((d) => d.id === documentId);
