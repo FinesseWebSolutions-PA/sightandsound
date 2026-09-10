@@ -1,19 +1,46 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { ArrowUpRight, Link2, Lock, MessageSquare } from "lucide-react";
+import { ArrowUpRight, Clock, Link2, Lock, MessageSquare } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 
 import { Discussion } from "@/components/Discussion";
 import { StatusBadge } from "@/components/StatusBadge";
+import { DepartmentWorkQueue } from "@/components/schedule/DepartmentWorkQueue";
+import { MasterTimeline } from "@/components/schedule/MasterTimeline";
+import { SceneReadinessMatrix } from "@/components/schedule/SceneReadinessMatrix";
 import { departments, personById, taskDependencies, useStore } from "@/lib/store";
 import { formatDate, formatDateTime, milestoneStatusMeta, taskStatusMeta } from "@/lib/status";
 import { activityFor, snippet } from "@/lib/threads";
 import type { Task, TaskStatus } from "@/lib/production-data";
 
+/** The scheduling views a person can switch between. */
+const views = [
+  { id: "master", label: "Master Timeline", blurb: "Milestones, dependencies and the critical path" },
+  { id: "queue", label: "Department Work Queue", blurb: "What each department owes, and what's blocking it" },
+  { id: "scenes", label: "Scene Readiness", blurb: "Scene by scene, department by department" },
+  { id: "list", label: "Work & conversations", blurb: "Milestone list with comments in place" },
+] as const;
+
+type ViewId = (typeof views)[number]["id"];
+
+const comingSoon = [
+  { label: "Capacity Heat Map", blurb: "Where crew hours are over-committed, week by week" },
+  { label: "Load-in / Load-out Gantt", blurb: "Hour-by-hour plan for moving into the theatre" },
+  { label: "Show-Day Command Dashboard", blurb: "One live screen for the day of a performance" },
+  {
+    label: "Role-based presets",
+    blurb: "Ready-made views for Executive, Vendor/Procurement and Recovery",
+  },
+];
+
 export const Route = createFileRoute("/projects/$projectId/timeline")({
-  validateSearch: (search: Record<string, unknown>): { task?: string; comment?: string } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { task?: string; comment?: string; view?: string } => ({
     ...(typeof search['task'] === "string" ? { task: search['task'] } : {}),
     ...(typeof search['comment'] === "string" ? { comment: search['comment'] } : {}),
+    ...(typeof search['view'] === "string" ? { view: search['view'] } : {}),
   }),
+
 
   head: () => ({
     meta: [
