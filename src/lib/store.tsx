@@ -801,7 +801,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  if (error && !value) {
+  if (error && !data) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-24 text-center">
         <h1 className="font-display text-2xl text-ink">The production data could not be loaded</h1>
@@ -810,7 +810,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!value) {
+  if (!data) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center gap-2 text-sm text-ink-soft">
         <Loader2 aria-hidden className="size-4 animate-spin" />
