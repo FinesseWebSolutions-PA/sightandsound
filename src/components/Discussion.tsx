@@ -40,7 +40,7 @@ function DayDivider({ date }: { date: string }) {
       ? "Yesterday"
       : day.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   return (
-    <p className="flex items-center gap-3 py-1 text-[0.6875rem] font-semibold tracking-wide text-ink-soft uppercase">
+    <p className="flex items-center gap-3 py-1 text-[0.6875rem] font-semibold text-ink-soft">
       <span className="h-px flex-1 bg-border" />
       {label}
       <span className="h-px flex-1 bg-border" />

@@ -116,7 +116,7 @@ function PortfolioPage() {
                 <span className="code-id">{project.code}</span>
                 <span
                   className={cn(
-                    "inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-wide uppercase",
+                    "inline-flex items-center gap-1.5 text-[11px] font-semibold ",
                     toneText[status.tone],
                   )}
                 >
@@ -128,7 +128,7 @@ function PortfolioPage() {
               {/* Primary content */}
               <div className="mt-3">
                 <h2 className="font-display text-2xl leading-tight text-ink">{project.name}</h2>
-                <p className="mt-0.5 text-xs font-medium tracking-tight text-ink-soft uppercase">
+                <p className="mt-0.5 text-xs font-medium text-ink-soft">
                   {project.subtitle}
                 </p>
                 <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">{project.summary}</p>
@@ -159,7 +159,7 @@ function PortfolioPage() {
                   return (
                     <span
                       key={pd.department_id}
-                      className="flex items-center gap-1.5 text-[10px] font-bold tracking-wide uppercase"
+                      className="flex items-center gap-1.5 text-[10px] font-bold "
                       title={`${dept?.name}: ${meta.label}`}
                     >
                       <meta.Icon aria-hidden className={cn("size-3", toneText[meta.tone])} />
