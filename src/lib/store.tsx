@@ -499,6 +499,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       file: File;
       folder: string | null;
       sceneId: string | null;
+      taskId?: string | null;
       requiresApproval: boolean;
     }) => {
       if (!allowed(input.projectId, "contribute")) return false;
