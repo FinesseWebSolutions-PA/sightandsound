@@ -119,10 +119,15 @@
   --accent-foreground: var(--gold-700);
   --destructive: var(--danger);
   --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.842 0.019 88);
-  --input: oklch(0.842 0.019 88);
+  --border: oklch(0.858 0.017 88);
+  --border-strong: oklch(0.742 0.024 86);
+  --row-hover: oklch(0.968 0.013 88);
+  --band: oklch(0.906 0.022 88);
+  --input: oklch(0.79 0.022 87);
   --ring: var(--gold-500);
-  --shadow-card: 0 1px 2px oklch(0.245 0.012 55 / 0.06), 0 6px 16px -12px oklch(0.245 0.012 55 / 0.18);
+  --shadow-card:
+    0 1px 0 oklch(0.245 0.012 55 / 0.04), 0 1px 3px oklch(0.245 0.012 55 / 0.1),
+    0 10px 24px -18px oklch(0.245 0.012 55 / 0.28);
 
 }
 
