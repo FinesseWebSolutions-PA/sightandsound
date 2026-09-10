@@ -1462,6 +1462,51 @@ export async function saveAttachmentToDocs(input: {
   return doc.id;
 }
 
+/**
+ * Uploads a file straight into the production's documents as revision 1, filed
+ * into whichever set folder or custom folder the person is standing in.
+ */
+export async function writeNewDocument(input: {
+  file: File;
+  projectId: string;
+  folder: string | null;
+  sceneId: string | null;
+  requiresApproval: boolean;
+  actorId: string;
+}) {
+  const staged = await uploadChatAttachment(input.file, input.projectId, "documents");
+  const { data: doc, error } = await supabase
+    .from("documents")
+    .insert({
+      project_id: input.projectId,
+      title: input.file.name,
+      folder: input.sceneId ? null : input.folder || null,
+      scene_id: input.sceneId,
+      requires_approval: input.requiresApproval,
+      status: "draft",
+      created_by: input.actorId,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+
+  const { error: versionError } = await supabase.from("document_versions").insert({
+    document_id: doc.id,
+    version_number: 1,
+    storage_key: staged.storage_key,
+    uploaded_by: input.actorId,
+    change_note: "Uploaded",
+  });
+  if (versionError) throw new Error(versionError.message);
+
+  await recordAudit("document", doc.id, input.actorId, "document_uploaded", {
+    folder: input.folder || null,
+    scene_id: input.sceneId,
+    file_name: input.file.name,
+  });
+  return doc.id;
+}
+
 /** Turns the approval requirement for one document on or off. */
 export async function writeDocumentApprovalRequirement(
   documentId: string,
