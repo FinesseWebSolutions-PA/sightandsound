@@ -55,12 +55,6 @@ function PortfolioPage() {
     [projects, status],
   );
 
-  const nextKeyDate = (projectId: string) => {
-    const open = milestones
-      .filter((m) => m.project_id === projectId && m.status !== "complete")
-      .sort((a, b) => a.due_date.localeCompare(b.due_date));
-    return open[0];
-  };
 
   return (
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-10">
