@@ -212,7 +212,7 @@ export type Approval = {
   note: string;
 };
 
-export type ThreadContext = "project" | "task" | "document";
+export type ThreadContext = "project" | "task" | "document" | "scene";
 
 export type DiscussionThread = {
   id: string;
@@ -220,6 +220,7 @@ export type DiscussionThread = {
   context_type: ThreadContext;
   task_id: string | null;
   document_id: string | null;
+  scene_id: string | null;
   subject: string;
   created_by_id: string;
   created_at: string;
