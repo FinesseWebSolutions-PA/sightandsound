@@ -17,10 +17,19 @@ import type { Milestone, ReschedulePreviewRow, Task } from "@/lib/production-dat
 
 /** Bar colouring is driven by the shared calculation, never chosen per view. */
 function barClasses(task: Task): string {
-  if (task.criticality === "critical") return "bg-danger/85 border-danger";
-  if (task.criticality === "near_critical") return "bg-warning/80 border-warning";
-  return "bg-info/70 border-info";
+  if (task.criticality === "critical") return "bg-danger border-danger";
+  if (task.criticality === "near_critical") return "bg-warning border-warning";
+  return "bg-info border-info";
 }
+
+/** The coloured edge on a row carries the same computed criticality. */
+function edgeClasses(task: Task): string {
+  if (task.criticality === "critical") return "text-danger";
+  if (task.criticality === "near_critical") return "text-warning";
+  return "text-info";
+}
+
+const todayISO = new Date().toISOString().slice(0, 10);
 
 type PreviewState = {
   task: Task;
