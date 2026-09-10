@@ -321,7 +321,7 @@ function ThreadPanel({
   threadId: string;
   threadComments: Comment[];
   currentUserId: string;
-  highlightCommentId?: string;
+  highlightCommentId?: string | undefined;
   canPost: boolean;
   initialDraft: string;
   autoFocusComposer: boolean;
