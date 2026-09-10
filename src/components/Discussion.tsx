@@ -5,7 +5,7 @@ import { AttachmentList } from "@/components/AttachmentList";
 import { MentionInput } from "@/components/MentionInput";
 import { MentionText } from "@/components/MentionText";
 import { personById, useStore } from "@/lib/store";
-import type { StagedAttachment, ThreadContext } from "@/lib/production-data";
+import type { Comment, StagedAttachment, ThreadContext } from "@/lib/production-data";
 import { formatDateTime } from "@/lib/status";
 import { initials } from "@/lib/threads";
 import { cn } from "@/lib/utils";
