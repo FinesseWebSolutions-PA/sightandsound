@@ -22,6 +22,7 @@ import {
   writeApproval,
   writeComment,
   writeDocumentVersion,
+  writeNewDocument,
   removeDocument,
   writeMilestoneDate,
   writeNotificationRead,
@@ -133,6 +134,14 @@ export type Store = {
   setMilestoneDate: (milestoneId: string, dueDate: string) => void;
   setPortalUrl: (projectId: string, url: string) => void;
   addDocumentVersion: (documentId: string, note: string) => void;
+  /** Uploads a file straight into the documents list, filed where you are. */
+  uploadDocument: (input: {
+    projectId: string;
+    file: File;
+    folder: string | null;
+    sceneId: string | null;
+    requiresApproval: boolean;
+  }) => Promise<boolean>;
   recordApproval: (documentId: string, decision: Approval["decision"], note: string) => void;
   /**
    * Posts a message into an existing conversation. Chat is flat: no parent id.
@@ -480,6 +489,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       );
     },
     [allowed, data, run],
+  );
+
+  const uploadDocument = useCallback(
+    async (input: {
+      projectId: string;
+      file: File;
+      folder: string | null;
+      sceneId: string | null;
+      requiresApproval: boolean;
+    }) => {
+      if (!allowed(input.projectId, "contribute")) return false;
+      setSaving(true);
+      try {
+        await writeNewDocument({ ...input, actorId: currentUserIdRef.current });
+        await refresh();
+        return true;
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "That file could not be uploaded.");
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [allowed, refresh],
   );
 
   const recordApproval = useCallback(
@@ -936,6 +969,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             setMilestoneDate,
             setPortalUrl,
             addDocumentVersion,
+            uploadDocument,
             recordApproval,
             addComment,
             createThread,
@@ -1002,6 +1036,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             setMilestoneDate: () => {},
             setPortalUrl: () => {},
             addDocumentVersion: () => {},
+            uploadDocument: async () => false,
             recordApproval: () => {},
             addComment: async () => false,
             uploadAttachment: async () => {
@@ -1052,6 +1087,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setMilestoneDate,
       setPortalUrl,
       addDocumentVersion,
+      uploadDocument,
       recordApproval,
       addComment,
       createThread,
