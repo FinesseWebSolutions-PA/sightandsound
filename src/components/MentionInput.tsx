@@ -64,9 +64,11 @@ export function MentionInput({
 }) {
   const localRef = useRef<HTMLTextAreaElement>(null);
   const areaRef = inputRef ?? localRef;
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const [token, setToken] = useState<{ start: number; query: string } | null>(null);
   const [highlight, setHighlight] = useState(0);
   const caretAfterInsert = useRef<number | null>(null);
+  const [popupPos, setPopupPos] = useState<{ top: number; left: number; width: number; placeAbove: boolean } | null>(null);
 
   // People and departments are matched together but presented as two labelled
   // groups, so it is always obvious which kind of mention you are choosing.
