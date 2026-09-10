@@ -65,6 +65,14 @@ export const readinessMeta: Record<ProjectDepartment["readiness"], StatusMeta> =
   complete: { label: "Complete", tone: "neutral", Icon: CheckCircle2 },
 };
 
+/** Where a set stands as a whole; rolled up from the work tied to it. */
+export const setStatusMeta = {
+  not_started: { label: "Not started", tone: "neutral", Icon: CircleDashed },
+  in_progress: { label: "In progress", tone: "info", Icon: Play },
+  blocked: { label: "Blocked", tone: "danger", Icon: Ban },
+  complete: { label: "Complete", tone: "success", Icon: CheckCircle2 },
+} satisfies Record<string, StatusMeta>;
+
 /** How tight an item's spare time is, straight from the shared schedule calculation. */
 export const criticalityMeta: Record<Criticality, StatusMeta> = {
   critical: { label: "Critical path", tone: "danger", Icon: Zap },
