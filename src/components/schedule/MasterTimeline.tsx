@@ -501,7 +501,7 @@ export function MasterTimeline({
   /* ---------------- drag a set's dates on the chart ---------------- */
 
   const canDragSets = !readOnly && can.adminConfig;
-  const [setDrag, setSetDrag] = useState<{
+  const [sDrag, setSDrag] = useState<{
     sceneId: string;
     kind: "move" | "start" | "end";
     startX: number;
@@ -517,7 +517,7 @@ export function MasterTimeline({
     e.preventDefault();
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-    setSetDrag({ sceneId, kind, startX: e.clientX, days: 0 });
+    setSDrag({ sceneId, kind, startX: e.clientX, days: 0 });
   };
 
   /** Sets that follow the one that moved slide along with it. */
@@ -542,16 +542,16 @@ export function MasterTimeline({
   );
 
   useEffect(() => {
-    if (!setDrag) return;
-    const scene = projectScenes.find((s) => s.id === setDrag.sceneId);
+    if (!sDrag) return;
+    const scene = projectScenes.find((s) => s.id === sDrag.sceneId);
     if (!scene) return;
     const onMove = (e: PointerEvent) => {
-      const days = Math.round((e.clientX - setDrag.startX) / pxPerDay);
-      setSetDrag((cur) => (cur && cur.days !== days ? { ...cur, days } : cur));
+      const days = Math.round((e.clientX - sDrag.startX) / pxPerDay);
+      setSDrag((cur) => (cur && cur.days !== days ? { ...cur, days } : cur));
     };
     const onUp = () => {
-      const { kind, days } = setDrag;
-      setSetDrag(null);
+      const { kind, days } = sDrag;
+      setSDrag(null);
       if (!days) return;
       const start =
         kind === "end" ? scene.start_date : addDays(scene.start_date || todayISO, days);
@@ -575,7 +575,7 @@ export function MasterTimeline({
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
     };
-  }, [setDrag, projectScenes, pxPerDay, updateScene, projectId, cascadeFrom]);
+  }, [sDrag, projectScenes, pxPerDay, updateScene, projectId, cascadeFrom]);
 
 
   /* ---------------- render ---------------- */
