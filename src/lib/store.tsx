@@ -514,7 +514,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             ? t.task_id === taskId
             : contextType === "document"
               ? t.document_id === documentId
-              : false),
+              : contextType === "scene"
+                ? t.scene_id === sceneId
+                : false),
       );
       if (existing) {
         return await addComment(existing.id, body, attachments);
@@ -525,6 +527,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           contextType,
           taskId,
           documentId,
+          sceneId,
           subject,
           body,
           authorId: currentUserIdRef.current,
