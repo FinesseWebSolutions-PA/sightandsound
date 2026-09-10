@@ -107,6 +107,64 @@ export type Database = {
           },
         ]
       }
+      comment_attachments: {
+        Row: {
+          byte_size: number | null
+          comment_id: string
+          created_at: string
+          file_name: string
+          id: string
+          mime_type: string | null
+          saved_document_id: string | null
+          storage_key: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          byte_size?: number | null
+          comment_id: string
+          created_at?: string
+          file_name: string
+          id?: string
+          mime_type?: string | null
+          saved_document_id?: string | null
+          storage_key: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          byte_size?: number | null
+          comment_id?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          mime_type?: string | null
+          saved_document_id?: string | null
+          storage_key?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_attachments_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_attachments_saved_document_id_fkey"
+            columns: ["saved_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           author_id: string | null
@@ -329,6 +387,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          folder: string | null
           id: string
           project_id: string
           scene_id: string | null
@@ -339,6 +398,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          folder?: string | null
           id?: string
           project_id: string
           scene_id?: string | null
@@ -349,6 +409,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          folder?: string | null
           id?: string
           project_id?: string
           scene_id?: string | null
