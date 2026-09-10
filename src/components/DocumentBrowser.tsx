@@ -146,6 +146,7 @@ export function DocumentBrowser({
     approvals,
     can,
     recordApproval,
+    setDocumentApprovalRequirement,
     addDocumentVersion,
     isClosed,
     threads,
@@ -520,9 +521,35 @@ export function DocumentBrowser({
               <p className="text-sm text-ink-soft">
                 {selected.kind} · owned by {personById(selected.owner_id)?.full_name}
               </p>
-              <div className="mt-3">
-                <StatusBadge meta={approvalStateMeta[selected.approval_state]} />
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {selected.requires_approval ? (
+                  <StatusBadge meta={approvalStateMeta[selected.approval_state]} />
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-cream-soft px-2.5 py-1 text-xs font-medium text-ink-soft">
+                    <FileText aria-hidden className="size-3.5" />
+                    No approval needed
+                  </span>
+                )}
               </div>
+              {canUpload && (
+                <label className="mt-3 flex items-start gap-2.5 text-sm text-ink">
+                  <input
+                    type="checkbox"
+                    checked={!selected.requires_approval}
+                    onChange={(e) =>
+                      setDocumentApprovalRequirement(selected.id, !e.target.checked)
+                    }
+                    className="mt-0.5 size-4 rounded border-border"
+                  />
+                  <span>
+                    No approval needed
+                    <span className="block text-xs text-ink-soft">
+                      Documents that need approval must be approved before the work item they belong
+                      to can be marked complete.
+                    </span>
+                  </span>
+                </label>
+              )}
               <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
                 <span className="rule-label">Folder</span>
                 {canUpload ? (
@@ -540,7 +567,7 @@ export function DocumentBrowser({
                   </span>
                 )}
               </div>
-              {(() => {
+              {selected.requires_approval && (() => {
                 const approvedVersions = approvals
                   .filter((a) => a.document_id === selected.id && a.decision === "approved")
                   .map((a) => a.version);
