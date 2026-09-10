@@ -684,7 +684,7 @@ export function MasterTimeline({
                 const s = group.scene;
                 const slip = slipDays(s.due_date, s.forecast_finish);
                 const setPlanned = placePx(span, s.start_date, s.due_date, pxPerDay);
-                const setLive = placePx(span, s.forecast_start, s.forecast_finish, pxPerDay);
+                
                 const setDimmed = setChain ? !setChain.has(s.id) : false;
                 const follows = projectScenes.find((o) => o.id === s.depends_on_scene_id);
                 return (
