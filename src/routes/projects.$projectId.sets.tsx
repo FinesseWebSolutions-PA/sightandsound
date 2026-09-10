@@ -332,7 +332,7 @@ function SetDetail({
           <div>
             <dt className="rule-label">Committed start</dt>
             <dd className="mt-1">
-              {canEdit ? (
+              {canEdit && !followsSet ? (
                 <input
                   type="date"
                   aria-label="Committed start"
@@ -345,6 +345,12 @@ function SetDetail({
               ) : (
                 <span className="text-sm text-ink">
                   {set.start_date ? formatDate(set.start_date) : "Not committed"}
+                </span>
+              )}
+              {followsSet && (
+                <span className="mt-1 block text-xs text-ink-soft">
+                  Filled in from {followsSet.name}
+                  {set.lag_days ? ` plus a ${set.lag_days} day gap` : ""}.
                 </span>
               )}
             </dd>
