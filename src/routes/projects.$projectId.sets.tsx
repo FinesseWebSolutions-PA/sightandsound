@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, Crown, Link2, Plus, X } from "lucide-react";
 
-import { Discussion } from "@/components/Discussion";
+import { ConversationRail } from "@/components/ConversationRail";
 import { DocumentBrowser } from "@/components/DocumentBrowser";
 import { MasterTimeline } from "@/components/schedule/MasterTimeline";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -18,6 +18,9 @@ import { formatDate, setStatusMeta } from "@/lib/status";
 import type { Scene, SetStatus } from "@/lib/production-data";
 
 export const Route = createFileRoute("/projects/$projectId/sets")({
+  validateSearch: (search: Record<string, unknown>): { set?: string } => ({
+    ...(typeof search["set"] === "string" ? { set: search["set"] } : {}),
+  }),
   head: () => ({
     meta: [
       { title: "Sets — Sight & Sound Show Production" },
@@ -40,13 +43,14 @@ const statusOptions: SetStatus[] = ["not_started", "in_progress", "blocked", "co
 
 function SetsTab() {
   const { projectId } = Route.useParams();
+  const search = Route.useSearch();
   const { projects, scenes, tasks, documents, can, isClosed } = useStore();
   const project = projects.find((p) => p.id === projectId);
   if (!project) throw notFound();
 
   const canEdit = can.adminConfig && !isClosed(projectId);
   const [newName, setNewName] = useState("");
-  const [selectedId, setSelectedId] = useState("");
+  const [selectedId, setSelectedId] = useState(search.set ?? "");
   const { createScene } = useStore();
 
   const projectSets = useMemo(
@@ -535,14 +539,18 @@ function SetDetail({
         <DocumentBrowser projectId={projectId} sceneId={set.id} />
       </section>
 
-      <Discussion
-        projectId={projectId}
-        contextType="scene"
-        sceneId={set.id}
-        inline
-        heading={`Conversation about ${set.name}`}
-        blurb="Everything said about this set stays here, so the whole team can catch up in one place."
-      />
+      <section className="min-w-0 space-y-3">
+        <h3 className="text-lg font-semibold text-ink">Conversation</h3>
+        <p className="text-sm text-ink-soft">
+          Everything said about this set — the set itself, its work items and its documents — stays
+          here, so the whole team can catch up in one place.
+        </p>
+        <ConversationRail
+          projectId={projectId}
+          sceneId={set.id}
+          listTitle={`Conversations on ${set.name}`}
+        />
+      </section>
     </div>
   );
 }
