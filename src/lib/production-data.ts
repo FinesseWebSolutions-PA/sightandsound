@@ -1978,9 +1978,67 @@ export async function removeScene(sceneId: string, projectId: string, actorId: s
   const cleared = await Promise.all([
     supabase.from("tasks").update({ scene_id: null }).eq("scene_id", sceneId),
     supabase.from("documents").update({ scene_id: null }).eq("scene_id", sceneId),
+    // Sets that followed this one in the chain now follow nothing.
+    supabase
+      .from("scenes")
+      .update({ depends_on_scene_id: null })
+      .eq("depends_on_scene_id", sceneId),
+    supabase.from("project_assignments").delete().eq("scene_id", sceneId),
   ]);
   for (const r of cleared) if (r.error) throw new Error(r.error.message);
   const { error } = await supabase.from("scenes").delete().eq("id", sceneId);
   if (error) throw new Error(error.message);
   await recordAudit("project", projectId, actorId, "scene_removed", { scene_id: sceneId });
+}
+
+/** Updates one set's lead, status, committed dates, or place in the chain. */
+export async function writeSceneFields(
+  sceneId: string,
+  projectId: string,
+  fields: {
+    owner_id?: string | null;
+    status?: SetStatus;
+    start_date?: string | null;
+    due_date?: string | null;
+    depends_on_scene_id?: string | null;
+    lag_days?: number;
+  },
+  actorId: string,
+) {
+  const patch: Record<string, unknown> = {};
+  if ("owner_id" in fields) patch['owner_id'] = fields.owner_id || null;
+  if (fields.status) patch['status'] = fields.status;
+  if ("start_date" in fields) patch['start_date'] = fields.start_date || null;
+  if ("due_date" in fields) patch['due_date'] = fields.due_date || null;
+  if ("depends_on_scene_id" in fields)
+    patch['depends_on_scene_id'] = fields.depends_on_scene_id || null;
+  if (typeof fields.lag_days === "number") patch['lag_days'] = fields.lag_days;
+  if (Object.keys(patch).length === 0) return;
+
+  const { error } = await supabase.from("scenes").update(patch).eq("id", sceneId);
+  if (error) throw new Error(error.message);
+  await recordAudit("project", projectId, actorId, "scene_updated", { scene_id: sceneId, ...patch });
+}
+
+/** Moves a set up or down in the running order by swapping with its neighbour. */
+export async function writeSceneOrder(
+  sceneId: string,
+  neighbourId: string,
+  projectId: string,
+  actorId: string,
+) {
+  const { data, error: readError } = await supabase
+    .from("scenes")
+    .select("id, sort_order")
+    .in("id", [sceneId, neighbourId]);
+  if (readError) throw new Error(readError.message);
+  const a = data?.find((r) => r.id === sceneId);
+  const b = data?.find((r) => r.id === neighbourId);
+  if (!a || !b) return;
+  const updates = await Promise.all([
+    supabase.from("scenes").update({ sort_order: b.sort_order }).eq("id", a.id),
+    supabase.from("scenes").update({ sort_order: a.sort_order }).eq("id", b.id),
+  ]);
+  for (const u of updates) if (u.error) throw new Error(u.error.message);
+  await recordAudit("project", projectId, actorId, "scene_reordered", { scene_id: sceneId });
 }
