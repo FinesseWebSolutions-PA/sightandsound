@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { PersonPicker } from "@/components/PersonPicker";
 import { departments, personById, projectAssignments, taskDependencies, useStore } from "@/lib/store";
 import { dependencyTypeLabel } from "@/lib/status";
+import { dependencyConflicts } from "@/lib/schedule";
 import type { DependencyType, TaskStatus } from "@/lib/production-data";
 
 const statusOptions: TaskStatus[] = ["not_started", "in_progress", "blocked", "complete"];
@@ -80,6 +81,7 @@ export function WorkItemEditor({
     existing?.affects_performance ?? false,
   );
   const [problem, setProblem] = useState<string | null>(null);
+  const [conflicts, setConflicts] = useState<string[]>([]);
   const [addingScene, setAddingScene] = useState(false);
   const [newSceneName, setNewSceneName] = useState("");
 
@@ -193,6 +195,37 @@ export function WorkItemEditor({
         </header>
 
         <div className="space-y-5 px-4 py-4">
+          {conflicts.length > 0 && (
+            <div
+              role="alert"
+              className="rounded-md border border-warning/40 bg-warning-bg px-3 py-2 text-sm text-ink"
+            >
+              <p className="font-semibold">These dates start work too early</p>
+              <ul className="mt-1 list-disc space-y-1 pl-4">
+                {conflicts.map((c) => (
+                  <li key={c}>{c}</li>
+                ))}
+              </ul>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConflicts([])}
+                  className="min-h-10 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"
+                >
+                  Fix the dates
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void save({ override: true })}
+                  className="min-h-10 rounded-md border border-danger/40 px-3 text-sm font-medium text-danger disabled:opacity-60"
+                >
+                  Schedule anyway
+                </button>
+              </div>
+            </div>
+          )}
+
           {problem && (
             <p role="alert" className="rounded-md border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-ink">
               {problem}
