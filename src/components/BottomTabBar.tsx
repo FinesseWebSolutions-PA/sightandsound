@@ -32,7 +32,7 @@ export function BottomTabBar() {
             activeProps={{ className: tabActive }}
           >
             <LayoutGrid aria-hidden className="size-6" />
-            Portfolio
+            Productions
           </Link>
           <Link to="/inbox" className={tabBase} activeProps={{ className: tabActive }}>
             <span className="relative flex items-center">
