@@ -145,6 +145,8 @@ export type Document = {
   owner_id: string;
   approval_state: ApprovalState;
   current_version: number;
+  /** Optional grouping label inside the production's documents. */
+  folder: string;
   updated_at: string;
 };
 
@@ -259,6 +261,7 @@ export type ProductionData = {
   approvals: Approval[];
   discussionThreads: DiscussionThread[];
   comments: Comment[];
+  commentAttachments: CommentAttachment[];
   mentions: Mention[];
   notifications: Notification[];
   auditLog: AuditEntry[];
