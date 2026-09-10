@@ -16,7 +16,6 @@ import { auditLog, departments, personById, projectDepartments, useStore } from 
 import {
   formatDate,
   formatDateTime,
-  milestoneStatusMeta,
   readinessMeta,
   taskStatusMeta,
 } from "@/lib/status";
@@ -70,7 +69,6 @@ function DashboardTab() {
   const {
     projects,
     tasks,
-    milestones,
     documents,
     notifications,
     threads,
