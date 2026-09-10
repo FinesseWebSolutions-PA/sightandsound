@@ -25,21 +25,28 @@ export function daysBetween(from: string, to: string): number {
 
 export type Span = { start: string; end: string };
 
-/** The window every bar is laid out inside. */
-export function spanOf(tasks: Task[], milestones: Milestone[]): Span {
-  const dates = [
-    ...tasks.flatMap((t) => [t.start_date, t.due_date, t.forecast_start, t.forecast_finish]),
-    ...milestones.flatMap((m) => [m.due_date, m.forecast_date]),
-  ].filter(Boolean);
+/** The window every bar is laid out inside, from any list of dates. */
+export function spanOfDates(values: (string | null | undefined)[]): Span {
+  const dates = values.filter(Boolean) as string[];
   if (dates.length === 0) {
     const today = toISO(new Date());
-    return { start: today, end: addDays(today, 30) };
+    return { start: addDays(today, -7), end: addDays(today, 30) };
   }
   const sorted = [...dates].sort();
-  const start = addDays(sorted[0] as string, -3);
-  const end = addDays(sorted[sorted.length - 1] as string, 3);
-  return { start, end };
+  return {
+    start: addDays(sorted[0] as string, -3),
+    end: addDays(sorted[sorted.length - 1] as string, 3),
+  };
 }
+
+/** The window every bar is laid out inside. */
+export function spanOf(tasks: Task[], milestones: Milestone[]): Span {
+  return spanOfDates([
+    ...tasks.flatMap((t) => [t.start_date, t.due_date, t.forecast_start, t.forecast_finish]),
+    ...milestones.flatMap((m) => [m.due_date, m.forecast_date]),
+  ]);
+}
+
 
 /** Percentage offset/width of a date range inside the chart window. */
 export function place(span: Span, start: string, end: string) {
