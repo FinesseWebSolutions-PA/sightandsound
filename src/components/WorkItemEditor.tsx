@@ -55,6 +55,7 @@ export function WorkItemEditor({
     deleteWorkItem,
     addDependency,
     removeDependency,
+    createScene,
   } = useStore();
 
   const existing = taskId ? tasks.find((t) => t.id === taskId) : undefined;
@@ -78,6 +79,8 @@ export function WorkItemEditor({
     existing?.affects_performance ?? false,
   );
   const [problem, setProblem] = useState<string | null>(null);
+  const [addingScene, setAddingScene] = useState(false);
+  const [newSceneName, setNewSceneName] = useState("");
 
   // New dependency being added.
   const [waitsOnId, setWaitsOnId] = useState("");
