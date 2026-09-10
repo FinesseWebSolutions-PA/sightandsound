@@ -117,6 +117,38 @@ export function MentionInput({
     }
   }, [value, areaRef]);
 
+  // Position the suggestion popup with fixed coordinates so it escapes any
+  // parent overflow/clip context and flips above the field when space below
+  // is tight (e.g. a composer pinned to the bottom of the screen).
+  useEffect(() => {
+    if (!open) {
+      setPopupPos(null);
+      return;
+    }
+    const update = () => {
+      const area = areaRef.current;
+      const wrapper = wrapperRef.current;
+      if (!area || !wrapper) return;
+      const rect = area.getBoundingClientRect();
+      const wrapperRect = wrapper.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const placeAbove = spaceBelow < POPUP_HEIGHT_ESTIMATE && rect.top > POPUP_HEIGHT_ESTIMATE;
+      setPopupPos({
+        top: placeAbove ? rect.top - POPUP_MARGIN : rect.bottom + POPUP_MARGIN,
+        left: wrapperRect.left,
+        width: Math.min(Math.max(wrapperRect.width, 288), window.innerWidth - 32),
+        placeAbove,
+      });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open, areaRef]);
+
   const sync = (next: string, caret: number) => {
     const found = activeToken(next, caret);
     setToken(found);
