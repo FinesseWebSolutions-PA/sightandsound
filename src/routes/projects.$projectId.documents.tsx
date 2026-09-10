@@ -108,6 +108,13 @@ function FolderControl({
   );
 }
 
+const decisionLabel: Record<"requested" | "approved" | "changes_requested" | "rejected", string> = {
+  requested: "Review requested",
+  approved: "Approved",
+  changes_requested: "Changes requested",
+  rejected: "Rejected",
+};
+
 function DocumentsTab() {
   const { projectId } = Route.useParams();
   const search = Route.useSearch();
