@@ -122,6 +122,7 @@ function DocumentsTab() {
     isClosed,
     threads,
     comments,
+    createThread,
   } = useStore();
   const project = projects.find((p) => p.id === projectId);
   if (!project) throw notFound();
