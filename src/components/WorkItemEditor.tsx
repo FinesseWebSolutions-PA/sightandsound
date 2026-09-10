@@ -317,20 +317,16 @@ export function WorkItemEditor({
             )}
             <label className="block">
               <span className="text-sm font-medium text-ink">Assigned to</span>
-              <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)} className={field}>
-                <option value="">Unassigned</option>
-                {ownerOptions.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-              {ownerOptions.length === 0 && (
-                <span className="mt-1 block text-xs text-ink-soft">
-                  Nobody is staffed to this department on this production yet — add them on Team
-                  &amp; Departments.
-                </span>
-              )}
+              <div className="mt-1">
+                <PersonPicker
+                  label="Assign this work item"
+                  value={ownerId}
+                  onChange={setOwnerId}
+                  placeholder="Unassigned"
+                  suggestedIds={ownerOptions.map((o) => o.id)}
+                  suggestedLabel="Staffed on this department"
+                />
+              </div>
             </label>
             {rollsUp ? (
               <p className="text-sm text-ink-soft">

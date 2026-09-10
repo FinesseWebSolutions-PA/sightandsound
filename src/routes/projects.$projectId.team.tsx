@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Crown, ExternalLink, Users, X } from "lucide-react";
 
+import { PersonPicker } from "@/components/PersonPicker";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
   departmentJobTitles,
@@ -157,19 +158,16 @@ function TeamTab() {
                         Department head on this production
                       </p>
                       {canEdit ? (
-                        <select
-                          aria-label={`${dept.name} head on this production`}
-                          value={pd.head_id}
-                          onChange={(e) => setDepartmentHead(projectId, dept.id, e.target.value)}
-                          className="mt-1 min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
-                        >
-                          <option value="">No head named</option>
-                          {people.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.full_name} — {p.title}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="mt-1">
+                          <PersonPicker
+                            label={`${dept.name} head on this production`}
+                            value={pd.head_id}
+                            onChange={(id) => setDepartmentHead(projectId, dept.id, id)}
+                            placeholder="No head named"
+                            suggestedIds={assigned.map((a) => a.person_id)}
+                            suggestedLabel={`Staffed on ${dept.name}`}
+                          />
+                        </div>
                       ) : (
                         <p className="mt-0.5 text-ink">
                           {personById(pd.head_id)?.full_name ?? "No head named"}{" "}
@@ -232,11 +230,10 @@ function TeamTab() {
                     {canEdit && (
                       <AddAssignment
                         departmentName={dept.name}
-                        candidates={candidates.map((p) => ({
-                          id: p.id,
-                          label: `${p.full_name} — ${p.title}`,
-                          inDepartment: p.primary_department_id === dept.id,
-                        }))}
+                        excludeIds={assigned.map((a) => a.person_id)}
+                        suggestedIds={candidates
+                          .filter((p) => p.primary_department_id === dept.id)
+                          .map((p) => p.id)}
                         presets={presets.map((t) => t.title)}
                         onAdd={(personId, jobTitle) =>
                           assignPerson({
@@ -362,20 +359,20 @@ function JobTitleField({
 
 function AddAssignment({
   departmentName,
-  candidates,
+  excludeIds,
+  suggestedIds,
   presets,
   onAdd,
 }: {
   departmentName: string;
-  candidates: { id: string; label: string; inDepartment: boolean }[];
+  excludeIds: string[];
+  suggestedIds: string[];
   presets: string[];
   onAdd: (personId: string, jobTitle: string) => void;
 }) {
   const [personId, setPersonId] = useState("");
   const [job, setJob] = useState(presets[0] ?? "");
   const [customJob, setCustomJob] = useState("");
-  const inDept = candidates.filter((c) => c.inDepartment);
-  const others = candidates.filter((c) => !c.inDepartment);
 
   const finalJob = job === CUSTOM ? customJob.trim() : job;
 
@@ -383,32 +380,17 @@ function AddAssignment({
     <div className="rounded-md border border-dashed border-border p-3">
       <p className="rule-label">Add someone to {departmentName}</p>
       <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-        <select
-          aria-label={`Team member to add to ${departmentName}`}
-          value={personId}
-          onChange={(e) => setPersonId(e.target.value)}
-          className="min-h-11 w-full min-w-0 rounded-md border border-border bg-card px-2 text-base text-ink sm:flex-1 sm:text-sm"
-        >
-          <option value="">Choose a team member…</option>
-          {inDept.length > 0 && (
-            <optgroup label={departmentName}>
-              {inDept.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
-            </optgroup>
-          )}
-          {others.length > 0 && (
-            <optgroup label="Everyone else">
-              {others.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
+        <div className="min-w-0 sm:flex-1">
+          <PersonPicker
+            label={`Add someone to ${departmentName}`}
+            value={personId}
+            onChange={setPersonId}
+            placeholder="Choose a team member…"
+            excludeIds={excludeIds}
+            suggestedIds={suggestedIds}
+            suggestedLabel={`In ${departmentName}`}
+          />
+        </div>
         <select
           aria-label={`Job for the new ${departmentName} team member`}
           value={job}

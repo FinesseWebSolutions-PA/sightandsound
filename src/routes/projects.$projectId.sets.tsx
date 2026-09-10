@@ -6,6 +6,7 @@ import { ConversationRail } from "@/components/ConversationRail";
 import { DocumentBrowser } from "@/components/DocumentBrowser";
 import { MasterTimeline } from "@/components/schedule/MasterTimeline";
 import { ProductionCalendar } from "@/components/schedule/ProductionCalendar";
+import { PersonPicker } from "@/components/PersonPicker";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SetTasksPanel } from "@/components/SetTasksPanel";
 import {
@@ -291,19 +292,16 @@ function SetDetail({
             <dt className="rule-label">Set lead</dt>
             <dd className="mt-1">
               {canEdit ? (
-                <select
-                  aria-label="Set lead"
+                <PersonPicker
+                  label="Set lead"
                   value={set.owner_id}
-                  onChange={(e) => void updateScene(set.id, projectId, { owner_id: e.target.value })}
-                  className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
-                >
-                  <option value="">No lead named</option>
-                  {people.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.full_name} — {p.title}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(id) => void updateScene(set.id, projectId, { owner_id: id })}
+                  placeholder="No lead named"
+                  suggestedIds={projectAssignments
+                    .filter((a) => a.scene_id === set.id)
+                    .map((a) => a.person_id)}
+                  suggestedLabel="Staffed on this set"
+                />
               ) : (
                 <span className="text-sm text-ink">
                   {personById(set.owner_id)?.full_name ?? "No lead named"}
@@ -583,9 +581,10 @@ function SetDetail({
                     departmentName={dept.name}
                     setName={set.name}
                     presets={presets.map((t) => t.title)}
-                    candidates={people
-                      .filter((p) => !setPeople.some((a) => a.person_id === p.id))
-                      .map((p) => ({ id: p.id, label: `${p.full_name} — ${p.title}` }))}
+                    excludeIds={setPeople.map((a) => a.person_id)}
+                    suggestedIds={people
+                      .filter((p) => p.primary_department_id === dept.id)
+                      .map((p) => p.id)}
                     onAdd={(personId, jobTitle) =>
                       assignPerson({
                         projectId,
@@ -671,13 +670,15 @@ function SetDetail({
 function AddToSet({
   departmentName,
   setName,
-  candidates,
+  excludeIds,
+  suggestedIds,
   presets,
   onAdd,
 }: {
   departmentName: string;
   setName: string;
-  candidates: { id: string; label: string }[];
+  excludeIds: string[];
+  suggestedIds: string[];
   presets: string[];
   onAdd: (personId: string, jobTitle: string) => void;
 }) {
@@ -686,19 +687,17 @@ function AddToSet({
 
   return (
     <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-      <select
-        aria-label={`Team member for ${departmentName} on ${setName}`}
-        value={personId}
-        onChange={(e) => setPersonId(e.target.value)}
-        className="min-h-11 w-full min-w-0 rounded-md border border-border bg-card px-2 text-base text-ink sm:flex-1 sm:text-sm"
-      >
-        <option value="">Add someone to this set…</option>
-        {candidates.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.label}
-          </option>
-        ))}
-      </select>
+      <div className="min-w-0 sm:flex-1">
+        <PersonPicker
+          label={`Add someone to ${departmentName} on ${setName}`}
+          value={personId}
+          onChange={setPersonId}
+          placeholder="Add someone to this set…"
+          excludeIds={excludeIds}
+          suggestedIds={suggestedIds}
+          suggestedLabel={`In ${departmentName}`}
+        />
+      </div>
       <select
         aria-label={`Job for ${departmentName} on ${setName}`}
         value={job}

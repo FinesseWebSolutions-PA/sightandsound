@@ -4,6 +4,7 @@ import { ExternalLink, Link2, X } from "lucide-react";
 
 import { ConversationRail } from "@/components/ConversationRail";
 import { DocumentBrowser } from "@/components/DocumentBrowser";
+import { PersonPicker } from "@/components/PersonPicker";
 import { SetTasksPanel } from "@/components/SetTasksPanel";
 import { StatusBadge } from "@/components/StatusBadge";
 import { people, personById, useStore } from "@/lib/store";
@@ -182,19 +183,12 @@ export function SetDialog({
             <dt className="rule-label">Set lead</dt>
             <dd className="mt-1">
               {canEdit ? (
-                <select
-                  aria-label="Set lead"
+                <PersonPicker
+                  label="Set lead"
                   value={set.owner_id}
-                  onChange={(e) => void updateScene(set.id, projectId, { owner_id: e.target.value })}
-                  className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
-                >
-                  <option value="">No lead named</option>
-                  {people.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.full_name} — {p.title}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(id) => void updateScene(set.id, projectId, { owner_id: id })}
+                  placeholder="No lead named"
+                />
               ) : (
                 <span className="text-sm text-ink">
                   {personById(set.owner_id)?.full_name ?? "No lead named"}
