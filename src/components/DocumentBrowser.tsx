@@ -163,12 +163,12 @@ export function DocumentBrowser({
   const projectDocs = documents.filter(
     (d) => d.project_id === projectId && (!pinnedSceneId || d.scene_id === pinnedSceneId),
   );
-  const [selectedId, setSelectedId] = useState(openDocumentId ?? projectDocs[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState(openDocumentId ?? "");
   // Arriving from the Inbox or the Dashboard opens that exact document.
   useEffect(() => {
     if (openDocumentId) setSelectedId(openDocumentId);
   }, [openDocumentId]);
-  const selected = projectDocs.find((d) => d.id === selectedId) ?? projectDocs[0];
+
   const [note, setNote] = useState("");
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"list" | "grid">("list");
@@ -224,6 +224,10 @@ export function DocumentBrowser({
     if (place.kind === "set") return d.scene_id === place.id;
     return d.folder === place.name && !d.scene_id;
   });
+
+  /** Only a document you can actually see in the current folder opens on the right. */
+  const selected = visibleDocs.find((d) => d.id === selectedId);
+
 
   const [sending, setSending] = useState(false);
   /** Which action row in the document menu is open; only one at a time. */
