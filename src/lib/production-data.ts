@@ -76,11 +76,23 @@ export type MilestoneStatus = "not_started" | "in_progress" | "complete" | "at_r
 /** How much spare time an item has before it delays the production. */
 export type Criticality = "critical" | "near_critical" | "normal";
 
+export type SetStatus = "not_started" | "in_progress" | "blocked" | "complete";
+
+/** A set: the real unit of work inside a production. */
 export type Scene = {
   id: string;
   project_id: string;
   name: string;
   sort_order: number;
+  owner_id: string;
+  status: SetStatus;
+  start_date: string;
+  due_date: string;
+  forecast_start: string;
+  forecast_finish: string;
+  /** The set that must finish before this one starts, if any. */
+  depends_on_scene_id: string;
+  lag_days: number;
 };
 
 export type Milestone = {
