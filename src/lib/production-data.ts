@@ -98,6 +98,8 @@ export type Scene = {
   /** The set that must finish before this one starts, if any. */
   depends_on_scene_id: string;
   lag_days: number;
+  /** Optional link to this set's own simulation in the external Portal. */
+  portal_url: string;
 };
 
 export type Milestone = {
@@ -610,6 +612,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     forecast_finish: dateOnly(s.forecast_finish) || dateOnly(s.due_date),
     depends_on_scene_id: s.depends_on_scene_id ?? "",
     lag_days: Number(s.lag_days ?? 0),
+    portal_url: s.portal_link_url ?? "",
   }));
 
   const tasks: Task[] = taskRows.map((t) => ({
@@ -2030,6 +2033,7 @@ export async function writeScene(
   projectId: string,
   name: string,
   actorId: string,
+  portalUrl?: string,
 ): Promise<string> {
   const { data: existing } = await supabase
     .from("scenes")
@@ -2041,7 +2045,12 @@ export async function writeScene(
 
   const { data, error } = await supabase
     .from("scenes")
-    .insert({ project_id: projectId, name: name.trim(), sort_order: nextOrder })
+    .insert({
+      project_id: projectId,
+      name: name.trim(),
+      sort_order: nextOrder,
+      portal_link_url: portalUrl?.trim() || null,
+    })
     .select("id")
     .single();
   if (error) throw new Error(error.message);
@@ -2104,6 +2113,7 @@ export async function writeSceneFields(
     due_date?: string | null;
     depends_on_scene_id?: string | null;
     lag_days?: number;
+    portal_link_url?: string | null;
   },
   actorId: string,
 ) {
@@ -2114,6 +2124,7 @@ export async function writeSceneFields(
     due_date?: string | null;
     depends_on_scene_id?: string | null;
     lag_days?: number;
+    portal_link_url?: string | null;
   } = {};
   if ("owner_id" in fields) patch['owner_id'] = fields.owner_id || null;
   if (fields.status) patch['status'] = fields.status;
@@ -2122,6 +2133,8 @@ export async function writeSceneFields(
   if ("depends_on_scene_id" in fields)
     patch['depends_on_scene_id'] = fields.depends_on_scene_id || null;
   if (typeof fields.lag_days === "number") patch['lag_days'] = fields.lag_days;
+  if ("portal_link_url" in fields)
+    patch['portal_link_url'] = fields.portal_link_url?.trim() || null;
   if (Object.keys(patch).length === 0) return;
 
   const { error } = await supabase.from("scenes").update(patch).eq("id", sceneId);
