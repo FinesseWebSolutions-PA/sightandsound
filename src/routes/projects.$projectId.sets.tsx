@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, Crown, Link2, Plus, X } from "lucide-react";
+import { Crown, Link2, Plus, X } from "lucide-react";
 
 import { ConversationRail } from "@/components/ConversationRail";
 import { DocumentBrowser } from "@/components/DocumentBrowser";
@@ -183,7 +183,6 @@ function SetDetail({
     tasks,
     projectAssignments,
     updateScene,
-    reorderScene,
     renameScene,
     deleteScene,
     assignPerson,
@@ -194,8 +193,6 @@ function SetDetail({
   const [tab, setTab] = useState<"schedule" | "documents" | "conversation" | "team">("schedule");
 
   const index = order.findIndex((s) => s.id === set.id);
-  const previous = order[index - 1];
-  const next = order[index + 1];
   const others = order.filter((s) => s.id !== set.id);
   const setTasks = tasks.filter((t) => t.scene_id === set.id);
 
