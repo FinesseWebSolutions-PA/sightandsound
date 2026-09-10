@@ -2033,6 +2033,7 @@ export async function writeScene(
   projectId: string,
   name: string,
   actorId: string,
+  portalUrl?: string,
 ): Promise<string> {
   const { data: existing } = await supabase
     .from("scenes")
