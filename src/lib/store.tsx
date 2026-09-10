@@ -21,7 +21,7 @@ import {
   writeDocumentScene,
   writeApproval,
   writeComment,
-  writeDocumentVersion,
+  writeDocumentVersionFile,
   writeNewDocument,
   removeDocument,
   writeMilestoneDate,
@@ -50,6 +50,8 @@ import {
   writeSceneOrder,
   removeScene,
   writeThread,
+  writeCommentReaction,
+  removeCommentReaction,
   type DependencyType,
   type WorkItemInput,
   type NewProductionInput,
@@ -59,6 +61,7 @@ import {
   type AuditEntry,
   type Comment,
   type CommentAttachment,
+  type CommentReaction,
   type Department,
   type DepartmentJobTitle,
   type ProjectAssignment,
@@ -119,6 +122,7 @@ export type Store = {
   threads: DiscussionThread[];
   comments: Comment[];
   commentAttachments: CommentAttachment[];
+  commentReactions: CommentReaction[];
   mentions: Mention[];
   notifications: Notification[];
   saving: boolean;
@@ -135,7 +139,7 @@ export type Store = {
   ) => Promise<ReschedulePreviewRow[]>;
   setMilestoneDate: (milestoneId: string, dueDate: string) => void;
   setPortalUrl: (projectId: string, url: string) => void;
-  addDocumentVersion: (documentId: string, note: string) => void;
+  addDocumentVersion: (documentId: string, file: File, note: string) => Promise<boolean>;
   /** Uploads a file straight into the documents list, filed where you are. */
   uploadDocument: (input: {
     projectId: string;
@@ -156,6 +160,8 @@ export type Store = {
     body: string,
     attachments?: StagedAttachment[],
   ) => Promise<boolean>;
+  /** Adds or removes an emoji reaction to a chat message. */
+  toggleReaction: (commentId: string, emoji: string) => Promise<boolean>;
   /** Uploads a file for a conversation before the message is posted. */
   uploadAttachment: (
     file: File,
@@ -482,20 +488,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const addDocumentVersion = useCallback(
-    (documentId: string, note: string) => {
-      const doc = data?.documents.find((d) => d.id === documentId);
-      if (!doc || !allowed(doc.project_id, "contribute")) return;
-      run(() =>
-        writeDocumentVersion(
-          documentId,
-          doc.title,
-          doc.current_version + 1,
-          note,
-          currentUserIdRef.current,
-        ),
+    async (documentId: string, file: File, note: string): Promise<boolean> => {
+      const doc = dataRef.current?.documents.find((d) => d.id === documentId);
+      if (!doc || !allowed(doc.project_id, "contribute")) return false;
+      return await runAsync(() =>
+        writeDocumentVersionFile(documentId, file, note, currentUserIdRef.current),
       );
     },
-    [allowed, data, run],
+    [allowed, runAsync],
   );
 
   const uploadDocument = useCallback(
@@ -561,6 +561,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       );
     },
     [allowed, runAsync],
+  );
+
+  const toggleReaction = useCallback(
+    async (commentId: string, emoji: string): Promise<boolean> => {
+      if (!dataRef.current) return false;
+      const existing = dataRef.current.commentReactions.find(
+        (r) => r.comment_id === commentId && r.person_id === currentUserIdRef.current && r.emoji === emoji,
+      );
+      return await runAsync(async () => {
+        if (existing) {
+          await removeCommentReaction(existing.id);
+        } else {
+          await writeCommentReaction(commentId, emoji, currentUserIdRef.current);
+        }
+      });
+    },
+    [runAsync],
   );
 
   const createThread = useCallback<Store["createThread"]>(
@@ -984,6 +1001,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             threads: data.discussionThreads,
             comments: data.comments,
             commentAttachments: data.commentAttachments,
+            commentReactions: data.commentReactions,
             mentions: data.mentions,
             notifications: data.notifications,
             saving,
@@ -997,6 +1015,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             uploadDocument,
             recordApproval,
             addComment,
+            toggleReaction,
             createThread,
             uploadAttachment,
             saveAttachmentToDocuments,
@@ -1052,6 +1071,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             threads: [],
             comments: [],
             commentAttachments: [],
+            commentReactions: [],
             mentions: [],
             notifications: [],
             saving,
@@ -1061,10 +1081,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             previewReschedule: async () => [],
             setMilestoneDate: () => {},
             setPortalUrl: () => {},
-            addDocumentVersion: () => {},
+            addDocumentVersion: async () => false,
             uploadDocument: async () => false,
             recordApproval: () => {},
             addComment: async () => false,
+            toggleReaction: async () => false,
             uploadAttachment: async () => {
               throw new Error("Production data is still loading.");
             },

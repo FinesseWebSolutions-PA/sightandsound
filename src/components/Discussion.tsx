@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AtSign, Loader2, MessageSquarePlus, Paperclip, Send, X } from "lucide-react";
 
 import { AttachmentList } from "@/components/AttachmentList";
+import { MessageReactions } from "@/components/chat/MessageReactions";
 import { MentionInput } from "@/components/MentionInput";
 import { MentionText } from "@/components/MentionText";
 import { personById, useStore } from "@/lib/store";
@@ -246,8 +247,8 @@ function Message({
   highlighted,
   id,
   mine,
-  
   projectId,
+  readOnly,
 }: {
   authorId: string;
   projectId: string;
@@ -256,6 +257,7 @@ function Message({
   highlighted: boolean;
   id: string;
   mine: boolean;
+  readOnly: boolean;
 }) {
   const { commentAttachments } = useStore();
   const author = personById(authorId);
@@ -286,10 +288,10 @@ function Message({
             mine ? "border-gold/45 bg-gold-tint" : "border-border bg-card",
           )}
         >
-
           {body && <MentionText body={body} />}
           {files.length > 0 && <AttachmentList attachments={files} projectId={projectId} />}
         </div>
+        <MessageReactions commentId={id} readOnly={readOnly} />
       </div>
     </div>
   );
@@ -392,6 +394,7 @@ function ThreadPanel({
                     createdAt={message.created_at}
                     mine={message.author_id === currentUserId}
                     highlighted={highlightCommentId === message.id}
+                    readOnly={!canPost}
                   />
                 </div>
               );
