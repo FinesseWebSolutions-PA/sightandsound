@@ -191,6 +191,7 @@ function SetDetail({
     saving,
   } = useStore();
   const [nameDraft, setNameDraft] = useState(set.name);
+  const [tab, setTab] = useState<"schedule" | "documents" | "conversation" | "team">("schedule");
 
   const index = order.findIndex((s) => s.id === set.id);
   const previous = order[index - 1];
@@ -442,6 +443,35 @@ function SetDetail({
         </dl>
       </section>
 
+      <div
+        role="tablist"
+        aria-label={`${set.name} sections`}
+        className="surface-card flex flex-wrap gap-1 overflow-hidden p-1"
+      >
+        {(
+          [
+            { id: "schedule", label: "Schedule" },
+            { id: "documents", label: "Documents" },
+            { id: "conversation", label: "Conversation" },
+            { id: "team", label: "Team" },
+          ] as const
+        ).map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={`min-h-11 rounded-md px-4 text-sm font-medium ${
+              tab === t.id ? "bg-ink text-cream-soft" : "text-ink-soft hover:bg-cream"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "team" && (
       <section className="surface-card overflow-hidden">
         <header className="panel-header px-4 py-3">
           <h4 className="text-sm font-semibold text-ink">Who is on this set</h4>
@@ -526,31 +556,31 @@ function SetDetail({
           })}
         </ul>
       </section>
+      )}
 
-      <section className="min-w-0 space-y-3">
-        <h3 className="text-lg font-semibold text-ink">Schedule</h3>
-        <div className="min-w-0 overflow-hidden">
-          <MasterTimeline projectId={projectId} sceneId={set.id} />
-        </div>
-      </section>
+      {tab === "schedule" && (
+        <section className="min-w-0 space-y-3">
+          <div className="min-w-0 overflow-hidden">
+            <MasterTimeline projectId={projectId} sceneId={set.id} />
+          </div>
+        </section>
+      )}
 
-      <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-ink">Documents</h3>
-        <DocumentBrowser projectId={projectId} sceneId={set.id} />
-      </section>
+      {tab === "documents" && (
+        <section className="space-y-3">
+          <DocumentBrowser projectId={projectId} sceneId={set.id} />
+        </section>
+      )}
 
-      <section className="min-w-0 space-y-3">
-        <h3 className="text-lg font-semibold text-ink">Conversation</h3>
-        <p className="text-sm text-ink-soft">
-          Everything said about this set — the set itself, its work items and its documents — stays
-          here, so the whole team can catch up in one place.
-        </p>
-        <ConversationRail
-          projectId={projectId}
-          sceneId={set.id}
-          listTitle={`Conversations on ${set.name}`}
-        />
-      </section>
+      {tab === "conversation" && (
+        <section className="min-w-0 space-y-3">
+          <ConversationRail
+            projectId={projectId}
+            sceneId={set.id}
+            listTitle={`Conversations on ${set.name}`}
+          />
+        </section>
+      )}
     </div>
   );
 }
