@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppHeader } from "@/components/AppHeader";
+import { BottomTabBar } from "@/components/BottomTabBar";
 import { StoreProvider } from "@/lib/store";
 
 function NotFoundComponent() {
