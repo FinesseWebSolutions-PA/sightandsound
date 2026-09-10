@@ -13,6 +13,7 @@ import {
   personById,
   useStore,
 } from "@/lib/store";
+import { addDays } from "@/lib/schedule";
 import { formatDate, setStatusMeta } from "@/lib/status";
 import type { Scene, SetStatus } from "@/lib/production-data";
 
@@ -200,6 +201,25 @@ function SetDetail({
   );
   const shown = involved.length > 0 ? involved : departments;
 
+  /**
+   * A set that follows another one starts the day after that set finishes, plus
+   * whatever gap is set. Only the finish date is committed by hand.
+   */
+  const followsSet = order.find((s) => s.id === set.depends_on_scene_id);
+  const startFrom = (predecessorId: string, lag: number) => {
+    const pred = order.find((s) => s.id === predecessorId);
+    const base = pred?.due_date || pred?.forecast_finish;
+    return base ? addDays(base, 1 + lag) : "";
+  };
+  const applyChain = (predecessorId: string, lag: number) => {
+    const start = predecessorId ? startFrom(predecessorId, lag) : "";
+    void updateScene(set.id, projectId, {
+      depends_on_scene_id: predecessorId,
+      lag_days: lag,
+      ...(start ? { start_date: start } : {}),
+    });
+  };
+
   return (
     <div className="min-w-0 space-y-4">
       <section className="surface-card p-4">
@@ -312,7 +332,7 @@ function SetDetail({
           <div>
             <dt className="rule-label">Committed start</dt>
             <dd className="mt-1">
-              {canEdit ? (
+              {canEdit && !followsSet ? (
                 <input
                   type="date"
                   aria-label="Committed start"
@@ -325,6 +345,12 @@ function SetDetail({
               ) : (
                 <span className="text-sm text-ink">
                   {set.start_date ? formatDate(set.start_date) : "Not committed"}
+                </span>
+              )}
+              {followsSet && (
+                <span className="mt-1 block text-xs text-ink-soft">
+                  Filled in from {followsSet.name}
+                  {set.lag_days ? ` plus a ${set.lag_days} day gap` : ""}.
                 </span>
               )}
             </dd>
@@ -374,11 +400,7 @@ function SetDetail({
                   <select
                     aria-label="Set this one follows"
                     value={set.depends_on_scene_id}
-                    onChange={(e) =>
-                      void updateScene(set.id, projectId, {
-                        depends_on_scene_id: e.target.value,
-                      })
-                    }
+                    onChange={(e) => applyChain(e.target.value, set.lag_days)}
                     className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
                   >
                     <option value="">Starts on its own</option>
@@ -395,9 +417,7 @@ function SetDetail({
                         type="number"
                         value={set.lag_days}
                         onChange={(e) =>
-                          void updateScene(set.id, projectId, {
-                            lag_days: Number(e.target.value) || 0,
-                          })
+                          applyChain(set.depends_on_scene_id, Number(e.target.value) || 0)
                         }
                         className="mt-1 min-h-11 w-24 rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
                       />
