@@ -723,7 +723,7 @@ export function ConversationView({
   threadId: string;
   highlightCommentId?: string | undefined;
 }) {
-  const { threads, comments, tasks, documents, addComment, can, isClosed, currentUserId } =
+  const { threads, comments, tasks, documents, scenes, addComment, can, isClosed, currentUserId } =
     useStore();
   const endRef = useRef<HTMLDivElement>(null);
   const thread = threads.find((t) => t.id === threadId);
@@ -756,11 +756,27 @@ export function ConversationView({
     );
   }
 
-  const contextText = thread.task_id
+  const threadSet = scenes.find(
+    (s) =>
+      s.id ===
+      (thread.scene_id ||
+        tasks.find((t) => t.id === thread.task_id)?.scene_id ||
+        documents.find((d) => d.id === thread.document_id)?.scene_id ||
+        ""),
+  );
+  const anchorText = thread.task_id
     ? (tasks.find((t) => t.id === thread.task_id)?.title ?? "Work item")
     : thread.document_id
       ? (documents.find((d) => d.id === thread.document_id)?.title ?? "Document")
-      : "Whole production";
+      : threadSet
+        ? threadSet.name
+        : "Whole production";
+  // Work-item and document conversations name their set too, so it is always
+  // clear which part of the build is being talked about.
+  const contextText =
+    threadSet && (thread.task_id || thread.document_id)
+      ? `${threadSet.name} · ${anchorText}`
+      : anchorText;
 
   return (
     <ThreadPanel
@@ -784,9 +800,12 @@ export function ConversationView({
 /** Starts a new production-wide conversation (subject + first message). */
 export function NewProjectConversation({
   projectId,
+  sceneId,
   onCreated,
 }: {
   projectId: string;
+  /** When given, the new conversation belongs to that set rather than the whole production. */
+  sceneId?: string;
   onCreated?: (() => void) | undefined;
 }) {
   const { createThread } = useStore();
@@ -800,9 +819,10 @@ export function NewProjectConversation({
       onSubmit={async (body, subject, attachments) => {
         const ok = await createThread({
           projectId,
-          contextType: "project",
+          contextType: sceneId ? "scene" : "project",
           taskId: null,
           documentId: null,
+          sceneId: sceneId ?? null,
           subject,
           body,
           attachments,
