@@ -468,6 +468,8 @@ export function Discussion({
   contextType: ThreadContext;
   taskId?: string | null;
   documentId?: string | null;
+  /** Set the conversation belongs to, when the context is a set. */
+  sceneId?: string | null;
   heading?: string;
   blurb?: string;
   /** Inline mode is used where the thing itself is shown (a work item, a document). */
