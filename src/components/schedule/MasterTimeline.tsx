@@ -693,40 +693,70 @@ export function MasterTimeline({
                 return (
                   <section key={group.key}>
                     <header className="group-header flex items-stretch">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setCollapsed((cur) => ({ ...cur, [group.key]: !isCollapsed }))
-                        }
-                        onMouseEnter={() => wide && setHoveredScene(s.id)}
-                        onMouseLeave={() => wide && setHoveredScene(null)}
-                        aria-expanded={!isCollapsed}
-                        className="flex shrink-0 items-start gap-2 px-4 py-2.5 text-left lg:sticky lg:left-0 lg:z-10 lg:bg-band"
-                        style={wide ? { width: NAME_COL } : undefined}
-                      >
-                        {isCollapsed ? (
-                          <ChevronRight aria-hidden className="mt-0.5 size-4 shrink-0 text-ink" />
-                        ) : (
-                          <ChevronDown aria-hidden className="mt-0.5 size-4 shrink-0 text-ink" />
-                        )}
-                        <span className="min-w-0 flex-1">
-                          <span className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-bold text-ink">{group.label}</span>
-                            <span className="rounded-full border border-border-strong bg-card px-2 py-0.5 text-[11px] font-semibold text-ink-soft">
-                              {group.rows.length}
+                      {(() => {
+                        const inner = (
+                          <span className="min-w-0 flex-1">
+                            <span className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-bold text-ink">{group.label}</span>
+                              {!setsOnly && (
+                                <span className="rounded-full border border-border-strong bg-card px-2 py-0.5 text-[11px] font-semibold text-ink-soft">
+                                  {group.rows.length}
+                                </span>
+                              )}
+                              {!clean && <StatusBadge meta={setStatusMeta[s.status]} size="sm" />}
                             </span>
-                            {!clean && <StatusBadge meta={setStatusMeta[s.status]} size="sm" />}
+                            <span className="mt-1 block text-xs text-ink-soft">
+                              {s.start_date ? formatDate(s.start_date) : "No start"} –{" "}
+                              {s.due_date ? formatDate(s.due_date) : "No finish"}
+                              {slip > 0 && (
+                                <span className="font-semibold text-danger">
+                                  {" "}
+                                  · {slip} days late
+                                </span>
+                              )}
+                              {follows && ` · follows ${follows.name}`}
+                            </span>
                           </span>
-                          <span className="mt-1 block text-xs text-ink-soft">
-                            Committed {formatDate(s.due_date)} · Forecast{" "}
-                            {formatDate(s.forecast_finish)}
-                            {slip > 0 && (
-                              <span className="font-semibold text-danger"> · {slip} days late</span>
+                        );
+                        const shellClass =
+                          "flex shrink-0 items-start gap-2 px-4 py-2.5 text-left lg:sticky lg:left-0 lg:z-10 lg:bg-band";
+                        const shellStyle = wide ? { width: NAME_COL } : undefined;
+                        return setsOnly ? (
+                          <Link
+                            to="/projects/$projectId/sets"
+                            params={{ projectId }}
+                            search={{ set: s.id }}
+                            onMouseEnter={() => wide && setHoveredScene(s.id)}
+                            onMouseLeave={() => wide && setHoveredScene(null)}
+                            className={shellClass}
+                            style={shellStyle}
+                          >
+                            {inner}
+                          </Link>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCollapsed((cur) => ({ ...cur, [group.key]: !isCollapsed }))
+                            }
+                            onMouseEnter={() => wide && setHoveredScene(s.id)}
+                            onMouseLeave={() => wide && setHoveredScene(null)}
+                            aria-expanded={!isCollapsed}
+                            className={shellClass}
+                            style={shellStyle}
+                          >
+                            {isCollapsed ? (
+                              <ChevronRight
+                                aria-hidden
+                                className="mt-0.5 size-4 shrink-0 text-ink"
+                              />
+                            ) : (
+                              <ChevronDown aria-hidden className="mt-0.5 size-4 shrink-0 text-ink" />
                             )}
-                            {follows && ` · follows ${follows.name}`}
-                          </span>
-                        </span>
-                      </button>
+                            {inner}
+                          </button>
+                        );
+                      })()}
                       {wide && (
                         <div className="relative" style={{ width: chartWidth, minHeight: 56 }}>
                           <span
