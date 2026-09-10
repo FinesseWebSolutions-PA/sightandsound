@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { CheckCircle2, Download, FileText, FolderPlus } from "lucide-react";
+import { CheckCircle2, CircleDashed, Download, FileText, FolderPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { SaveToDocsDialog } from "@/components/SaveToDocsDialog";
