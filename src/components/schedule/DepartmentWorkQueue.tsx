@@ -1,10 +1,16 @@
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, CalendarClock, Link2 } from "lucide-react";
+import { AlertTriangle, CalendarClock, Link2, MessageSquare } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, personById, taskDependencies, useStore } from "@/lib/store";
-import { criticalityMeta, dependencyTypeLabel, formatDate, formatFloat, taskStatusMeta } from "@/lib/status";
+import {
+  criticalityMeta,
+  dependencyTypeLabel,
+  formatDate,
+  formatFloat,
+  taskStatusMeta,
+} from "@/lib/status";
 import { daysBetween, toISO } from "@/lib/schedule";
 import type { Task } from "@/lib/production-data";
 
@@ -125,6 +131,17 @@ export function DepartmentWorkQueue({ projectId }: { projectId: string }) {
                                         ?.name ?? "unassigned department"}{" "}
                                       ({dependencyTypeLabel[dep.type]})
                                     </span>
+                                  </Link>
+                                  <Link
+                                    to="/projects/$projectId/timeline"
+                                    params={{ projectId }}
+                                    search={{ task: upstream!.id, ask: upstream!.department_id }}
+                                    className="mt-1 inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold text-gold-deep hover:underline"
+                                  >
+                                    <MessageSquare aria-hidden className="size-3.5" />
+                                    Ask{" "}
+                                    {departments.find((d) => d.id === upstream!.department_id)
+                                      ?.name ?? "the department"}
                                   </Link>
                                 </li>
                               ))}

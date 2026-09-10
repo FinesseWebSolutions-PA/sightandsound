@@ -48,6 +48,7 @@ export function MentionInput({
   ariaLabel,
   onFocus,
   className,
+  inputRef,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -56,37 +57,51 @@ export function MentionInput({
   ariaLabel?: string;
   onFocus?: () => void;
   className?: string;
+  inputRef?: React.RefObject<HTMLTextAreaElement | null>;
 }) {
-  const areaRef = useRef<HTMLTextAreaElement>(null);
+  const localRef = useRef<HTMLTextAreaElement>(null);
+  const areaRef = inputRef ?? localRef;
   const [token, setToken] = useState<{ start: number; query: string } | null>(null);
   const [highlight, setHighlight] = useState(0);
   const caretAfterInsert = useRef<number | null>(null);
 
-  const suggestions = useMemo<Suggestion[]>(() => {
+  // People and departments are matched together but presented as two labelled
+  // groups, so it is always obvious which kind of mention you are choosing.
+  const groups = useMemo<{ label: string; items: Suggestion[] }[]>(() => {
     if (!token) return [];
-    const pool: Suggestion[] = [
-      ...departments.map((d) => ({
-        kind: "department" as const,
-        id: d.id,
-        label: d.name,
-        hint: "Department — notifies the owner and leads",
-      })),
-      ...people.map((p) => ({
+    const pick = (pool: Suggestion[]) =>
+      pool
+        .map((s) => ({ s, score: rank(s.label, token.query) }))
+        .filter((x) => x.score >= 0)
+        .sort((a, b) => a.score - b.score || a.s.label.localeCompare(b.s.label))
+        .slice(0, MAX_RESULTS)
+        .map((x) => x.s);
+
+    const peopleHits = pick(
+      people.map((p) => ({
         kind: "person" as const,
         id: p.id,
         label: p.full_name,
         hint: p.title,
       })),
+    );
+    const departmentHits = pick(
+      departments.map((d) => ({
+        kind: "department" as const,
+        id: d.id,
+        label: d.name,
+        hint: "Reaches the owner and leads",
+      })),
+    );
+    return [
+      ...(peopleHits.length ? [{ label: "People", items: peopleHits }] : []),
+      ...(departmentHits.length ? [{ label: "Departments", items: departmentHits }] : []),
     ];
-    return pool
-      .map((s) => ({ s, score: rank(s.label, token.query) }))
-      .filter((x) => x.score >= 0)
-      .sort((a, b) => a.score - b.score || a.s.label.localeCompare(b.s.label))
-      .slice(0, MAX_RESULTS)
-      .map((x) => x.s);
   }, [token]);
 
+  const suggestions = useMemo(() => groups.flatMap((g) => g.items), [groups]);
   const open = token !== null && suggestions.length > 0;
+  const highlighted = suggestions[highlight];
 
   useLayoutEffect(() => {
     if (caretAfterInsert.current !== null && areaRef.current) {
@@ -95,7 +110,7 @@ export function MentionInput({
       areaRef.current.focus();
       areaRef.current.setSelectionRange(pos, pos);
     }
-  }, [value]);
+  }, [value, areaRef]);
 
   const sync = (next: string, caret: number) => {
     const found = activeToken(next, caret);
@@ -158,42 +173,62 @@ export function MentionInput({
       />
 
       {open && (
-        <ul
-          role="listbox"
-          aria-label="Mention suggestions"
-          className="absolute z-40 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-lg sm:w-80"
-        >
-          {suggestions.map((s, i) => (
-            <li key={`${s.kind}-${s.id}`}>
-              <button
-                type="button"
-                role="option"
-                aria-selected={i === highlight}
-                onMouseEnter={() => setHighlight(i)}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => insert(s)}
-                className={cn(
-                  "flex min-h-11 w-full items-center gap-2.5 px-3 py-2 text-left",
-                  i === highlight ? "bg-cream" : "hover:bg-cream-soft",
-                )}
-              >
-                {s.kind === "person" ? (
-                  <span className="grid size-7 shrink-0 place-items-center rounded-full bg-ink text-[0.625rem] font-semibold text-cream-soft">
-                    {initials(s.label)}
-                  </span>
-                ) : (
-                  <span className="grid size-7 shrink-0 place-items-center rounded-md bg-gold-tint text-gold-deep">
-                    <Users aria-hidden className="size-3.5" />
-                  </span>
-                )}
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium text-ink">{s.label}</span>
-                  <span className="block truncate text-xs text-ink-soft">{s.hint}</span>
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className="absolute z-40 mt-1 w-full overflow-hidden rounded-lg border border-border bg-popover shadow-lg sm:w-80">
+          <ul
+            role="listbox"
+            aria-label="Mention suggestions"
+            className="max-h-60 overflow-y-auto py-1"
+          >
+            {groups.map((group) => (
+              <li key={group.label} role="presentation">
+                <p className="rule-label px-3 pt-2 pb-1">{group.label}</p>
+                <ul role="presentation">
+                  {group.items.map((s) => {
+                    const i = suggestions.indexOf(s);
+                    return (
+                      <li key={`${s.kind}-${s.id}`}>
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={i === highlight}
+                          onMouseEnter={() => setHighlight(i)}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => insert(s)}
+                          className={cn(
+                            "flex min-h-11 w-full items-center gap-2.5 px-3 py-2 text-left",
+                            i === highlight ? "bg-cream" : "hover:bg-cream-soft",
+                          )}
+                        >
+                          {s.kind === "person" ? (
+                            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-ink text-[0.625rem] font-semibold text-cream-soft">
+                              {initials(s.label)}
+                            </span>
+                          ) : (
+                            <span className="grid size-7 shrink-0 place-items-center rounded-md bg-gold-tint text-gold-deep">
+                              <Users aria-hidden className="size-3.5" />
+                            </span>
+                          )}
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-medium text-ink">
+                              {s.label}
+                            </span>
+                            <span className="block truncate text-xs text-ink-soft">{s.hint}</span>
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </li>
+            ))}
+          </ul>
+          {highlighted?.kind === "department" && (
+            <p className="flex items-start gap-1.5 border-t border-border bg-cream-soft px-3 py-2 text-xs text-ink-soft">
+              <Users aria-hidden className="mt-0.5 size-3 shrink-0" />
+              Notifies {highlighted.label}&apos;s owner and leads — not the whole roster.
+            </p>
+          )}
+        </div>
       )}
     </div>
   );

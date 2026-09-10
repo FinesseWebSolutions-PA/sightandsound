@@ -2,7 +2,8 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { ArrowUpRight, Clock, Link2, Lock, MessageSquare } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 
-import { Discussion } from "@/components/Discussion";
+import { TaskDetailPanel } from "@/components/TaskDetailPanel";
+
 import { StatusBadge } from "@/components/StatusBadge";
 import { DepartmentWorkQueue } from "@/components/schedule/DepartmentWorkQueue";
 import { MasterTimeline } from "@/components/schedule/MasterTimeline";
@@ -14,8 +15,16 @@ import type { Task, TaskStatus } from "@/lib/production-data";
 
 /** The scheduling views a person can switch between. */
 const views = [
-  { id: "master", label: "Master Timeline", blurb: "Milestones, dependencies and the critical path" },
-  { id: "queue", label: "Department Work Queue", blurb: "What each department owes, and what's blocking it" },
+  {
+    id: "master",
+    label: "Master Timeline",
+    blurb: "Milestones, dependencies and the critical path",
+  },
+  {
+    id: "queue",
+    label: "Department Work Queue",
+    blurb: "What each department owes, and what's blocking it",
+  },
   { id: "scenes", label: "Scene Readiness", blurb: "Scene by scene, department by department" },
   { id: "list", label: "Work & conversations", blurb: "Milestone list with comments in place" },
 ] as const;
@@ -35,12 +44,12 @@ const comingSoon = [
 export const Route = createFileRoute("/projects/$projectId/timeline")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { task?: string; comment?: string; view?: string } => ({
-    ...(typeof search['task'] === "string" ? { task: search['task'] } : {}),
-    ...(typeof search['comment'] === "string" ? { comment: search['comment'] } : {}),
-    ...(typeof search['view'] === "string" ? { view: search['view'] } : {}),
+  ): { task?: string; comment?: string; view?: string; ask?: string } => ({
+    ...(typeof search["task"] === "string" ? { task: search["task"] } : {}),
+    ...(typeof search["comment"] === "string" ? { comment: search["comment"] } : {}),
+    ...(typeof search["view"] === "string" ? { view: search["view"] } : {}),
+    ...(typeof search["ask"] === "string" ? { ask: search["ask"] } : {}),
   }),
-
 
   head: () => ({
     meta: [
@@ -69,23 +78,11 @@ type TaskViewProps = {
   onStatus: (taskId: string, status: TaskStatus) => void;
   taskTitle: (id: string) => string;
   emptyLabel: string;
-  openTaskId: string | null;
-  onToggleThread: (taskId: string) => void;
-  highlightCommentId?: string;
+  onOpenTask: (taskId: string) => void;
 };
 
-/** The conversation about one work item, shown right where the work item is listed. */
-function TaskConversation({
-  task,
-  open,
-  onToggle,
-  highlightCommentId,
-}: {
-  task: Task;
-  open: boolean;
-  onToggle: () => void;
-  highlightCommentId?: string;
-}) {
+/** Comment count and latest message for one work item; opens the work item in place. */
+function TaskCommentsButton({ task, onOpen }: { task: Task; onOpen: () => void }) {
   const { threads, comments } = useStore();
   const activity = activityFor(threads, comments, {
     projectId: task.project_id,
@@ -94,45 +91,28 @@ function TaskConversation({
   const latest = activity.latest;
 
   return (
-    <div className="space-y-2">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        className="inline-flex min-h-11 w-full items-start gap-2 rounded-md border border-border bg-cream-soft px-3 py-2 text-left transition-colors hover:bg-cream sm:w-auto"
-      >
-        <MessageSquare aria-hidden className="mt-0.5 size-4 shrink-0 text-gold-deep" />
-        <span className="block min-w-0 flex-1">
-          <span className="block text-xs font-semibold text-ink">
-            {activity.count === 0
-              ? open
-                ? "Hide comments"
-                : "Add a comment"
-              : `${activity.count} comment${activity.count === 1 ? "" : "s"}${open ? " — hide" : ""}`}
-          </span>
-          {latest && !open && (
-            <span className="mt-0.5 block text-xs break-words text-ink-soft">
-              {personById(latest.author_id)?.full_name}, {formatDateTime(latest.created_at)}:{" "}
-              {snippet(latest.body, 70)}
-            </span>
-          )}
+    <button
+      type="button"
+      onClick={onOpen}
+      className="inline-flex min-h-11 w-full items-start gap-2 rounded-md border border-border bg-cream-soft px-3 py-2 text-left transition-colors hover:bg-cream sm:w-auto"
+    >
+      <MessageSquare aria-hidden className="mt-0.5 size-4 shrink-0 text-gold-deep" />
+      <span className="block min-w-0 flex-1">
+        <span className="block text-xs font-semibold text-ink">
+          {activity.count === 0
+            ? "Open and comment"
+            : `${activity.count} comment${activity.count === 1 ? "" : "s"}`}
         </span>
-      </button>
-      {open && (
-        <div className="rounded-md border border-border bg-card px-3 py-2">
-          <Discussion
-            inline
-            projectId={task.project_id}
-            contextType="task"
-            taskId={task.id}
-            {...(highlightCommentId ? { highlightCommentId } : {})}
-          />
-        </div>
-      )}
-    </div>
+        {latest && (
+          <span className="mt-0.5 block text-xs break-words text-ink-soft">
+            {personById(latest.author_id)?.full_name}, {formatDateTime(latest.created_at)}:{" "}
+            {snippet(latest.body, 70)}
+          </span>
+        )}
+      </span>
+    </button>
   );
 }
-
 
 function StatusControl({
   task,
@@ -176,9 +156,7 @@ function TaskCards({
   onStatus,
   taskTitle,
   emptyLabel,
-  openTaskId,
-  onToggleThread,
-  highlightCommentId,
+  onOpenTask,
 }: TaskViewProps) {
   if (rows.length === 0) {
     return <p className="px-4 py-3 text-sm text-ink-soft lg:hidden">{emptyLabel}</p>;
@@ -217,12 +195,7 @@ function TaskCards({
               </p>
             )}
             <StatusControl task={task} canUpdate={canUpdate} onStatus={onStatus} size="touch" />
-            <TaskConversation
-              task={task}
-              open={openTaskId === task.id}
-              onToggle={() => onToggleThread(task.id)}
-              {...(highlightCommentId ? { highlightCommentId } : {})}
-            />
+            <TaskCommentsButton task={task} onOpen={() => onOpenTask(task.id)} />
           </li>
         );
       })}
@@ -236,9 +209,7 @@ function TaskTable({
   onStatus,
   taskTitle,
   emptyLabel,
-  openTaskId,
-  onToggleThread,
-  highlightCommentId,
+  onOpenTask,
 }: TaskViewProps) {
   return (
     <div className="hidden overflow-x-auto lg:block">
@@ -259,58 +230,56 @@ function TaskTable({
             const blocks = taskDependencies.filter((d) => d.depends_on_task_id === task.id);
             return (
               <Fragment key={task.id}>
-              <tr className="align-top">
-
-                <td className="px-4 py-3">
-                  <span className="text-ink">{task.title}</span>
-                  <span className="code-id mt-0.5 block">{task.id}</span>
-                  {blocks.length > 0 && (
-                    <span className="mt-1 inline-flex items-center gap-1 text-xs text-ink-soft">
-                      <ArrowUpRight aria-hidden className="size-3" />
-                      Blocks {blocks.map((b) => taskTitle(b.task_id)).join(", ")}
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-ink-soft">
-                  {departments.find((d) => d.id === task.department_id)?.name}
-                </td>
-                <td className="px-4 py-3 text-ink-soft">
-                  {personById(task.assignee_id)?.full_name}
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap text-ink-soft">
-                  {formatDate(task.due_date)}
-                </td>
-                <td className="px-4 py-3 text-ink-soft">
-                  {waitsOn.length === 0 ? (
-                    "—"
-                  ) : (
-                    <ul className="space-y-1">
-                      {waitsOn.map((d) => (
-                        <li key={d.depends_on_task_id} className="flex items-start gap-1.5">
-                          <Link2 aria-hidden className="mt-0.5 size-3 shrink-0" />
-                          <span>{taskTitle(d.depends_on_task_id)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <StatusControl task={task} canUpdate={canUpdate} onStatus={onStatus} size="sm" />
-                </td>
-              </tr>
-              <tr>
-                <td colSpan={6} className="px-4 pb-3">
-                  <TaskConversation
-                    task={task}
-                    open={openTaskId === task.id}
-                    onToggle={() => onToggleThread(task.id)}
-                    {...(highlightCommentId ? { highlightCommentId } : {})}
-                  />
-                </td>
-              </tr>
+                <tr className="align-top">
+                  <td className="px-4 py-3">
+                    <span className="text-ink">{task.title}</span>
+                    <span className="code-id mt-0.5 block">{task.id}</span>
+                    {blocks.length > 0 && (
+                      <span className="mt-1 inline-flex items-center gap-1 text-xs text-ink-soft">
+                        <ArrowUpRight aria-hidden className="size-3" />
+                        Blocks {blocks.map((b) => taskTitle(b.task_id)).join(", ")}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-ink-soft">
+                    {departments.find((d) => d.id === task.department_id)?.name}
+                  </td>
+                  <td className="px-4 py-3 text-ink-soft">
+                    {personById(task.assignee_id)?.full_name}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-ink-soft">
+                    {formatDate(task.due_date)}
+                  </td>
+                  <td className="px-4 py-3 text-ink-soft">
+                    {waitsOn.length === 0 ? (
+                      "—"
+                    ) : (
+                      <ul className="space-y-1">
+                        {waitsOn.map((d) => (
+                          <li key={d.depends_on_task_id} className="flex items-start gap-1.5">
+                            <Link2 aria-hidden className="mt-0.5 size-3 shrink-0" />
+                            <span>{taskTitle(d.depends_on_task_id)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusControl
+                      task={task}
+                      canUpdate={canUpdate}
+                      onStatus={onStatus}
+                      size="sm"
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan={6} className="px-4 pb-3">
+                    <TaskCommentsButton task={task} onOpen={() => onOpenTask(task.id)} />
+                  </td>
+                </tr>
               </Fragment>
             );
-
           })}
           {rows.length === 0 && (
             <tr>
@@ -357,28 +326,20 @@ function TimelineTab() {
 
   const taskTitle = (id: string) => tasks.find((t) => t.id === id)?.title ?? id;
 
-  // Arriving from the Inbox or the Dashboard opens that work item's thread straight away.
+  // Arriving from My Work, the Dashboard or a blocker link opens that work item in place.
   const [openTaskId, setOpenTaskId] = useState<string | null>(search.task ?? null);
   useEffect(() => {
     if (search.task) setOpenTaskId(search.task);
   }, [search.task]);
 
   const threadProps = {
-    openTaskId,
-    onToggleThread: (id: string) => setOpenTaskId((cur) => (cur === id ? null : id)),
-    ...(search.comment ? { highlightCommentId: search.comment } : {}),
+    onOpenTask: (id: string) => setOpenTaskId(id),
   };
 
-  // A deep link to one work item's conversation lands on the list view.
-  const initialView: ViewId = search.task
-    ? "list"
-    : views.some((v) => v.id === search.view)
-      ? (search.view as ViewId)
-      : "master";
+  const initialView: ViewId = views.some((v) => v.id === search.view)
+    ? (search.view as ViewId)
+    : "master";
   const [view, setView] = useState<ViewId>(initialView);
-  useEffect(() => {
-    if (search.task) setView("list");
-  }, [search.task]);
 
   const activeView = views.find((v) => v.id === view) ?? views[0];
 
@@ -458,7 +419,6 @@ function TimelineTab() {
       )}
 
       <div className={view === "list" ? "space-y-5" : "hidden"}>
-
         {projectMilestones.map((milestone) => {
           const milestoneTasks = projectTasks
             .filter((t) => t.milestone_id === milestone.id)
@@ -540,6 +500,15 @@ function TimelineTab() {
           </p>
         )}
       </div>
+
+      {openTaskId && (
+        <TaskDetailPanel
+          taskId={openTaskId}
+          onClose={() => setOpenTaskId(null)}
+          {...(search.comment ? { highlightCommentId: search.comment } : {})}
+          {...(search.ask ? { askDepartmentId: search.ask } : {})}
+        />
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
+  AlertTriangle,
   CheckCircle2,
   FileUp,
   History,
@@ -19,8 +20,8 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/projects/$projectId/documents")({
   validateSearch: (search: Record<string, unknown>): { document?: string; comment?: string } => ({
-    ...(typeof search['document'] === "string" ? { document: search['document'] } : {}),
-    ...(typeof search['comment'] === "string" ? { comment: search['comment'] } : {}),
+    ...(typeof search["document"] === "string" ? { document: search["document"] } : {}),
+    ...(typeof search["comment"] === "string" ? { comment: search["comment"] } : {}),
   }),
   head: () => ({
     meta: [
@@ -77,18 +78,13 @@ function DocumentsTab() {
     setNote("");
   };
 
-
   return (
     <div className="space-y-6">
       <div>
         <h2 className="font-display text-2xl text-ink sm:text-3xl">Documents</h2>
-        <p className="mt-1 max-w-2xl text-sm text-ink-soft">
-          Every drawing set, package, and plan with its version history and review record. Nothing
-          is hidden between departments.
-        </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
+      <div className="grid items-start gap-6 lg:grid-cols-[1.3fr_1fr]">
         <section className="surface-card overflow-hidden">
           {/* Phones get full-width tappable rows instead of a table. */}
           <ul className="divide-y divide-border lg:hidden">
@@ -185,6 +181,40 @@ function DocumentsTab() {
                 <StatusBadge meta={approvalStateMeta[selected.approval_state]} />
               </div>
               {(() => {
+                const approvedVersions = approvals
+                  .filter((a) => a.document_id === selected.id && a.decision === "approved")
+                  .map((a) => a.version);
+                const lastApproved = approvedVersions.length ? Math.max(...approvedVersions) : null;
+                const safe =
+                  selected.approval_state === "approved" &&
+                  lastApproved === selected.current_version;
+                const message = safe
+                  ? `Revision v${selected.current_version} is approved — safe to build from.`
+                  : selected.approval_state === "in_review"
+                    ? `Revision v${selected.current_version} is still under review — do not build from it yet.`
+                    : lastApproved
+                      ? `Revision v${selected.current_version} is not approved. The last approved revision is v${lastApproved}.`
+                      : `No revision has been approved yet — do not build from this.`;
+                return (
+                  <p
+                    className={cn(
+                      "mt-3 flex items-start gap-2 rounded-md border px-3 py-2 text-sm font-medium",
+                      safe
+                        ? "border-success/30 bg-success-bg text-success"
+                        : "border-warning/30 bg-warning-bg text-warning",
+                    )}
+                  >
+                    {safe ? (
+                      <CheckCircle2 aria-hidden className="mt-0.5 size-4 shrink-0" />
+                    ) : (
+                      <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
+                    )}
+                    {message}
+                  </p>
+                );
+              })()}
+
+              {(() => {
                 const a = activityFor(threads, comments, {
                   projectId,
                   documentId: selected.id,
@@ -275,7 +305,6 @@ function DocumentsTab() {
                     : "Viewers can read documents and their review history."}
                 </p>
               )}
-
             </div>
 
             <div className="surface-card overflow-hidden">
@@ -289,10 +318,18 @@ function DocumentsTab() {
                   .sort((a, b) => b.version - a.version)
                   .map((v) => (
                     <li key={v.id} className="px-4 py-3 text-sm">
-                      <div className="flex items-baseline justify-between gap-2">
+                      <div className="flex flex-wrap items-baseline gap-2">
                         <span className="code-id">v{v.version}</span>
-                        <span className="text-xs text-ink-soft">{formatDate(v.uploaded_at)}</span>
+                        {v.version === selected.current_version && (
+                          <span className="rounded-full bg-gold-tint px-2 py-0.5 text-[11px] font-semibold text-gold-deep">
+                            Current
+                          </span>
+                        )}
+                        <span className="ml-auto text-xs text-ink-soft">
+                          {formatDate(v.uploaded_at)}
+                        </span>
                       </div>
+
                       <p className="mt-0.5 text-ink">{v.note}</p>
                       <p className="text-xs text-ink-soft">
                         {personById(v.uploaded_by_id)?.full_name} · {v.file_label}
@@ -335,16 +372,14 @@ function DocumentsTab() {
         )}
       </div>
 
-      {selected && (
-        <div id="document-discussion" />
-      )}
+      {selected && <div id="document-discussion" />}
       {selected && (
         <Discussion
           projectId={projectId}
           contextType="document"
           documentId={selected.id}
-          heading={`Discussion on ${selected.title}`}
-          blurb="The conversation lives with the file itself — no separate chat to hunt for."
+          heading={`Conversation on ${selected.title}`}
+
           {...(search.comment ? { highlightCommentId: search.comment } : {})}
         />
       )}

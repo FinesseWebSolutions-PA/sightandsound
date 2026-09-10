@@ -12,7 +12,6 @@ export function AppHeader() {
   const unread = notifications.filter((n) => !n.read).length;
   // What is unread for this person specifically, which is what the Inbox shows.
   const myUnread = notifications.filter((n) => !n.read && n.recipient_id === currentUserId).length;
-  
 
   const roleSelect = (id: string) => (
     <select
@@ -64,7 +63,7 @@ export function AppHeader() {
             }}
           >
             <Inbox aria-hidden className="size-4" />
-            My Inbox
+            My Work
             {myUnread > 0 && (
               <span className="rounded-full bg-gold-tint px-1.5 text-xs font-semibold text-gold-deep">
                 {myUnread}
@@ -106,7 +105,6 @@ export function AppHeader() {
               {roleSelect("role-switcher")}
             </div>
           </div>
-
         </div>
       </div>
     </header>

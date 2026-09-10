@@ -106,10 +106,7 @@ export type Task = {
 };
 
 export type DependencyType =
-  | "finish_to_start"
-  | "start_to_start"
-  | "finish_to_finish"
-  | "start_to_finish";
+  "finish_to_start" | "start_to_start" | "finish_to_finish" | "start_to_finish";
 
 export type TaskDependency = {
   id: string;
@@ -173,7 +170,6 @@ export type Approval = {
   note: string;
 };
 
-
 export type ThreadContext = "project" | "task" | "document";
 
 export type DiscussionThread = {
@@ -218,7 +214,6 @@ export type Notification = {
   /** True when the notice came from a department mention rather than a direct one. */
   via_department: boolean;
 };
-
 
 export type AuditEntry = {
   id: string;
@@ -265,8 +260,16 @@ const STOP_WORDS = new Set(["the", "a", "an", "and", "of", "&"]);
 
 function departmentCode(name: string): string {
   const words = name.split(/[^A-Za-z]+/).filter(Boolean);
-  if (words.length > 1) return words.map((w) => w[0]!).join("").slice(0, 3).toUpperCase();
-  return name.replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase();
+  if (words.length > 1)
+    return words
+      .map((w) => w[0]!)
+      .join("")
+      .slice(0, 3)
+      .toUpperCase();
+  return name
+    .replace(/[^A-Za-z]/g, "")
+    .slice(0, 3)
+    .toUpperCase();
 }
 
 function projectCode(name: string, dateish: string | null): string {
@@ -347,9 +350,7 @@ function asCriticality(value: string | null | undefined): Criticality {
 }
 
 function asDependencyType(value: string | null | undefined): DependencyType {
-  return value === "start_to_start" ||
-    value === "finish_to_finish" ||
-    value === "start_to_finish"
+  return value === "start_to_start" || value === "finish_to_finish" || value === "start_to_finish"
     ? value
     : "finish_to_start";
 }
@@ -384,7 +385,9 @@ export async function previewTaskReschedule(
 
 /** Reads every table and maps it into the shapes the interface renders. */
 export async function loadProductionData(): Promise<ProductionData> {
-  const { data: projectIdRows, error: projectIdError } = await supabase.from("projects").select("id");
+  const { data: projectIdRows, error: projectIdError } = await supabase
+    .from("projects")
+    .select("id");
   if (projectIdError) throw new Error(projectIdError.message);
   await refreshSchedule((projectIdRows ?? []).map((p) => p.id));
 
@@ -483,7 +486,7 @@ export async function loadProductionData(): Promise<ProductionData> {
         email: p.email ?? "",
         primary_department_id: membership?.department_id ?? "",
         role: (p.role === "admin" || p.role === "contributor" ? p.role : "viewer") as Role,
-        };
+      };
     });
 
   const milestoneRows = milestonesRes.data ?? [];
@@ -520,8 +523,9 @@ export async function loadProductionData(): Promise<ProductionData> {
   const projects: Project[] = (projectsRes.data ?? []).map((p) => {
     const mine = milestoneRows.filter((m) => m.project_id === p.id);
     const byName = (pattern: RegExp) => mine.find((m) => pattern.test(m.name))?.due_date ?? null;
-    const deptCount = (projectDepartmentsRes.data ?? []).filter((pd) => pd.project_id === p.id)
-      .length;
+    const deptCount = (projectDepartmentsRes.data ?? []).filter(
+      (pd) => pd.project_id === p.id,
+    ).length;
     const workCount = tasks.filter((t) => t.project_id === p.id).length;
     const status = asProjectStatus(p.status);
     return {
@@ -580,9 +584,7 @@ export async function loadProductionData(): Promise<ProductionData> {
       readiness = "complete";
     } else if (scoped.some((t) => t.status === "blocked")) {
       readiness = "blocked";
-    } else if (
-      scoped.some((t) => t.status !== "complete" && t.due_date && t.due_date < today)
-    ) {
+    } else if (scoped.some((t) => t.status !== "complete" && t.due_date && t.due_date < today)) {
       readiness = "at_risk";
     }
     return {
@@ -653,8 +655,7 @@ export async function loadProductionData(): Promise<ProductionData> {
       owner_id: d.created_by ?? "",
       approval_state: documentApprovalState(d.status, d.id),
       current_version: latest || 1,
-      updated_at:
-        mine.length > 0 ? mine[mine.length - 1]!.uploaded_at : dateOnly(d.created_at),
+      updated_at: mine.length > 0 ? mine[mine.length - 1]!.uploaded_at : dateOnly(d.created_at),
     };
   });
 
@@ -671,13 +672,12 @@ export async function loadProductionData(): Promise<ProductionData> {
       document_id: version?.document_id ?? "",
       version: version?.version_number ?? 1,
       decision,
-      actor_id: (a.decided_by ?? a.requested_by) ?? "",
+      actor_id: a.decided_by ?? a.requested_by ?? "",
       requested_by_id: a.requested_by ?? "",
       decided_by_id: a.decided_by ?? "",
       created_at: dateOnly(a.decided_at ?? a.requested_at),
       note: a.decision_note ?? "",
     };
-
   });
 
   const commentRows = commentsRes.data ?? [];
@@ -755,11 +755,8 @@ export async function loadProductionData(): Promise<ProductionData> {
     };
   });
 
-
   const threadProject = new Map(discussionThreads.map((t) => [t.id, t.project_id]));
-  const commentProject = new Map(
-    comments.map((c) => [c.id, threadProject.get(c.thread_id) ?? ""]),
-  );
+  const commentProject = new Map(comments.map((c) => [c.id, threadProject.get(c.thread_id) ?? ""]));
 
   const resolveAuditProject = (entityType: string, entityId: string): string => {
     switch (entityType) {
@@ -899,7 +896,10 @@ export async function writeDocumentVersion(
   note: string,
   actorId: string,
 ) {
-  const slug = documentTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const slug = documentTitle
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
   const { data, error } = await supabase
     .from("document_versions")
     .insert({

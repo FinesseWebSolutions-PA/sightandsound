@@ -7,7 +7,6 @@ import { departments, people, personById, projectDepartments, useStore } from "@
 import { readinessMeta } from "@/lib/status";
 import { roleLabels } from "@/lib/store";
 
-
 export const Route = createFileRoute("/projects/$projectId/team")({
   head: () => ({
     meta: [
@@ -156,7 +155,6 @@ function TeamTab() {
           );
         })}
       </div>
-
 
       <section className="surface-card overflow-x-auto">
         <header className="border-b border-border bg-cream-soft px-4 py-3">

@@ -22,7 +22,6 @@ import {
   writeTaskDates,
   writeTaskStatus,
   writeThread,
-
   type Approval,
   type AuditEntry,
   type Comment,
@@ -110,8 +109,6 @@ type Store = {
   markNotifications: (ids: string[], read: boolean) => void;
 };
 
-
-
 const StoreContext = createContext<Store | null>(null);
 
 /**
@@ -160,7 +157,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setRoleState(next);
     window.localStorage.setItem(ROLE_KEY, next);
   }, []);
-
 
   const refresh = useCallback(async () => {
     const next = await loadProductionData();
@@ -237,7 +233,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
-
   const setTaskStatus = useCallback(
     (taskId: string, status: TaskStatus) => {
       if (!allowed(projectOfTask(taskId), "contribute")) return;
@@ -274,8 +269,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       previewTaskReschedule(taskId, startDate, dueDate),
     [],
   );
-
-
 
   const setMilestoneDate = useCallback(
     (milestoneId: string, dueDate: string) => {
@@ -409,7 +402,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [run],
   );
 
-
   const value = useMemo<Store | null>(
     () =>
       data
@@ -449,13 +441,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             createThread,
             markNotifications,
           }
-
         : null,
     [
       role,
       setRole,
       isClosed,
-
 
       currentUserId,
       data,
@@ -471,7 +461,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       createThread,
       markNotifications,
     ],
-
   );
 
   if (error && !value) {
@@ -512,7 +501,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       {children}
     </StoreContext.Provider>
   );
-
 }
 
 export function useStore(): Store {
