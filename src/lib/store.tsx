@@ -13,6 +13,9 @@ import { Loader2 } from "lucide-react";
 import {
   loadProductionData,
   previewTaskReschedule,
+  saveAttachmentToDocs,
+  uploadChatAttachment,
+  writeDocumentFolder,
   writeApproval,
   writeComment,
   writeDocumentVersion,
@@ -25,6 +28,7 @@ import {
   type Approval,
   type AuditEntry,
   type Comment,
+  type CommentAttachment,
   type Department,
   type DiscussionThread,
   type Document,
@@ -39,6 +43,7 @@ import {
   type ReschedulePreviewRow,
   type Role,
   type Scene,
+  type StagedAttachment,
   type Task,
   type TaskDependency,
   type TaskStatus,
@@ -80,6 +85,7 @@ type Store = {
   approvals: Approval[];
   threads: DiscussionThread[];
   comments: Comment[];
+  commentAttachments: CommentAttachment[];
   mentions: Mention[];
   notifications: Notification[];
   saving: boolean;
@@ -96,7 +102,25 @@ type Store = {
   setPortalUrl: (projectId: string, url: string) => void;
   addDocumentVersion: (documentId: string, note: string) => void;
   recordApproval: (documentId: string, decision: Approval["decision"], note: string) => void;
-  addComment: (threadId: string, parentCommentId: string | null, body: string) => void;
+  addComment: (
+    threadId: string,
+    parentCommentId: string | null,
+    body: string,
+    attachments?: StagedAttachment[],
+  ) => void;
+  /** Uploads a file for a conversation before the message is posted. */
+  uploadAttachment: (
+    file: File,
+    projectId: string,
+    threadKey: string,
+  ) => Promise<StagedAttachment>;
+  /** Files a shared file into the production's documents, inside a folder. */
+  saveAttachmentToDocuments: (input: {
+    attachmentId: string;
+    folder: string;
+    title: string;
+  }) => Promise<void>;
+  setDocumentFolder: (documentId: string, folder: string) => void;
   createThread: (input: {
     projectId: string;
     contextType: ThreadContext;
@@ -104,6 +128,7 @@ type Store = {
     documentId?: string | null;
     subject: string;
     body: string;
+    attachments?: StagedAttachment[];
   }) => void;
   /** Personal Inbox read state; works on any production, closed ones included. */
   markNotifications: (ids: string[], read: boolean) => void;
@@ -342,7 +367,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const addComment = useCallback(
-    (threadId: string, _parentCommentId: string | null, body: string) => {
+    (
+      threadId: string,
+      _parentCommentId: string | null,
+      body: string,
+      attachments?: StagedAttachment[],
+    ) => {
       const thread = data?.discussionThreads.find((t) => t.id === threadId);
       if (!thread || !allowed(projectOfThread(threadId), "contribute")) return;
       run(() =>
@@ -355,6 +385,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           sourceEntityId: thread.task_id ?? thread.document_id ?? thread.project_id,
           departments: data?.departments ?? [],
           people: data?.people ?? [],
+          ...(attachments && attachments.length > 0 ? { attachments } : {}),
         }),
       );
     },
@@ -362,7 +393,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const createThread = useCallback<Store["createThread"]>(
-    ({ projectId, contextType, taskId = null, documentId = null, subject, body }) => {
+    ({ projectId, contextType, taskId = null, documentId = null, subject, body, attachments }) => {
       if (!allowed(projectId, "contribute")) return;
       // The table requires the id that matches the context, so refuse an unanchored thread.
       if (contextType === "task" && !taskId) return;
@@ -378,10 +409,64 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           authorId: currentUserIdRef.current,
           departments: data?.departments ?? [],
           people: data?.people ?? [],
+          ...(attachments && attachments.length > 0 ? { attachments } : {}),
         }),
       );
     },
     [allowed, data, run],
+  );
+
+  const uploadAttachment = useCallback(
+    (file: File, projectId: string, threadKey: string) =>
+      uploadChatAttachment(file, projectId, threadKey),
+    [],
+  );
+
+  const saveAttachmentToDocuments = useCallback(
+    async ({
+      attachmentId,
+      folder,
+      title,
+    }: {
+      attachmentId: string;
+      folder: string;
+      title: string;
+    }) => {
+      const current = dataRef.current;
+      const attachment = current?.commentAttachments.find((a) => a.id === attachmentId);
+      if (!current || !attachment || attachment.saved_document_id) return;
+      const comment = current.comments.find((c) => c.id === attachment.comment_id);
+      const thread = current.discussionThreads.find((t) => t.id === comment?.thread_id);
+      if (!thread || !allowed(thread.project_id, "contribute")) return;
+      setSaving(true);
+      try {
+        await saveAttachmentToDocs({
+          attachmentId,
+          storageKey: attachment.storage_key,
+          fileName: attachment.file_name,
+          projectId: thread.project_id,
+          taskId: thread.task_id ?? null,
+          folder,
+          title,
+          actorId: currentUserIdRef.current,
+        });
+        await refresh();
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "That file could not be saved to documents.");
+        throw e;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [allowed, refresh],
+  );
+
+  const setDocumentFolder = useCallback(
+    (documentId: string, folder: string) => {
+      if (!allowed(projectOfDocument(documentId), "contribute")) return;
+      run(() => writeDocumentFolder(documentId, folder, currentUserIdRef.current));
+    },
+    [allowed, run],
   );
 
   const markNotifications = useCallback(
@@ -427,6 +512,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             approvals: data.approvals,
             threads: data.discussionThreads,
             comments: data.comments,
+            commentAttachments: data.commentAttachments,
             mentions: data.mentions,
             notifications: data.notifications,
             saving,
@@ -439,6 +525,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             recordApproval,
             addComment,
             createThread,
+            uploadAttachment,
+            saveAttachmentToDocuments,
+            setDocumentFolder,
             markNotifications,
           }
         : null,
@@ -459,6 +548,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       recordApproval,
       addComment,
       createThread,
+      uploadAttachment,
+      saveAttachmentToDocuments,
+      setDocumentFolder,
       markNotifications,
     ],
   );
