@@ -561,6 +561,20 @@ export function DocumentBrowser({
                 )}
               </header>
 
+              {(() => {
+                const current = documentVersions
+                  .filter((v) => v.document_id === selected.id)
+                  .sort((a, b) => b.version - a.version)[0];
+                return (
+                  <DocumentPreview
+                    storageKey={current?.storage_key ?? null}
+                    fileLabel={current?.file_label ?? selected.title}
+                  />
+                );
+              })()}
+
+
+
               <ul className="row-list">
                 {/* Conversation */}
                 {(() => {
