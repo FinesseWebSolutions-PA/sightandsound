@@ -568,9 +568,10 @@ export function MasterTimeline({
       {/* legend */}
       {!clean && (
         <div className="flex flex-wrap items-center gap-2">
-          {(["critical", "near_critical", "normal"] as const).map((c) => (
-            <StatusBadge key={c} meta={criticalityMeta[c]} size="sm" />
-          ))}
+          {!setsOnly &&
+            (["critical", "near_critical", "normal"] as const).map((c) => (
+              <StatusBadge key={c} meta={criticalityMeta[c]} size="sm" />
+            ))}
           <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
             <span aria-hidden className="h-2 w-5 rounded-full border border-border-strong bg-band" />
             Committed plan
