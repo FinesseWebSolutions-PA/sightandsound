@@ -6,7 +6,6 @@ import {
   CornerDownRight,
   Crosshair,
   Diamond,
-  Eye,
   Link2,
   Loader2,
   Lock,
@@ -129,7 +128,7 @@ export function MasterTimeline({
     [scenes, projectId],
   );
 
-  const [clean, setClean] = useState(false);
+  const clean: boolean = true;
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [openTask, setOpenTask] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -552,18 +551,8 @@ export function MasterTimeline({
         >
           <Crosshair aria-hidden className="size-4" /> Today
         </button>
-
-        <button
-          type="button"
-          onClick={() => setClean((c) => !c)}
-          aria-pressed={clean}
-          className={`inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border-strong px-3 text-sm font-medium ${
-            clean ? "bg-ink text-cream-soft" : "bg-card text-ink hover:bg-cream"
-          }`}
-        >
-          <Eye aria-hidden className="size-4" /> Clean view
-        </button>
       </div>
+
 
       {/* legend */}
       {!clean && (
