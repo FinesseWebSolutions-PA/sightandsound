@@ -1462,6 +1462,23 @@ export async function writeDocumentFolder(documentId: string, folder: string, ac
   await recordAudit("document", documentId, actorId, "folder_changed", { folder: folder || null });
 }
 
+/**
+ * Files a document into a set's folder (or out of every set folder). Sets own
+ * their folder, so a document in a set folder carries no custom folder name.
+ */
+export async function writeDocumentScene(
+  documentId: string,
+  sceneId: string | null,
+  actorId: string,
+) {
+  const { error } = await supabase
+    .from("documents")
+    .update({ scene_id: sceneId, ...(sceneId ? { folder: null } : {}) })
+    .eq("id", documentId);
+  if (error) throw new Error(error.message);
+  await recordAudit("document", documentId, actorId, "set_changed", { scene_id: sceneId });
+}
+
 /* --------------------------------------------------------------- staffing */
 
 /** Puts a department on a production, or takes it off. */
@@ -1692,7 +1709,8 @@ export type WorkItemInput = {
   title: string;
   description: string;
   departmentId: string;
-  sceneId: string | null;
+  /** Every work item belongs to a set. */
+  sceneId: string;
   milestoneId: string | null;
   /** The work item this one is part of; null keeps it top level. Omit to leave unchanged. */
   parentTaskId?: string | null;
@@ -1712,7 +1730,7 @@ export async function writeTask(input: WorkItemInput): Promise<string> {
     title: input.title.trim(),
     description: input.description.trim() || null,
     department_id: input.departmentId || null,
-    scene_id: input.sceneId || null,
+    scene_id: input.sceneId,
     milestone_id: input.milestoneId || null,
     owner_id: input.ownerId || null,
     start_date: input.startDate || null,
@@ -1973,10 +1991,21 @@ export async function writeSceneName(
   await recordAudit("project", projectId, actorId, "scene_renamed", { name: name.trim() });
 }
 
-/** Removes a scene, first untying any work items and documents from it. */
+/**
+ * Removes a set. Every work item belongs to a set, so a set still holding work
+ * cannot be removed — that work has to be moved or deleted first.
+ */
 export async function removeScene(sceneId: string, projectId: string, actorId: string) {
+  const { count: held, error: heldError } = await supabase
+    .from("tasks")
+    .select("id", { count: "exact", head: true })
+    .eq("scene_id", sceneId);
+  if (heldError) throw new Error(heldError.message);
+  if ((held ?? 0) > 0)
+    throw new Error(
+      "This set still has work items. Move them to another set or delete them first.",
+    );
   const cleared = await Promise.all([
-    supabase.from("tasks").update({ scene_id: null }).eq("scene_id", sceneId),
     supabase.from("documents").update({ scene_id: null }).eq("scene_id", sceneId),
     // Sets that followed this one in the chain now follow nothing.
     supabase

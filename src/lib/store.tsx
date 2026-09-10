@@ -17,6 +17,7 @@ import {
   saveAttachmentToDocs,
   uploadChatAttachment,
   writeDocumentFolder,
+  writeDocumentScene,
   writeApproval,
   writeComment,
   writeDocumentVersion,
@@ -151,6 +152,7 @@ export type Store = {
     title: string;
   }) => Promise<void>;
   setDocumentFolder: (documentId: string, folder: string) => void;
+  setDocumentSet: (documentId: string, sceneId: string | null) => void;
   createThread: (input: {
     projectId: string;
     contextType: ThreadContext;
@@ -593,6 +595,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [allowed, run],
   );
 
+  const setDocumentSet = useCallback(
+    (documentId: string, sceneId: string | null) => {
+      if (!allowed(projectOfDocument(documentId), "contribute")) return;
+      run(() => writeDocumentScene(documentId, sceneId, currentUserIdRef.current));
+    },
+    [allowed, run],
+  );
+
   /* ------------------------------------------------------------- staffing */
 
   const adminGlobal = () => roleRef.current === "admin";
@@ -867,6 +877,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             uploadAttachment,
             saveAttachmentToDocuments,
             setDocumentFolder,
+            setDocumentSet,
             markNotifications,
             projectAssignments: data.projectAssignments,
             departmentJobTitles: data.departmentJobTitles,
@@ -930,6 +941,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             },
             saveAttachmentToDocuments: async () => {},
             setDocumentFolder: () => {},
+            setDocumentSet: () => {},
             createThread: async () => false,
             markNotifications: () => {},
             projectAssignments: [],
@@ -975,6 +987,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       uploadAttachment,
       saveAttachmentToDocuments,
       setDocumentFolder,
+      setDocumentSet,
       markNotifications,
       setDepartmentOnProject,
       assignPerson,

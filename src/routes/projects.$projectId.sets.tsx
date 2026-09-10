@@ -3,6 +3,8 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, Crown, Link2, Plus, X } from "lucide-react";
 
 import { Discussion } from "@/components/Discussion";
+import { DocumentBrowser } from "@/components/DocumentBrowser";
+import { MasterTimeline } from "@/components/schedule/MasterTimeline";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
   departmentJobTitles,
@@ -499,6 +501,18 @@ function SetDetail({
             );
           })}
         </ul>
+      </section>
+
+      <section className="min-w-0 space-y-3">
+        <h3 className="text-lg font-semibold text-ink">Schedule</h3>
+        <div className="min-w-0 overflow-hidden">
+          <MasterTimeline projectId={projectId} sceneId={set.id} />
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-lg font-semibold text-ink">Documents</h3>
+        <DocumentBrowser projectId={projectId} sceneId={set.id} />
       </section>
 
       <Discussion

@@ -954,7 +954,7 @@ export type Database = {
           owner_id: string | null
           parent_task_id: string | null
           project_id: string
-          scene_id: string | null
+          scene_id: string
           sort_order: number
           start_date: string | null
           status: string
@@ -980,7 +980,7 @@ export type Database = {
           owner_id?: string | null
           parent_task_id?: string | null
           project_id: string
-          scene_id?: string | null
+          scene_id: string
           sort_order?: number
           start_date?: string | null
           status?: string
@@ -1006,7 +1006,7 @@ export type Database = {
           owner_id?: string | null
           parent_task_id?: string | null
           project_id?: string
-          scene_id?: string | null
+          scene_id?: string
           sort_order?: number
           start_date?: string | null
           status?: string
