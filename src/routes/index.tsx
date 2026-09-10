@@ -41,7 +41,7 @@ export const Route = createFileRoute("/")({
 const statusFilters: ("all" | ProjectStatus)[] = ["all", "active", "planning", "closed"];
 
 function PortfolioPage() {
-  const { projects, milestones, can } = useStore();
+  const { projects, can } = useStore();
   const [status, setStatus] = useState<"all" | ProjectStatus>("all");
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
