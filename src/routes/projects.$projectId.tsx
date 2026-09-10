@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { createFileRoute, Link, Outlet, notFound } from "@tanstack/react-router";
-import { Archive, CalendarDays, ExternalLink } from "lucide-react";
+import { Archive, CalendarDays, ExternalLink, Pencil } from "lucide-react";
 
+import { ProductionSettingsDialog } from "@/components/ProductionSettingsDialog";
 import { StatusBadge } from "@/components/StatusBadge";
 import { personById, useStore } from "@/lib/store";
 import { formatDate, projectStatusMeta } from "@/lib/status";
@@ -35,11 +37,12 @@ const tabs = [
 
 function ProjectWorkspace() {
   const { projectId } = Route.useParams();
-  const { projects, isClosed } = useStore();
+  const { projects, isClosed, can } = useStore();
   const project = projects.find((p) => p.id === projectId);
   if (!project) throw notFound();
 
   const closed = isClosed(projectId);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <div>
@@ -65,6 +68,17 @@ function ProjectWorkspace() {
               <div className="flex flex-wrap items-center gap-3">
                 <span className="code-id">{project.code}</span>
                 <StatusBadge meta={projectStatusMeta[project.status]} size="sm" />
+                {can.adminConfig && (
+                  <button
+                    type="button"
+                    onClick={() => setSettingsOpen(true)}
+                    aria-label="Edit production settings"
+                    title="Edit production settings"
+                    className="grid size-9 place-items-center rounded-md border border-border bg-card text-ink-soft hover:bg-cream hover:text-ink"
+                  >
+                    <Pencil aria-hidden className="size-4" />
+                  </button>
+                )}
               </div>
               <h1 className="mt-1 font-display text-3xl leading-tight text-ink sm:text-4xl">
                 {project.name}
@@ -128,6 +142,10 @@ function ProjectWorkspace() {
       <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
         <Outlet />
       </main>
+
+      {settingsOpen && (
+        <ProductionSettingsDialog project={project} onClose={() => setSettingsOpen(false)} />
+      )}
     </div>
   );
 }
