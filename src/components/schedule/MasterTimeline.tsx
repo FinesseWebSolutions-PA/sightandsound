@@ -149,7 +149,7 @@ function ImpactPreview({
 }
 
 export function MasterTimeline({ projectId }: { projectId: string }) {
-  const { tasks, milestones, previewReschedule, setTaskDates, can, isClosed } = useStore();
+  const { tasks, milestones, can, isClosed } = useStore();
   const locked = isClosed(projectId) || !can.editCoreTimeline;
 
   const projectMilestones = useMemo(
