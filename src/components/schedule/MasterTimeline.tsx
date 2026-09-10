@@ -507,6 +507,17 @@ export function MasterTimeline({
     startX: number;
     days: number;
   } | null>(null);
+  const sDragRef = useRef(sDrag);
+  useEffect(() => {
+    sDragRef.current = sDrag;
+  }, [sDrag]);
+  const setDragStartRef = useRef<{
+    sceneId: string;
+    kind: "move" | "start" | "end";
+    startX: number;
+  } | null>(null);
+  const suppressSetClickRef = useRef(false);
+  const SET_DRAG_THRESHOLD = 4;
 
   const beginSetDrag = (
     sceneId: string,
