@@ -10,6 +10,45 @@ import { formatDateTime } from "@/lib/status";
 import { initials } from "@/lib/threads";
 import { cn } from "@/lib/utils";
 
+/** Chat panel shell so every conversation in the app reads the same way. */
+function ChatPanel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">{children}</div>
+  );
+}
+
+function Transcript({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="max-h-[26rem] space-y-3 overflow-y-auto bg-cream-soft/70 px-3 py-3 sm:px-4">
+      {children}
+    </div>
+  );
+}
+
+function ComposerBar({ children }: { children: React.ReactNode }) {
+  return <div className="border-t border-border bg-card px-3 py-2 sm:px-4">{children}</div>;
+}
+
+/** A quiet date divider between days, the way chat apps mark them. */
+function DayDivider({ date }: { date: string }) {
+  const day = new Date(date);
+  const today = new Date();
+  const yesterday = new Date(today.getTime() - 86400000);
+  const same = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+  const label = same(day, today)
+    ? "Today"
+    : same(day, yesterday)
+      ? "Yesterday"
+      : day.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return (
+    <p className="flex items-center gap-3 py-1 text-[0.6875rem] font-semibold tracking-wide text-ink-soft uppercase">
+      <span className="h-px flex-1 bg-border" />
+      {label}
+      <span className="h-px flex-1 bg-border" />
+    </p>
+  );
+}
+
 function Composer({
   placeholder,
   submitLabel,
@@ -407,8 +446,15 @@ export function Discussion({
 
       {/* Inline: the first message starts the conversation for this exact thing. */}
       {visible.length === 0 && inline && (
-        <div>
-          {canPost ? (
+        <ChatPanel>
+          <Transcript>
+            <p className="py-4 text-center text-sm text-ink-soft">
+              No messages here yet
+              {canPost ? " — say something to bring the right people in." : locked ? " — this production is closed and archived." : "."}
+            </p>
+          </Transcript>
+          {canPost && (
+            <ComposerBar>
             <Composer
               compact
               projectId={projectId}
@@ -430,25 +476,19 @@ export function Discussion({
                 onSent?.();
               }}
             />
-          ) : (
-            <p className="text-sm text-ink-soft">
-              No messages here yet
-              {locked ? " — this production is closed and archived." : "."}
-            </p>
+            </ComposerBar>
           )}
-        </div>
+        </ChatPanel>
       )}
 
       {visible.map((thread) => {
         const threadComments = comments.filter((c) => c.thread_id === thread.id);
         const roots = threadComments.filter((c) => !c.parent_comment_id);
         return (
-          <article
-            key={thread.id}
-            className={inline ? "overflow-hidden" : "surface-card overflow-hidden"}
-          >
+          <article key={thread.id}>
+            <ChatPanel>
             {!inline && (
-              <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-cream-soft px-4 py-3">
+              <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-card px-3 py-3 sm:px-4">
                 <h3 className="text-sm font-semibold text-ink">
                   {thread.subject || contextLabel(thread.task_id, thread.document_id)}
                 </h3>
@@ -457,11 +497,17 @@ export function Discussion({
                 </span>
               </header>
             )}
-            <div className={inline ? "space-y-4" : "space-y-4 px-4 py-3"}>
-              {roots.map((root) => {
+            <Transcript>
+              {roots.map((root, index) => {
                 const replies = threadComments.filter((c) => c.parent_comment_id === root.id);
+                const previous = index > 0 ? roots[index - 1] : undefined;
+                const newDay =
+                  !previous ||
+                  new Date(previous.created_at).toDateString() !==
+                    new Date(root.created_at).toDateString();
                 return (
                   <div key={root.id} className="space-y-2">
+                    {newDay && <DayDivider date={root.created_at} />}
                     <Message
                       projectId={projectId}
                       id={root.id}
@@ -514,15 +560,9 @@ export function Discussion({
                   </div>
                 );
               })}
-            </div>
+            </Transcript>
             {canPost && (
-              <div
-                className={
-                  inline
-                    ? "border-t border-border pt-2"
-                    : "border-t border-border bg-cream-soft px-4 py-3"
-                }
-              >
+              <ComposerBar>
                 <Composer
                   compact
                   projectId={projectId}
@@ -536,8 +576,9 @@ export function Discussion({
                     onSent?.();
                   }}
                 />
-              </div>
+              </ComposerBar>
             )}
+            </ChatPanel>
           </article>
         );
       })}
