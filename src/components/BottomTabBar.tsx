@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Inbox, LayoutGrid, Search, UserRound, X } from "lucide-react";
+import { Inbox, LayoutGrid, Search, UserRound, Users, X } from "lucide-react";
 
 import { people, roleDescriptions, roleLabels, useStore } from "@/lib/store";
 import type { Role } from "@/lib/production-data";
@@ -88,6 +88,15 @@ export function BottomTabBar() {
                 <span className="sr-only">Close</span>
               </button>
             </div>
+
+            <Link
+              to="/team"
+              onClick={() => setSheetOpen(false)}
+              className="mt-4 flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 text-base font-medium text-ink"
+            >
+              <Users aria-hidden className="size-5" />
+              Team &amp; Roles
+            </Link>
 
             <p className="rule-label mt-4 mb-2">Viewing as</p>
             <div className="grid gap-2">
