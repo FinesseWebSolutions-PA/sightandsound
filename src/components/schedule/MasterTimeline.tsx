@@ -105,6 +105,7 @@ export function MasterTimeline({
     isClosed,
     previewReschedule,
     setTaskDates,
+    updateScene,
   } = useStore();
   const readOnly = isClosed(projectId) || !can.editCoreTimeline;
   const wide = useWideScreen();
