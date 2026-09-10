@@ -1,9 +1,12 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Users } from "lucide-react";
 
 import { departments, people } from "@/lib/store";
 import { initials } from "@/lib/threads";
 import { cn } from "@/lib/utils";
+
+const POPUP_HEIGHT_ESTIMATE = 260;
+const POPUP_MARGIN = 8;
 
 type Suggestion =
   | { kind: "department"; id: string; label: string; hint: string }
