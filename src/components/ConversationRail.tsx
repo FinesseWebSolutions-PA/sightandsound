@@ -130,6 +130,8 @@ export function ConversationRail({
               const isClosedSection = closedSections[section.key] === true;
               return (
                 <section key={section.key}>
+                  {/* Inside one set the list is already that set's, so its name is not repeated. */}
+                  {!sceneId && (
                   <div className="group-header flex items-center gap-1.5 px-3 py-1.5">
                     <button
                       type="button"
@@ -158,7 +160,8 @@ export function ConversationRail({
                       </Link>
                     )}
                   </div>
-                  {!isClosedSection && (
+                  )}
+                  {(!isClosedSection || sceneId) && (
                     <ul className="row-list">
                       {section.rows.map((row) => (
                         <li key={row.id}>
