@@ -140,6 +140,8 @@ export type ApprovalState = "draft" | "in_review" | "approved" | "changes_reques
 export type Document = {
   id: string;
   project_id: string;
+  task_id: string;
+  scene_id: string;
   title: string;
   kind: string;
   department_id: string;
