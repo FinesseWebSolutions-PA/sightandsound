@@ -238,23 +238,26 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
             const slip = m ? slipDays(m.due_date, m.forecast_date) : 0;
             return (
               <section key={key}>
-                <header className="bg-cream-soft/60">
+                <header className="group-header">
                   <button
                     type="button"
                     onClick={() => setCollapsed((cur) => ({ ...cur, [key]: !isCollapsed }))}
                     aria-expanded={!isCollapsed}
-                    className="flex w-full items-start gap-2 px-4 py-3 text-left"
+                    className="flex w-full items-start gap-2 px-4 py-2.5 text-left"
                   >
                     {isCollapsed ? (
-                      <ChevronRight aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-soft" />
+                      <ChevronRight aria-hidden className="mt-0.5 size-4 shrink-0 text-ink" />
                     ) : (
-                      <ChevronDown aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-soft" />
+                      <ChevronDown aria-hidden className="mt-0.5 size-4 shrink-0 text-ink" />
                     )}
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-2">
                         {m && <Diamond aria-hidden className="size-3.5 text-gold-deep" />}
-                        <span className="text-sm font-semibold text-ink">
+                        <span className="text-xs font-bold tracking-[0.08em] text-ink uppercase">
                           {m ? m.name : "Not tied to a milestone yet"}
+                        </span>
+                        <span className="rounded-full border border-border-strong bg-card px-2 py-0.5 text-[11px] font-semibold text-ink-soft">
+                          {group.rows.length}
                         </span>
                         {m && <StatusBadge meta={milestoneStatusMeta[m.status]} size="sm" />}
                         {m && <StatusBadge meta={criticalityMeta[m.criticality]} size="sm" />}
@@ -263,20 +266,19 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
                         <span className="mt-1 block text-xs text-ink-soft">
                           Committed {formatDate(m.due_date)} · Forecast{" "}
                           {formatDate(m.forecast_date)}
-                          {slip > 0 && <span className="text-danger"> · {slip} days late</span>}
+                          {slip > 0 && (
+                            <span className="font-semibold text-danger"> · {slip} days late</span>
+                          )}
                           {m.affects_performance && " · affects performance"}
                         </span>
                       )}
-                      <span className="mt-1 block text-xs text-ink-soft">
-                        {group.rows.length} work item{group.rows.length === 1 ? "" : "s"}
-                      </span>
                     </span>
                   </button>
                   {m && (
-                    <div className="relative hidden h-6 lg:block">
+                    <div className="relative hidden h-5 lg:block">
                       <span
                         style={pointAt(span, m.forecast_date)}
-                        className="absolute top-0 ml-[22rem] size-3 -translate-x-1/2 rotate-45 border border-gold-deep bg-gold"
+                        className="absolute top-0 ml-[22rem] size-3.5 -translate-x-1/2 rotate-45 border-2 border-gold-deep bg-gold shadow-sm"
                         aria-hidden
                       />
                     </div>
