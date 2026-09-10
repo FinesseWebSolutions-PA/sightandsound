@@ -251,7 +251,6 @@ export function DocumentBrowser({
   /** Uploading a file straight into wherever you're standing. */
   const fileInputRef = useRef<HTMLInputElement>(null);
   const versionFileInputRef = useRef<HTMLInputElement>(null);
-  const [needsApproval, setNeedsApproval] = useState(true);
   const [versionFile, setVersionFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const addFiles = async (files: File[]) => {
@@ -264,7 +263,7 @@ export function DocumentBrowser({
           file,
           folder: place?.kind === "custom" ? place.name : null,
           sceneId: place?.kind === "set" ? place.id : null,
-          requiresApproval: needsApproval,
+          requiresApproval: true,
         });
       }
     } finally {
@@ -393,15 +392,6 @@ export function DocumentBrowser({
           <div className="ml-auto flex items-center gap-2">
             {canUpload && (
               <>
-                <label className="flex items-center gap-1.5 text-xs text-ink-soft">
-                  <input
-                    type="checkbox"
-                    checked={needsApproval}
-                    onChange={(e) => setNeedsApproval(e.target.checked)}
-                    className="size-4 rounded border-border"
-                  />
-                  Needs approval
-                </label>
                 <input
                   ref={fileInputRef}
                   type="file"
