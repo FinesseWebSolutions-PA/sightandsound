@@ -16,6 +16,7 @@ import { Discussion } from "@/components/Discussion";
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, personById, taskDependencies, useStore } from "@/lib/store";
 import {
+  approvalStateMeta,
   criticalityMeta,
   dependencyTypeLabel,
   formatDate,
@@ -385,7 +386,7 @@ export function TaskDetailPanel({
                       meta={
                         doc.requires_approval
                           ? approvalStateMeta[doc.approval_state]
-                          : { label: "No approval needed", tone: "neutral" }
+                          : { label: "No approval needed", tone: "neutral" as const, Icon: FileText }
                       }
                       size="sm"
                     />
