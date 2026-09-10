@@ -393,15 +393,6 @@ export function DocumentBrowser({
           <div className="ml-auto flex items-center gap-2">
             {canUpload && (
               <>
-                <label className="flex items-center gap-1.5 text-xs text-ink-soft">
-                  <input
-                    type="checkbox"
-                    checked={needsApproval}
-                    onChange={(e) => setNeedsApproval(e.target.checked)}
-                    className="size-4 rounded border-border"
-                  />
-                  Needs approval
-                </label>
                 <input
                   ref={fileInputRef}
                   type="file"
