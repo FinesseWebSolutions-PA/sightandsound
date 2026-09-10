@@ -19,7 +19,7 @@ const views = [
   {
     id: "master",
     label: "Master Timeline",
-    blurb: "Set by set, with the chain between them and the critical path",
+    blurb: "Set by set, with their dates and the chain between them",
   },
   {
     id: "queue",

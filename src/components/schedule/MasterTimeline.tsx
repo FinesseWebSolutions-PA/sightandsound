@@ -261,7 +261,12 @@ export function MasterTimeline({
     [childrenOf],
   );
 
-  /** One band per set, in running order — the production is planned set by set. */
+  /**
+   * The production timeline is planned set by set: it shows only the sets, their
+   * dates and the chain between them. Work items appear on a set's own schedule.
+   */
+  const setsOnly = !pinnedSceneId;
+
   const groups: Group[] = useMemo(
     () =>
       (pinnedSceneId ? projectScenes.filter((s) => s.id === pinnedSceneId) : projectScenes).map(
@@ -269,10 +274,10 @@ export function MasterTimeline({
           key: s.id,
           scene: s,
           label: s.name,
-          rows: nest(projectTasks.filter((t) => t.scene_id === s.id)),
+          rows: setsOnly ? [] : nest(projectTasks.filter((t) => t.scene_id === s.id)),
         }),
       ),
-    [pinnedSceneId, projectScenes, projectTasks, nest],
+    [pinnedSceneId, projectScenes, projectTasks, nest, setsOnly],
   );
 
   const visibleTaskIds = useMemo(() => {
@@ -563,9 +568,10 @@ export function MasterTimeline({
       {/* legend */}
       {!clean && (
         <div className="flex flex-wrap items-center gap-2">
-          {(["critical", "near_critical", "normal"] as const).map((c) => (
-            <StatusBadge key={c} meta={criticalityMeta[c]} size="sm" />
-          ))}
+          {!setsOnly &&
+            (["critical", "near_critical", "normal"] as const).map((c) => (
+              <StatusBadge key={c} meta={criticalityMeta[c]} size="sm" />
+            ))}
           <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
             <span aria-hidden className="h-2 w-5 rounded-full border border-border-strong bg-band" />
             Committed plan
@@ -576,7 +582,11 @@ export function MasterTimeline({
           <span className="rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
             Ctrl or ⌘ + scroll to zoom
           </span>
-          {readOnly ? (
+          {setsOnly ? (
+            <span className="rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
+              Open a set to plan the work inside it
+            </span>
+          ) : readOnly ? (
             <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
               <Lock aria-hidden className="size-3.5" /> Dates are read-only for you here
             </span>
@@ -598,7 +608,7 @@ export function MasterTimeline({
                   className="sticky left-0 z-10 shrink-0 border-r border-border-strong bg-band px-4 py-2"
                   style={{ width: NAME_COL }}
                 >
-                  <span className="rule-label">Sets & work</span>
+                  <span className="rule-label">{setsOnly ? "Sets" : "Sets & work"}</span>
                 </div>
                 <div className="relative py-2" style={{ width: chartWidth }}>
                   {projectMilestones.map((m) => (
@@ -688,40 +698,70 @@ export function MasterTimeline({
                 return (
                   <section key={group.key}>
                     <header className="group-header flex items-stretch">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setCollapsed((cur) => ({ ...cur, [group.key]: !isCollapsed }))
-                        }
-                        onMouseEnter={() => wide && setHoveredScene(s.id)}
-                        onMouseLeave={() => wide && setHoveredScene(null)}
-                        aria-expanded={!isCollapsed}
-                        className="flex shrink-0 items-start gap-2 px-4 py-2.5 text-left lg:sticky lg:left-0 lg:z-10 lg:bg-band"
-                        style={wide ? { width: NAME_COL } : undefined}
-                      >
-                        {isCollapsed ? (
-                          <ChevronRight aria-hidden className="mt-0.5 size-4 shrink-0 text-ink" />
-                        ) : (
-                          <ChevronDown aria-hidden className="mt-0.5 size-4 shrink-0 text-ink" />
-                        )}
-                        <span className="min-w-0 flex-1">
-                          <span className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-bold text-ink">{group.label}</span>
-                            <span className="rounded-full border border-border-strong bg-card px-2 py-0.5 text-[11px] font-semibold text-ink-soft">
-                              {group.rows.length}
+                      {(() => {
+                        const inner = (
+                          <span className="min-w-0 flex-1">
+                            <span className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-bold text-ink">{group.label}</span>
+                              {!setsOnly && (
+                                <span className="rounded-full border border-border-strong bg-card px-2 py-0.5 text-[11px] font-semibold text-ink-soft">
+                                  {group.rows.length}
+                                </span>
+                              )}
+                              {!clean && <StatusBadge meta={setStatusMeta[s.status]} size="sm" />}
                             </span>
-                            {!clean && <StatusBadge meta={setStatusMeta[s.status]} size="sm" />}
+                            <span className="mt-1 block text-xs text-ink-soft">
+                              {s.start_date ? formatDate(s.start_date) : "No start"} –{" "}
+                              {s.due_date ? formatDate(s.due_date) : "No finish"}
+                              {slip > 0 && (
+                                <span className="font-semibold text-danger">
+                                  {" "}
+                                  · {slip} days late
+                                </span>
+                              )}
+                              {follows && ` · follows ${follows.name}`}
+                            </span>
                           </span>
-                          <span className="mt-1 block text-xs text-ink-soft">
-                            Committed {formatDate(s.due_date)} · Forecast{" "}
-                            {formatDate(s.forecast_finish)}
-                            {slip > 0 && (
-                              <span className="font-semibold text-danger"> · {slip} days late</span>
+                        );
+                        const shellClass =
+                          "flex shrink-0 items-start gap-2 px-4 py-2.5 text-left lg:sticky lg:left-0 lg:z-10 lg:bg-band";
+                        const shellStyle = wide ? { width: NAME_COL } : undefined;
+                        return setsOnly ? (
+                          <Link
+                            to="/projects/$projectId/sets"
+                            params={{ projectId }}
+                            search={{ set: s.id }}
+                            onMouseEnter={() => wide && setHoveredScene(s.id)}
+                            onMouseLeave={() => wide && setHoveredScene(null)}
+                            className={shellClass}
+                            style={shellStyle}
+                          >
+                            {inner}
+                          </Link>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCollapsed((cur) => ({ ...cur, [group.key]: !isCollapsed }))
+                            }
+                            onMouseEnter={() => wide && setHoveredScene(s.id)}
+                            onMouseLeave={() => wide && setHoveredScene(null)}
+                            aria-expanded={!isCollapsed}
+                            className={shellClass}
+                            style={shellStyle}
+                          >
+                            {isCollapsed ? (
+                              <ChevronRight
+                                aria-hidden
+                                className="mt-0.5 size-4 shrink-0 text-ink"
+                              />
+                            ) : (
+                              <ChevronDown aria-hidden className="mt-0.5 size-4 shrink-0 text-ink" />
                             )}
-                            {follows && ` · follows ${follows.name}`}
-                          </span>
-                        </span>
-                      </button>
+                            {inner}
+                          </button>
+                        );
+                      })()}
                       {wide && (
                         <div className="relative" style={{ width: chartWidth, minHeight: 56 }}>
                           <span
@@ -748,7 +788,7 @@ export function MasterTimeline({
                       )}
                     </header>
 
-                    {!isCollapsed && (
+                    {!setsOnly && !isCollapsed && (
                       <ul className="row-list">
                         {group.rows.map((row) => {
                           const { task, isChild } = row;
