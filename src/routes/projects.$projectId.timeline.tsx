@@ -348,10 +348,6 @@ function TimelineTab() {
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <h2 className="font-display text-2xl text-ink sm:text-3xl">Schedule</h2>
-          <p className="mt-1 max-w-2xl text-sm text-ink-soft">
-            One schedule, several ways to read it. Spare time and the critical path are calculated
-            once, centrally, so every view here agrees.
-          </p>
         </div>
         {!canEditDates && (
           <p className="flex items-start gap-1.5 rounded-md border border-border bg-cream px-3 py-2 text-xs text-ink-soft">
