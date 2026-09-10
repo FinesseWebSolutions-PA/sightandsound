@@ -463,6 +463,8 @@ export async function loadProductionData(): Promise<ProductionData> {
     supabase.from("department_memberships").select("*"),
     supabase.from("projects").select("*").order("created_at"),
     supabase.from("project_departments").select("*"),
+    supabase.from("project_assignments").select("*").order("created_at"),
+    supabase.from("department_job_titles").select("*").order("sort_order"),
     supabase.from("scenes").select("*").order("sort_order"),
     supabase.from("milestones").select("*").order("sort_order"),
     supabase.from("tasks").select("*").order("sort_order"),
