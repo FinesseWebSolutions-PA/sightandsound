@@ -8,6 +8,7 @@ import {
   Folder,
   LayoutGrid,
   List,
+  MoreVertical,
   Search,
   History,
   MessageSquare,
@@ -15,6 +16,7 @@ import {
   ThumbsDown,
   XCircle,
 } from "lucide-react";
+
 
 import { Discussion } from "@/components/Discussion";
 import { DocumentPreview } from "@/components/DocumentPreview";
