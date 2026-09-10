@@ -44,11 +44,17 @@
 
   --color-cream: var(--cream-100);
   --color-cream-soft: var(--cream-50);
+  --color-cream-deep: var(--cream-200);
   --color-gold: var(--gold-500);
   --color-gold-deep: var(--gold-700);
   --color-gold-tint: var(--gold-100);
   --color-ink: var(--warm-gray-900);
   --color-ink-soft: var(--warm-gray-700);
+
+  --color-bar: var(--bar);
+  --color-bar-foreground: var(--bar-foreground);
+  --color-bar-border: var(--bar-border);
+  --color-bar-muted: var(--bar-muted);
 
   --color-success: var(--success);
   --color-success-bg: var(--success-bg);
@@ -61,6 +67,7 @@
   --color-neutral-status: var(--warm-gray-700);
   --color-neutral-status-bg: var(--cream-100);
 }
+
 
 :root {
   --radius: 0.5rem;
