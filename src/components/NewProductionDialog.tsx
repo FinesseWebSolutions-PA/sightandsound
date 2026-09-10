@@ -1,13 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, X } from "lucide-react";
 
-import { departments, people, useStore } from "@/lib/store";
+import { departmentJobTitles, departments, people, useStore } from "@/lib/store";
 import { projectStatusMeta } from "@/lib/status";
 import type { ProjectStatus } from "@/lib/production-data";
 
 const statusOptions: ProjectStatus[] = ["planning", "active", "on_hold"];
 
-/** Starts a new production: name, state, owner, build window, departments involved. */
+type StaffRow = { personId: string; jobTitle: string; isHead: boolean };
+
+/** Starts a new production: name, state, owner, build window, departments and team. */
 export function NewProductionDialog({
   onClose,
   onCreated,
@@ -22,6 +24,7 @@ export function NewProductionDialog({
   const [startDate, setStartDate] = useState("");
   const [targetCloseDate, setTargetCloseDate] = useState("");
   const [departmentIds, setDepartmentIds] = useState<string[]>([]);
+  const [staff, setStaff] = useState<Record<string, StaffRow[]>>({});
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -32,10 +35,62 @@ export function NewProductionDialog({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  const titlesFor = useMemo(
+    () => (departmentId: string) =>
+      departmentJobTitles
+        .filter((t) => t.department_id === departmentId)
+        .map((t) => t.title)
+        .concat("Team Member")
+        .filter((t, i, all) => all.indexOf(t) === i),
+    [],
+  );
+
   const toggleDepartment = (id: string) =>
-    setDepartmentIds((prev) =>
-      prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id],
-    );
+    setDepartmentIds((prev) => {
+      if (prev.includes(id)) {
+        setStaff((s) => {
+          const next = { ...s };
+          delete next[id];
+          return next;
+        });
+        return prev.filter((d) => d !== id);
+      }
+      return [...prev, id];
+    });
+
+  const togglePerson = (departmentId: string, personId: string) =>
+    setStaff((prev) => {
+      const rows = prev[departmentId] ?? [];
+      const has = rows.some((r) => r.personId === personId);
+      const next = has
+        ? rows.filter((r) => r.personId !== personId)
+        : [
+            ...rows,
+            {
+              personId,
+              jobTitle: titlesFor(departmentId)[0] ?? "Team Member",
+              isHead: rows.length === 0,
+            },
+          ];
+      return { ...prev, [departmentId]: next };
+    });
+
+  const setJobTitle = (departmentId: string, personId: string, jobTitle: string) =>
+    setStaff((prev) => ({
+      ...prev,
+      [departmentId]: (prev[departmentId] ?? []).map((r) =>
+        r.personId === personId ? { ...r, jobTitle } : r,
+      ),
+    }));
+
+  const setHead = (departmentId: string, personId: string) =>
+    setStaff((prev) => ({
+      ...prev,
+      [departmentId]: (prev[departmentId] ?? []).map((r) => ({
+        ...r,
+        isHead: r.personId === personId,
+      })),
+    }));
 
   const submit = async () => {
     if (!name.trim()) {
@@ -47,6 +102,14 @@ export function NewProductionDialog({
       return;
     }
     setError("");
+    const assignments = departmentIds.flatMap((departmentId) =>
+      (staff[departmentId] ?? []).map((row) => ({
+        personId: row.personId,
+        departmentId,
+        jobTitle: row.jobTitle,
+        isHead: row.isHead,
+      })),
+    );
     const id = await createProduction({
       name,
       status,
@@ -54,6 +117,7 @@ export function NewProductionDialog({
       startDate: startDate || null,
       targetCloseDate: targetCloseDate || null,
       departmentIds,
+      assignments,
     });
     if (!id) {
       setError("That production could not be created. Try again.");
@@ -61,6 +125,7 @@ export function NewProductionDialog({
     }
     onCreated(id);
   };
+
 
   const field =
     "mt-1 min-h-11 w-full rounded-md border border-border bg-card px-3 text-base text-ink focus:ring-2 focus:ring-ring focus:outline-none sm:text-sm";
