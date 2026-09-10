@@ -57,3 +57,12 @@
 - [x] Scene Readiness: scenes x departments, each cell derived from real work and linking to the blocking work item or document
 - [x] "Coming soon" list (Capacity Heat Map, Load-in/Load-out Gantt, Show-Day Command Dashboard, role-based presets) shown but not clickable
 - [x] Verified at 390 and 1280px: no page overflow, no console errors; closed productions show no date controls
+
+## Batch 2 (done)
+- Global search route (/search) over productions, work items, documents and message text, with breadcrumbs and deep links; reachable from desktop nav and mobile tab bar.
+- Notice count now scoped to the person being viewed, matching My Work.
+- My Work rows read as "Person mentioned you on X"; the sentence itself is the link.
+- Updates tab = production updates plus "Said elsewhere on this production" history.
+- Task titles open the work item everywhere they are listed.
+- Ask Department prefills once, then clears from the address.
+- Documents show the current revision beside the conversation.
