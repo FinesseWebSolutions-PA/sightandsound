@@ -256,7 +256,7 @@ export function TaskDetailPanel({
           {(subItems.length > 0 || canAddSub) && (
             <section className="rounded-md border border-border bg-card">
               <div className="flex items-center justify-between border-b border-border px-3 py-2">
-                <p className="text-xs font-semibold text-ink">Sub-items</p>
+                <p className="text-xs font-semibold text-ink">Sub-tasks</p>
                 {subItems.length > 0 && (
                   <p className="text-xs text-ink-soft">
                     {subDone} of {subItems.length} complete
