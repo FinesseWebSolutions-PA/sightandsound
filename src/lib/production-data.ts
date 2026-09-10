@@ -340,14 +340,59 @@ function humanize(value: string): string {
 
 /* -------------------------------------------------------------------- read */
 
+function asCriticality(value: string | null | undefined): Criticality {
+  return value === "critical" || value === "near_critical" ? value : "normal";
+}
+
+function asDependencyType(value: string | null | undefined): DependencyType {
+  return value === "start_to_start" ||
+    value === "finish_to_finish" ||
+    value === "start_to_finish"
+    ? value
+    : "finish_to_start";
+}
+
+/**
+ * Asks the database to recompute float, criticality and forecast dates for every
+ * production, so every view reads one shared set of numbers.
+ */
+export async function refreshSchedule(projectIds: string[]): Promise<void> {
+  await Promise.all(
+    projectIds.map(async (id) => {
+      const { error } = await callRpc("compute_project_schedule", { p_project_id: id });
+      if (error) throw new Error(error.message);
+    }),
+  );
+}
+
+/** Preview of what a proposed reschedule would do downstream. */
+export async function previewTaskReschedule(
+  taskId: string,
+  newStart: string,
+  newFinish: string,
+): Promise<ReschedulePreviewRow[]> {
+  const { data, error } = await callRpc("preview_task_reschedule", {
+    p_task_id: taskId,
+    p_new_start: newStart,
+    p_new_finish: newFinish,
+  });
+  if (error) throw new Error(error.message);
+  return (data as ReschedulePreviewRow[] | null) ?? [];
+}
+
 /** Reads every table and maps it into the shapes the interface renders. */
 export async function loadProductionData(): Promise<ProductionData> {
+  const { data: projectIdRows, error: projectIdError } = await supabase.from("projects").select("id");
+  if (projectIdError) throw new Error(projectIdError.message);
+  await refreshSchedule((projectIdRows ?? []).map((p) => p.id));
+
   const [
     peopleRes,
     departmentsRes,
     membershipsRes,
     projectsRes,
     projectDepartmentsRes,
+    scenesRes,
     milestonesRes,
     tasksRes,
     taskDependenciesRes,
@@ -365,6 +410,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     supabase.from("department_memberships").select("*"),
     supabase.from("projects").select("*").order("created_at"),
     supabase.from("project_departments").select("*"),
+    supabase.from("scenes").select("*").order("sort_order"),
     supabase.from("milestones").select("*").order("sort_order"),
     supabase.from("tasks").select("*").order("sort_order"),
     supabase.from("task_dependencies").select("*"),
