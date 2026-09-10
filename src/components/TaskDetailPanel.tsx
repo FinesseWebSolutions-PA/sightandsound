@@ -171,11 +171,17 @@ export function TaskDetailPanel({
                 className="mt-1 block min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
               >
                 {statusOptions.map((s) => (
-                  <option key={s} value={s}>
+                  <option key={s} value={s} disabled={s === "complete" && pendingDocs.length > 0}>
                     {taskStatusMeta[s].label}
+                    {s === "complete" && pendingDocs.length > 0 ? " (needs approvals)" : ""}
                   </option>
                 ))}
               </select>
+              {pendingDocs.length > 0 && (
+                <span className="mt-1.5 block text-xs text-ink-soft">
+                  Waiting on approval: {pendingDocs.map((d) => d.title).join(", ")}
+                </span>
+              )}
             </label>
           )}
 
