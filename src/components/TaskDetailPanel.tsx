@@ -169,10 +169,14 @@ export function TaskDetailPanel({
 
             <h2 className="mt-0.5 text-base font-semibold text-ink">{task.title}</h2>
             {parent && (
-              <p className="mt-0.5 flex items-center gap-1 text-xs text-ink-soft">
+              <button
+                type="button"
+                onClick={() => setActiveId(parent.id)}
+                className="mt-0.5 flex items-center gap-1 text-xs text-ink-soft hover:text-ink"
+              >
                 <CornerDownRight aria-hidden className="size-3.5" />
                 Part of {parent.title}
-              </p>
+              </button>
             )}
           </div>
           {onEdit && (
