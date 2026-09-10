@@ -41,23 +41,14 @@ const statusFilters: ("all" | ProjectStatus)[] = ["all", "active", "planning", "
 function PortfolioPage() {
   const { projects, milestones } = useStore();
   const [status, setStatus] = useState<"all" | ProjectStatus>("all");
-  const [department, setDepartment] = useState("all");
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const rows = useMemo(
     () =>
       projects.filter((project) => {
         if (status !== "all" && project.status !== status) return false;
-        if (
-          department !== "all" &&
-          !projectDepartments.some(
-            (pd) => pd.project_id === project.id && pd.department_id === department,
-          )
-        )
-          return false;
         return true;
       }),
-    [projects, status, department],
+    [projects, status],
   );
 
   const nextKeyDate = (projectId: string) => {
@@ -66,8 +57,6 @@ function PortfolioPage() {
       .sort((a, b) => a.due_date.localeCompare(b.due_date));
     return open[0];
   };
-
-  const activeFilters = (status !== "all" ? 1 : 0) + (department !== "all" ? 1 : 0);
 
   return (
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-10">
