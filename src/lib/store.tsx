@@ -218,7 +218,7 @@ export type Store = {
   }) => Promise<boolean>;
   removeDependency: (id: string, taskId: string, projectId: string) => Promise<boolean>;
   /** Sets: the unit of work inside a production. Admin only, open productions. */
-  createScene: (projectId: string, name: string) => Promise<string | null>;
+  createScene: (projectId: string, name: string, portalUrl?: string) => Promise<string | null>;
   renameScene: (sceneId: string, projectId: string, name: string) => void;
   deleteScene: (sceneId: string, projectId: string) => Promise<boolean>;
   /** Lead, status, committed dates, and which set this one follows. */
@@ -232,6 +232,7 @@ export type Store = {
       due_date?: string | null;
       depends_on_scene_id?: string | null;
       lag_days?: number;
+      portal_link_url?: string | null;
     },
   ) => Promise<boolean>;
   /** Swaps a set with its neighbour in the running order. */
@@ -843,11 +844,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const createScene = useCallback<Store["createScene"]>(
-    async (projectId, name) => {
+    async (projectId, name, portalUrl) => {
       if (!allowed(projectId, "admin") || !name.trim()) return null;
       setSaving(true);
       try {
-        const id = await writeScene(projectId, name, currentUserIdRef.current);
+        const id = await writeScene(projectId, name, currentUserIdRef.current, portalUrl);
         await refresh();
         return id;
       } catch (e: unknown) {
