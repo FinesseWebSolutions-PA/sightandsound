@@ -1861,3 +1861,56 @@ export async function writeProduction(input: NewProductionInput): Promise<string
 
   return data.id;
 }
+
+/* ------------------------------------------------------------------ scenes */
+
+/** Adds a scene to a production and returns its id. */
+export async function writeScene(
+  projectId: string,
+  name: string,
+  actorId: string,
+): Promise<string> {
+  const { data: existing } = await supabase
+    .from("scenes")
+    .select("sort_order")
+    .eq("project_id", projectId)
+    .order("sort_order", { ascending: false })
+    .limit(1);
+  const nextOrder = (existing?.[0]?.sort_order ?? 0) + 1;
+
+  const { data, error } = await supabase
+    .from("scenes")
+    .insert({ project_id: projectId, name: name.trim(), sort_order: nextOrder })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+  await recordAudit("project", projectId, actorId, "scene_added", { name: name.trim() });
+  return data.id;
+}
+
+/** Renames a scene. */
+export async function writeSceneName(
+  sceneId: string,
+  projectId: string,
+  name: string,
+  actorId: string,
+) {
+  const { error } = await supabase
+    .from("scenes")
+    .update({ name: name.trim() })
+    .eq("id", sceneId);
+  if (error) throw new Error(error.message);
+  await recordAudit("project", projectId, actorId, "scene_renamed", { name: name.trim() });
+}
+
+/** Removes a scene, first untying any work items and documents from it. */
+export async function removeScene(sceneId: string, projectId: string, actorId: string) {
+  const cleared = await Promise.all([
+    supabase.from("tasks").update({ scene_id: null }).eq("scene_id", sceneId),
+    supabase.from("documents").update({ scene_id: null }).eq("scene_id", sceneId),
+  ]);
+  for (const r of cleared) if (r.error) throw new Error(r.error.message);
+  const { error } = await supabase.from("scenes").delete().eq("id", sceneId);
+  if (error) throw new Error(error.message);
+  await recordAudit("project", projectId, actorId, "scene_removed", { scene_id: sceneId });
+}
