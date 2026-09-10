@@ -1120,6 +1120,7 @@ export async function writeComment(input: {
   sourceEntityId: string | null;
   departments: Department[];
   people: Person[];
+  attachments?: StagedAttachment[];
 }) {
   const { data, error } = await supabase
     .from("comments")
@@ -1127,6 +1128,7 @@ export async function writeComment(input: {
     .select("id")
     .single();
   if (error) throw new Error(error.message);
+  await writeAttachmentRows(data.id, input.attachments ?? [], input.authorId);
   await writeMentions(
     input.body,
     data.id,
@@ -1152,6 +1154,7 @@ export async function writeThread(input: {
   authorId: string;
   departments: Department[];
   people: Person[];
+  attachments?: StagedAttachment[];
 }) {
   const { data, error } = await supabase
     .from("discussion_threads")
@@ -1178,6 +1181,7 @@ export async function writeThread(input: {
     sourceEntityId: input.taskId ?? input.documentId ?? input.projectId,
     departments: input.departments,
     people: input.people,
+    ...(input.attachments ? { attachments: input.attachments } : {}),
   });
   await recordAudit("discussion_thread", data.id, input.authorId, "thread_started", {
     context_type: input.contextType,
