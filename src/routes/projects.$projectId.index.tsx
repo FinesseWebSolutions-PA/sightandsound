@@ -2,6 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   Activity,
+  AlertTriangle,
   Bell,
   CalendarDays,
   ExternalLink,
@@ -9,6 +10,7 @@ import {
   ListChecks,
   MessageSquare,
 } from "lucide-react";
+
 
 import { StatusBadge } from "@/components/StatusBadge";
 import {
@@ -26,6 +28,8 @@ import {
   taskStatusMeta,
 } from "@/lib/status";
 import { snippet } from "@/lib/threads";
+import { toISO } from "@/lib/schedule";
+
 
 export const Route = createFileRoute("/projects/$projectId/")({
   head: () => ({
@@ -136,6 +140,50 @@ function DashboardTab() {
   );
   const involved = projectDepartments.filter((pd) => pd.project_id === projectId);
 
+  // The short list of things a person should look at first on this production.
+  const today = toISO(new Date());
+  const attention = [
+    ...projectTasks
+      .filter((t) => t.status !== "complete" && t.forecast_finish < today)
+      .map((t) => ({
+        id: `late-${t.id}`,
+        label: "Running late",
+        title: t.title,
+        detail: `${departments.find((d) => d.id === t.department_id)?.name ?? "Unassigned"} · forecast ${formatDate(t.forecast_finish)}`,
+        taskId: t.id,
+        documentId: null as string | null,
+      })),
+    ...projectTasks
+      .filter((t) => t.status === "blocked")
+      .map((t) => ({
+        id: `blocked-${t.id}`,
+        label: "Blocked",
+        title: t.title,
+        detail: departments.find((d) => d.id === t.department_id)?.name ?? "Unassigned",
+        taskId: t.id,
+        documentId: null as string | null,
+      })),
+    ...pendingReview.map((d) => ({
+      id: `review-${d.id}`,
+      label: "Waiting on review",
+      title: `${d.title} — v${d.current_version}`,
+      detail: departments.find((x) => x.id === d.department_id)?.name ?? "",
+      taskId: null as string | null,
+      documentId: d.id,
+    })),
+    ...milestones
+      .filter((m) => m.project_id === projectId && m.status === "at_risk")
+      .map((m) => ({
+        id: `risk-${m.id}`,
+        label: "Milestone at risk",
+        title: m.name,
+        detail: `Due ${formatDate(m.due_date)}`,
+        taskId: null as string | null,
+        documentId: null as string | null,
+      })),
+  ].slice(0, 6);
+
+
   return (
     <div className="space-y-6">
       <section className="surface-card p-4 sm:p-5">
@@ -164,7 +212,49 @@ function DashboardTab() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          {attention.length > 0 && (
+            <Panel title="Needs attention" icon={AlertTriangle}>
+              <ul className="divide-y divide-border">
+                {attention.map((item) => (
+                  <li key={item.id} className="py-3 first:pt-0 last:pb-0">
+                    <p className="rule-label">{item.label}</p>
+                    <p className="mt-0.5 text-sm font-medium text-ink">{item.title}</p>
+                    {item.detail && <p className="text-xs text-ink-soft">{item.detail}</p>}
+                    {item.taskId ? (
+                      <Link
+                        to="/projects/$projectId/timeline"
+                        params={{ projectId }}
+                        search={{ task: item.taskId }}
+                        className="inline-flex min-h-11 items-center text-sm font-semibold text-gold-deep hover:underline"
+                      >
+                        Open the work item
+                      </Link>
+                    ) : item.documentId ? (
+                      <Link
+                        to="/projects/$projectId/documents"
+                        params={{ projectId }}
+                        search={{ document: item.documentId }}
+                        className="inline-flex min-h-11 items-center text-sm font-semibold text-gold-deep hover:underline"
+                      >
+                        Open the document
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/projects/$projectId/timeline"
+                        params={{ projectId }}
+                        className="inline-flex min-h-11 items-center text-sm font-semibold text-gold-deep hover:underline"
+                      >
+                        Open the schedule
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+          )}
+
           <Panel title="Department readiness" icon={ListChecks}>
+
             <ul className="divide-y divide-border">
               {involved.map((pd) => {
                 const dept = departments.find((d) => d.id === pd.department_id);
@@ -201,7 +291,15 @@ function DashboardTab() {
             <ul className="divide-y divide-border sm:hidden">
               {openTasks.slice(0, 8).map((task) => (
                 <li key={task.id} className="py-3 first:pt-0 last:pb-0">
-                  <p className="text-sm font-medium text-ink">{task.title}</p>
+                  <Link
+                    to="/projects/$projectId/timeline"
+                    params={{ projectId }}
+                    search={{ task: task.id }}
+                    className="text-sm font-medium text-ink hover:underline"
+                  >
+                    {task.title}
+                  </Link>
+
                   <p className="mt-0.5 text-xs text-ink-soft">
                     {departments.find((d) => d.id === task.department_id)?.name} ·{" "}
                     {personById(task.assignee_id)?.full_name} · due {formatDate(task.due_date)}
@@ -231,7 +329,17 @@ function DashboardTab() {
               <tbody className="divide-y divide-border">
                 {openTasks.slice(0, 8).map((task) => (
                   <tr key={task.id}>
-                    <td className="py-2.5 pr-3 text-ink">{task.title}</td>
+                    <td className="py-2.5 pr-3">
+                      <Link
+                        to="/projects/$projectId/timeline"
+                        params={{ projectId }}
+                        search={{ task: task.id }}
+                        className="text-ink hover:underline"
+                      >
+                        {task.title}
+                      </Link>
+                    </td>
+
                     <td className="py-2.5 pr-3 text-ink-soft">
                       {departments.find((d) => d.id === task.department_id)?.name}
                     </td>
