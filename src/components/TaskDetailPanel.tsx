@@ -145,7 +145,9 @@ export function TaskDetailPanel({
 
 
   const askDept =
-    askDepartmentId && !askUsed ? departments.find((d) => d.id === askDepartmentId) : undefined;
+    askDepartmentId && !askUsed && task.id === taskId
+      ? departments.find((d) => d.id === askDepartmentId)
+      : undefined;
   const draft = askDept ? `@${askDept.name} ` : "";
 
   return (
