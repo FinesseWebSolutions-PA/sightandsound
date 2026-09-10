@@ -6,7 +6,6 @@ import {
   CornerDownRight,
   Crosshair,
   Diamond,
-  Eye,
   Link2,
   Loader2,
   Lock,
