@@ -90,16 +90,22 @@ export function AttachmentList({
                   Saved to {savedDoc.folder || "documents"}
                 </Link>
               ) : (
-                canSave && (
-                  <button
-                    type="button"
-                    onClick={() => setSaving(a)}
-                    className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-ink hover:bg-cream"
-                  >
-                    <FolderPlus aria-hidden className="size-4" />
-                    Save to project docs
-                  </button>
-                )
+                <>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-cream-soft px-2 py-1 text-xs font-medium text-ink-soft">
+                    <CircleDashed aria-hidden className="size-3.5" />
+                    Not saved to documents
+                  </span>
+                  {canSave && (
+                    <button
+                      type="button"
+                      onClick={() => setSaving(a)}
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-ink hover:bg-cream"
+                    >
+                      <FolderPlus aria-hidden className="size-4" />
+                      Save to project docs
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
