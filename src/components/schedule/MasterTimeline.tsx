@@ -914,24 +914,69 @@ export function MasterTimeline({
                               className="absolute inset-y-0 w-0.5 bg-gold"
                             />
                           )}
-                          {/* committed plan: the bar people read */}
-                          <button
-                            type="button"
-                            ref={(el) => {
-                              if (el) barRefs.current.set(`set-${s.id}`, el);
-                              else barRefs.current.delete(`set-${s.id}`);
-                            }}
-                            onClick={() => setOpenSetId(s.id)}
-                            onMouseEnter={() => setHoveredScene(s.id)}
-                            onMouseLeave={() => setHoveredScene(null)}
-                            style={{ left: setPlanned.left, width: setPlanned.width }}
-                            title={`${s.name} · ${formatDate(s.start_date)} – ${formatDate(s.due_date)}`}
-                            className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-md border border-ink bg-ink px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm ${
-                              setDimmed ? "opacity-30" : ""
-                            }`}
-                          >
-                            {setPlanned.width > 84 ? s.name : ""}
-                          </button>
+                          {/* committed plan: the bar people read, and drag */}
+                          {(() => {
+                            const dragging = sDrag?.sceneId === s.id;
+                            const shift = dragging ? sDrag.days * pxPerDay : 0;
+                            const left =
+                              setPlanned.left + (dragging && sDrag.kind !== "end" ? shift : 0);
+                            const width =
+                              setPlanned.width +
+                              (dragging && sDrag.kind === "end" ? shift : 0) +
+                              (dragging && sDrag.kind === "start" ? -shift : 0);
+                            return (
+                              <>
+                                <button
+                                  type="button"
+                                  ref={(el) => {
+                                    if (el) barRefs.current.set(`set-${s.id}`, el);
+                                    else barRefs.current.delete(`set-${s.id}`);
+                                  }}
+                                  onPointerDown={(e) => {
+                                    if (e.button === 0 && canDragSets) beginSetDrag(s.id, "move", e);
+                                  }}
+                                  onClick={() => {
+                                    if (!sDrag) setOpenSetId(s.id);
+                                  }}
+                                  onMouseEnter={() => setHoveredScene(s.id)}
+                                  onMouseLeave={() => setHoveredScene(null)}
+                                  style={{ left, width: Math.max(pxPerDay, width) }}
+                                  title={`${s.name} · ${formatDate(s.start_date)} – ${formatDate(s.due_date)}${
+                                    canDragSets ? " · drag the bar or its ends to reschedule" : ""
+                                  }`}
+                                  className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-md border border-ink bg-ink px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm ${
+                                    setDimmed ? "opacity-30" : ""
+                                  } ${canDragSets ? "cursor-grab" : "cursor-pointer"} ${
+                                    dragging ? "ring-2 ring-gold" : ""
+                                  }`}
+                                >
+                                  {Math.max(pxPerDay, width) > 84 ? s.name : ""}
+                                  {canDragSets && (
+                                    <>
+                                      <span
+                                        aria-hidden
+                                        onPointerDown={(e) => beginSetDrag(s.id, "start", e)}
+                                        className="absolute inset-y-0 left-0 w-2.5 cursor-ew-resize bg-cream/25"
+                                      />
+                                      <span
+                                        aria-hidden
+                                        onPointerDown={(e) => beginSetDrag(s.id, "end", e)}
+                                        className="absolute inset-y-0 right-0 w-2.5 cursor-ew-resize bg-cream/25"
+                                      />
+                                    </>
+                                  )}
+                                </button>
+                                {dragging && sDrag.days !== 0 && (
+                                  <span
+                                    style={{ left, top: 2 }}
+                                    className="absolute rounded-md border border-ink bg-card px-1.5 py-0.5 text-[11px] font-semibold text-ink shadow-sm"
+                                  >
+                                    {sDrag.days > 0 ? `+${sDrag.days}` : sDrag.days} days
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()}
                           {/* slip past the committed finish, drawn as an overhang */}
                           {slip > 0 && (
                             <span
