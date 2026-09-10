@@ -66,7 +66,7 @@ export function TaskDetailPanel({
   // An "Ask <Department>" prefill is used once: after the message is sent it is gone.
   const [askUsed, setAskUsed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [needsApproval, setNeedsApproval] = useState(true);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
 
   // A fresh work item, or a fresh department to ask, starts the prefill over so it
