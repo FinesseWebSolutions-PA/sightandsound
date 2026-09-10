@@ -49,7 +49,7 @@ export function WorkItemEditor({
   const {
     tasks,
     scenes,
-    milestones,
+    
     saving,
     saveWorkItem,
     deleteWorkItem,
@@ -66,7 +66,7 @@ export function WorkItemEditor({
     existing?.department_id ?? presetDepartmentId ?? departments[0]?.id ?? "",
   );
   const [sceneId, setSceneId] = useState(existing?.scene_id || presetSceneId || "");
-  const [milestoneId, setMilestoneId] = useState(existing?.milestone_id ?? "");
+  const milestoneId = existing?.milestone_id ?? "";
   const [parentTaskId, setParentTaskId] = useState(
     existing?.parent_task_id ?? presetParentTaskId ?? "",
   );
@@ -90,13 +90,6 @@ export function WorkItemEditor({
   const projectScenes = useMemo(
     () => scenes.filter((s) => s.project_id === projectId).sort((a, b) => a.sort_order - b.sort_order),
     [scenes, projectId],
-  );
-  const projectMilestones = useMemo(
-    () =>
-      milestones
-        .filter((m) => m.project_id === projectId)
-        .sort((a, b) => a.due_date.localeCompare(b.due_date)),
-    [milestones, projectId],
   );
 
   // Only people actually staffed to this department on this production.
@@ -392,21 +385,6 @@ export function WorkItemEditor({
                 </label>
               </div>
             )}
-            <label className="block">
-              <span className="text-sm font-medium text-ink">Build milestone</span>
-              <select
-                value={milestoneId}
-                onChange={(e) => setMilestoneId(e.target.value)}
-                className={field}
-              >
-                <option value="">Not tied to a milestone</option>
-                {projectMilestones.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-            </label>
             {existing && (
               <p className="rounded-md border border-border bg-cream-soft px-3 py-2 text-xs text-ink-soft">
                 Forecast finish {existing.forecast_finish || "—"} · slack{" "}
