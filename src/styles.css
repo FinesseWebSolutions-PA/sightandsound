@@ -174,15 +174,39 @@
 
 @utility surface-card {
   background-color: var(--card);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
 }
 
 /* The tinted, ruled strip at the top of any panel, table or conversation. */
 @utility panel-header {
-  background-color: var(--cream-50);
-  border-bottom: 1px solid var(--color-border);
+  background-color: var(--band);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+/* A banded, ruled header for a collapsible group of rows. */
+@utility group-header {
+  background-color: var(--band);
+  border-top: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+/* One line in a list or table: hairline separated, obvious on hover. */
+@utility data-row {
+  background-color: var(--card);
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+
+  &:hover {
+    background-color: var(--row-hover);
+  }
+}
+
+/* A coloured edge that carries a row's status. Pair with a text label. */
+@utility status-edge {
+  box-shadow: inset 3px 0 0 currentColor;
 }
 
 /* A thin gold rule that marks where a section starts. */
