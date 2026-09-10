@@ -168,6 +168,10 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
     [projectTasks, projectMilestones],
   );
   const ticks = useMemo(() => monthTicks(span), [span]);
+  const todayPoint = useMemo(
+    () => (todayISO >= span.start && todayISO <= span.end ? pointAt(span, todayISO) : null),
+    [span],
+  );
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [preview, setPreview] = useState<PreviewState | null>(null);
