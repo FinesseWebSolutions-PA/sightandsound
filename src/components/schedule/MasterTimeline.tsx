@@ -600,15 +600,8 @@ export function MasterTimeline({
                   <span className="rule-label">{setsOnly ? "Sets" : "Sets & work"}</span>
                 </div>
                 <div className="relative py-2" style={{ width: chartWidth }}>
-                  {projectMilestones.map((m) => (
-                    <span
-                      key={m.id}
-                      style={{ left: xAt(span, m.forecast_date || m.due_date, pxPerDay) }}
-                      title={`${m.name} · ${formatDate(m.forecast_date || m.due_date)}`}
-                      className="absolute bottom-0.5 size-3 -translate-x-1/2 rotate-45 border-2 border-gold-deep bg-gold"
-                    />
-                  ))}
                   {ticks.map((t) => (
+
                     <span
                       key={t.key}
                       style={{ left: t.left }}
