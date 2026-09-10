@@ -159,6 +159,7 @@ export function DocumentBrowser({
     threads,
     comments,
     createThread,
+    currentUserId,
   } = useStore();
   const project = projects.find((p) => p.id === projectId);
   if (!project) return null;
