@@ -553,16 +553,8 @@ export function MasterTimeline({
           <Crosshair aria-hidden className="size-4" /> Today
         </button>
 
-        <button
-          type="button"
-          onClick={() => setClean((c) => !c)}
-          aria-pressed={clean}
-          className={`inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border-strong px-3 text-sm font-medium ${
-            clean ? "bg-ink text-cream-soft" : "bg-card text-ink hover:bg-cream"
-          }`}
-        >
-          <Eye aria-hidden className="size-4" /> Clean view
-        </button>
+      </div>
+
       </div>
 
       {/* legend */}
