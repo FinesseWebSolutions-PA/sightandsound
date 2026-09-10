@@ -783,7 +783,7 @@ export function MasterTimeline({
                       )}
                     </header>
 
-                    {!isCollapsed && (
+                    {!setsOnly && !isCollapsed && (
                       <ul className="row-list">
                         {group.rows.map((row) => {
                           const { task, isChild } = row;
