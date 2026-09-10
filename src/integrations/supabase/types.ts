@@ -855,7 +855,52 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      compute_project_schedule: {
+        Args: { p_project_id: string }
+        Returns: {
+          criticality: string
+          entity_id: string
+          entity_type: string
+          forecast_finish: string
+          forecast_start: string
+          late_finish: string
+          late_start: string
+          total_float_hours: number
+        }[]
+      }
+      cpm_task_schedule: {
+        Args: {
+          p_override_finish?: string
+          p_override_start?: string
+          p_override_task?: string
+          p_project_id: string
+        }
+        Returns: {
+          criticality: string
+          early_finish: string
+          early_start: string
+          late_finish: string
+          late_start: string
+          task_id: string
+          total_float_hours: number
+        }[]
+      }
+      preview_task_reschedule: {
+        Args: { p_new_finish: string; p_new_start: string; p_task_id: string }
+        Returns: {
+          affects_performance: boolean
+          affects_rehearsal: boolean
+          crosses_protected_date: boolean
+          current_finish: string
+          department_id: string
+          entity_id: string
+          entity_type: string
+          name: string
+          new_finish: string
+          protected_label: string
+          shift_days: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
