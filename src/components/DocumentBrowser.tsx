@@ -582,7 +582,123 @@ export function DocumentBrowser({
                     No approval needed
                   </span>
                 )}
+                <div ref={menuRef} className="relative">
+                  <button
+                    type="button"
+                    aria-label="Document actions"
+                    aria-haspopup="menu"
+                    aria-expanded={menuOpen}
+                    disabled={locked || !canReview}
+                    onClick={() => setMenuOpen((v) => !v)}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-soft hover:bg-cream disabled:opacity-40"
+                  >
+                    <MoreVertical aria-hidden className="size-5" />
+                  </button>
+                  {menuOpen && (
+                    <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-lg border border-border bg-white shadow-lg">
+                      <ul role="menu" className="py-1">
+                        {(() => {
+                          const a = activityFor(threads, comments, {
+                            projectId,
+                            documentId: selected.id,
+                          });
+                          return (
+                            <li role="none">
+                              <a
+                                role="menuitem"
+                                href="#document-discussion"
+                                onClick={() => setMenuOpen(false)}
+                                className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-cream"
+                              >
+                                <MessageSquare aria-hidden className="size-4 text-ink-soft" />
+                                <span className="flex-1">Open conversation</span>
+                                <span className="text-xs text-ink-soft">
+                                  {a.count === 0 ? "None" : a.count}
+                                </span>
+                              </a>
+                            </li>
+                          );
+                        })()}
+                        {canUpload && (
+                          <li role="none">
+                            <button
+                              role="menuitem"
+                              type="button"
+                              onClick={() => {
+                                setMenuAction("folder");
+                                setMenuOpen(false);
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-cream"
+                            >
+                              <Folder aria-hidden className="size-4 text-ink-soft" />
+                              <span className="flex-1">Move to folder</span>
+                            </button>
+                          </li>
+                        )}
+                        {canReview &&
+                          selected.requires_approval &&
+                          (
+                            [
+                              { key: "requested", label: "Request review", Icon: Send },
+                              { key: "approved", label: "Approve", Icon: CheckCircle2 },
+                              { key: "changes_requested", label: "Request changes", Icon: ThumbsDown },
+                              { key: "rejected", label: "Reject", Icon: XCircle },
+                            ] as const
+                          ).map(({ key, label, Icon }) => (
+                            <li key={key} role="none">
+                              <button
+                                role="menuitem"
+                                type="button"
+                                onClick={() => {
+                                  setMenuAction(key);
+                                  setMenuOpen(false);
+                                }}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-cream"
+                              >
+                                <Icon aria-hidden className="size-4 text-ink-soft" />
+                                <span className="flex-1">{label}</span>
+                              </button>
+                            </li>
+                          ))}
+                        {canUpload && (
+                          <li role="none">
+                            <button
+                              role="menuitem"
+                              type="button"
+                              onClick={() => {
+                                setMenuAction("version");
+                                setMenuOpen(false);
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-cream"
+                            >
+                              <FileUp aria-hidden className="size-4 text-ink-soft" />
+                              <span className="flex-1">Upload new version</span>
+                              <span className="text-xs text-ink-soft">v{selected.current_version}</span>
+                            </button>
+                          </li>
+                        )}
+                        {canUpload && (
+                          <li role="none">
+                            <label className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-cream">
+                              <input
+                                type="checkbox"
+                                checked={!selected.requires_approval}
+                                onChange={(e) => {
+                                  setDocumentApprovalRequirement(selected.id, !e.target.checked);
+                                  setMenuOpen(false);
+                                }}
+                                className="size-4 rounded border-border"
+                              />
+                              <span className="flex-1">No approval needed</span>
+                            </label>
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </header>
+
 
               {(() => {
                 const current = documentVersions
