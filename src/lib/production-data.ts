@@ -1505,6 +1505,16 @@ export async function writeDocumentScene(
   await recordAudit("document", documentId, actorId, "set_changed", { scene_id: sceneId });
 }
 
+/** Soft-deletes a document so it disappears from the production's document list. */
+export async function removeDocument(documentId: string, actorId: string) {
+  const { error } = await supabase
+    .from("documents")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", documentId);
+  if (error) throw new Error(error.message);
+  await recordAudit("document", documentId, actorId, "document_removed", {});
+}
+
 /* --------------------------------------------------------------- staffing */
 
 /** Puts a department on a production, or takes it off. */
