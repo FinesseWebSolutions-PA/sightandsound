@@ -20,7 +20,7 @@ export function SetTasksPanel({
   sceneId: string;
   canEdit: boolean;
 }) {
-  const { tasks, saveWorkItem, saving } = useStore();
+  const { tasks } = useStore();
   const [openTaskId, setOpenTaskId] = useState("");
   const [editorTaskId, setEditorTaskId] = useState<string | undefined>(undefined);
   const [editorOpen, setEditorOpen] = useState(false);
