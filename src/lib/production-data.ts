@@ -200,6 +200,9 @@ export type DocumentVersion = {
   uploaded_at: string;
   note: string;
   file_label: string;
+  /** Where the actual file lives, when this revision has one. */
+  storage_key: string | null;
+
 };
 
 export type Approval = {
@@ -746,7 +749,9 @@ export async function loadProductionData(): Promise<ProductionData> {
     uploaded_at: dateOnly(v.uploaded_at),
     note: v.change_note ?? "",
     file_label: (v.storage_key ?? "").split("/").pop() || `version-${v.version_number}`,
+    storage_key: v.storage_key ?? null,
   }));
+
 
   const versionInfoEarly = new Map(versionRows.map((v) => [v.id, v]));
   const latestApprovalByDocument = new Map<string, { status: string; version: number }>();

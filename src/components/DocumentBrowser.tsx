@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 
 import { Discussion } from "@/components/Discussion";
+import { DocumentPreview } from "@/components/DocumentPreview";
+
 import { MentionInput } from "@/components/MentionInput";
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, personById, useStore } from "@/lib/store";
@@ -560,6 +562,20 @@ export function DocumentBrowser({
                   </span>
                 )}
               </header>
+
+              {(() => {
+                const current = documentVersions
+                  .filter((v) => v.document_id === selected.id)
+                  .sort((a, b) => b.version - a.version)[0];
+                return (
+                  <DocumentPreview
+                    storageKey={current?.storage_key ?? null}
+                    fileLabel={current?.file_label ?? selected.title}
+                  />
+                );
+              })()}
+
+
 
               <ul className="row-list">
                 {/* Conversation */}
