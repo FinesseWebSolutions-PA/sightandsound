@@ -584,6 +584,14 @@ export async function loadProductionData(): Promise<ProductionData> {
     project_id: s.project_id,
     name: s.name,
     sort_order: s.sort_order,
+    owner_id: s.owner_id ?? "",
+    status: asSetStatus(s.status),
+    start_date: dateOnly(s.start_date),
+    due_date: dateOnly(s.due_date),
+    forecast_start: dateOnly(s.forecast_start) || dateOnly(s.start_date),
+    forecast_finish: dateOnly(s.forecast_finish) || dateOnly(s.due_date),
+    depends_on_scene_id: s.depends_on_scene_id ?? "",
+    lag_days: Number(s.lag_days ?? 0),
   }));
 
   const tasks: Task[] = taskRows.map((t) => ({
