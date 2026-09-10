@@ -250,17 +250,8 @@ function SetDetail({
           <StatusBadge meta={setStatusMeta[set.status]} size="sm" />
         </header>
 
-        {canEdit && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => void deleteScene(set.id, projectId)}
-              className="min-h-11 rounded-md border border-border px-3 text-sm font-medium text-danger hover:bg-cream"
-            >
-              Remove set
-            </button>
-          </div>
-        )}
+
+
 
 
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
