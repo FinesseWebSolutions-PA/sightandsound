@@ -78,9 +78,10 @@ function PortfolioPage() {
               aria-pressed={status === option}
               className={
                 status === option
-                  ? "min-h-11 shrink-0 snap-start rounded-full border border-ink bg-ink px-4 text-sm font-semibold whitespace-nowrap text-cream-soft sm:min-h-9"
-                  : "min-h-11 shrink-0 snap-start rounded-full border border-border bg-card px-4 text-sm font-medium whitespace-nowrap text-ink-soft hover:bg-cream sm:min-h-9"
+                  ? "chip-selected min-h-11 shrink-0 snap-start rounded-full px-4 text-sm font-semibold whitespace-nowrap sm:min-h-9"
+                  : "chip-quiet min-h-11 shrink-0 snap-start rounded-full px-4 text-sm font-medium whitespace-nowrap hover:bg-cream sm:min-h-9"
               }
+
             >
               {option === "all" ? "All" : projectStatusMeta[option].label}
             </button>

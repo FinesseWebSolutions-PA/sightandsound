@@ -402,11 +402,10 @@ function TimelineTab() {
               role="tab"
               aria-selected={view === v.id}
               onClick={() => setView(v.id)}
-              className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold ${
-                view === v.id
-                  ? "border-gold-deep bg-gold-pale text-ink"
-                  : "border-border bg-card text-ink-soft"
+              className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold ${
+                view === v.id ? "chip-selected" : "chip-quiet hover:bg-cream"
               }`}
+
             >
               {v.label}
             </button>
