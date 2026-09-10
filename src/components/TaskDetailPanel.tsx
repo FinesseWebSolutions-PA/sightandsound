@@ -104,8 +104,9 @@ export function TaskDetailPanel({
   const subDone = subItems.filter((t) => t.status === "complete").length;
 
   /** Files attach straight to this work item — no folders to choose. */
-  async function addFiles(files: File[]) {
+  async function addFiles(files: File[], requiresApproval: boolean) {
     if (files.length === 0 || uploading || !task) return;
+    setPendingFiles([]);
     setUploading(true);
     try {
       for (const file of files) {
