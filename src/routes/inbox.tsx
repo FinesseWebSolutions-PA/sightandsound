@@ -226,14 +226,15 @@ function MyWorkPage() {
     // Work assigned to this person that is still open; late work is pulled forward.
     for (const task of tasks.filter((t) => t.assignee_id === viewedId && t.status !== "complete")) {
       const late = task.due_date < today;
+      const blocked = task.status === "blocked";
       out.push({
         id: `t-${task.id}`,
-        bucket: late ? "waiting" : "work",
+        bucket: late || blocked ? "waiting" : "work",
         projectId: task.project_id,
         created_at: task.due_date,
         read: true,
         icon: ListChecks,
-        label: late ? "Past its date" : "Assigned to you",
+        label: blocked ? "Blocked" : late ? "Past its date" : "Assigned to you",
         title: task.title,
         detail: `Due ${formatDate(task.due_date)} · ${taskStatusMeta[task.status].label}`,
         link: (
