@@ -897,27 +897,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  if (error && !data) {
-    return (
-      <div className="mx-auto max-w-2xl px-6 py-24 text-center">
-        <h1 className="font-display text-2xl text-ink">The production data could not be loaded</h1>
-        <p className="mt-2 text-sm text-ink-soft">{error}</p>
-      </div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center gap-2 text-sm text-ink-soft">
-        <Loader2 aria-hidden className="size-4 animate-spin" />
-        Loading the production portfolio…
-      </div>
-    );
-  }
-
   return (
     <StoreContext.Provider value={value}>
-      {error && (
+      {error && data && (
         <div
           role="alert"
           className="border-b border-border bg-[var(--ss-danger-bg,#FCE8E6)] px-6 py-2 text-sm text-ink"
@@ -932,7 +914,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           </button>
         </div>
       )}
-      {children}
+      {error && !data ? (
+        <div className="mx-auto max-w-2xl px-6 py-24 text-center">
+          <h1 className="font-display text-2xl text-ink">
+            The production data could not be loaded
+          </h1>
+          <p className="mt-2 text-sm text-ink-soft">{error}</p>
+        </div>
+      ) : !data ? (
+        <div className="flex min-h-[60vh] items-center justify-center gap-2 text-sm text-ink-soft">
+          <Loader2 aria-hidden className="size-4 animate-spin" />
+          Loading the production portfolio…
+        </div>
+      ) : (
+        children
+      )}
     </StoreContext.Provider>
   );
 }
