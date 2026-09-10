@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ExternalLink, Link2, X } from "lucide-react";
 
+import { ConversationRail } from "@/components/ConversationRail";
+import { DocumentBrowser } from "@/components/DocumentBrowser";
+import { SetTasksPanel } from "@/components/SetTasksPanel";
 import { StatusBadge } from "@/components/StatusBadge";
 import { people, personById, useStore } from "@/lib/store";
 import { addDays } from "@/lib/schedule";
@@ -43,6 +46,7 @@ export function SetDialog({
   const set = order.find((s) => s.id === setId);
   const canEdit = can.adminConfig && !isClosed(projectId);
 
+  const [tab, setTab] = useState<"tasks" | "general" | "documents" | "conversation">("tasks");
   const [nameDraft, setNameDraft] = useState(set?.name ?? "");
   useEffect(() => setNameDraft(set?.name ?? ""), [set?.name]);
 
@@ -84,7 +88,7 @@ export function SetDialog({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-t-2xl border border-border-strong bg-card shadow-xl sm:rounded-2xl"
+        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-t-2xl border border-border-strong bg-card shadow-xl sm:rounded-2xl"
       >
         <header className="panel-header flex items-start gap-3 px-4 py-3">
           <div className="min-w-0 flex-1">
@@ -122,6 +126,57 @@ export function SetDialog({
           </button>
         </header>
 
+        <div
+          role="tablist"
+          aria-label={`${set.name} sections`}
+          className="flex flex-wrap gap-1 border-b border-border px-3 py-2"
+        >
+          {(
+            [
+              { id: "tasks", label: "Tasks" },
+              { id: "general", label: "General info" },
+              { id: "documents", label: "Documents" },
+              { id: "conversation", label: "Conversation" },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className={`min-h-11 rounded-md px-3 text-sm font-medium ${
+                tab === t.id ? "bg-ink text-cream-soft" : "text-ink-soft hover:bg-cream"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {tab === "tasks" && (
+          <div className="p-4">
+            <SetTasksPanel projectId={projectId} sceneId={set.id} canEdit={canEdit} />
+          </div>
+        )}
+
+        {tab === "documents" && (
+          <div className="min-w-0 p-4">
+            <DocumentBrowser projectId={projectId} sceneId={set.id} />
+          </div>
+        )}
+
+        {tab === "conversation" && (
+          <div className="min-w-0 p-4">
+            <ConversationRail
+              projectId={projectId}
+              sceneId={set.id}
+              listTitle={`Conversations on ${set.name}`}
+            />
+          </div>
+        )}
+
+        {tab === "general" && (
         <dl className="grid gap-4 p-4 sm:grid-cols-2">
           <div>
             <dt className="rule-label">Set lead</dt>
@@ -274,6 +329,7 @@ export function SetDialog({
             </dd>
           </div>
         </dl>
+        )}
 
         <footer className="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
           <button
