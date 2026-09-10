@@ -459,8 +459,7 @@ function DocumentsTab() {
         {selected && (
           <section className="space-y-4">
             <div className="surface-card p-4">
-              <span className="code-id">{selected.id}</span>
-              <h3 className="mt-1 text-lg font-semibold text-ink">{selected.title}</h3>
+              <h3 className="text-lg font-semibold text-ink">{selected.title}</h3>
               <p className="text-sm text-ink-soft">
                 {selected.kind} · owned by {personById(selected.owner_id)?.full_name}
               </p>
