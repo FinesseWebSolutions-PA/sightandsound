@@ -65,6 +65,7 @@ export function SetTasksPanel({
             void quickAdd();
           }
           if (e.key === "Escape") {
+            setQuickOpen(false);
             setQuickParent(null);
             setQuickTitle("");
           }
