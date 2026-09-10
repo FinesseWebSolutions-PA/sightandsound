@@ -58,13 +58,14 @@ export const Route = createFileRoute("/projects/$projectId/timeline")({
       {
         name: "description",
         content:
-          "Milestones and work items with due dates, ownership, status, and what each item waits on.",
+          "Sets and work items with due dates, ownership, status, and what each item waits on.",
       },
       { property: "og:title", content: "Production timeline — Sight & Sound Show Production" },
       {
         property: "og:description",
-        content: "Milestones and work items with due dates, ownership, status, and dependencies.",
+        content: "Sets and work items with due dates, ownership, status, and dependencies.",
       },
+
     ],
   }),
   component: TimelineTab,
