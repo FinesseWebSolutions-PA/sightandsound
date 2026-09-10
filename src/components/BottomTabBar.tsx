@@ -46,7 +46,7 @@ export function BottomTabBar() {
                 </span>
               )}
             </span>
-            Inbox
+            My Work
           </Link>
           <button
             type="button"

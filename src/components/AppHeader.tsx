@@ -64,7 +64,7 @@ export function AppHeader() {
             }}
           >
             <Inbox aria-hidden className="size-4" />
-            My Inbox
+            My Work
             {myUnread > 0 && (
               <span className="rounded-full bg-gold-tint px-1.5 text-xs font-semibold text-gold-deep">
                 {myUnread}
