@@ -728,23 +728,28 @@ export function DocumentBrowser({
               )}
 
               {(() => {
-                if (
-                  !menuAction ||
-                  !canReview ||
-                  !selected.requires_approval ||
-                  !(["requested", "approved", "changes_requested", "rejected"] as const).includes(
-                    menuAction as "requested" | "approved" | "changes_requested" | "rejected",
-                  )
-                )
-                  return null;
-                const decision = menuAction;
-                const reviewMeta = {
-                  requested: { label: "Request review", Icon: Send },
-                  approved: { label: "Approve", Icon: CheckCircle2 },
-                  changes_requested: { label: "Request changes", Icon: ThumbsDown },
-                  rejected: { label: "Reject", Icon: XCircle },
-                }[decision];
-                const { label, Icon } = reviewMeta;
+                if (!menuAction || !canReview || !selected.requires_approval) return null;
+                let decision: "requested" | "approved" | "changes_requested" | "rejected" | null = null;
+                let label = "";
+                let Icon = Send;
+                if (menuAction === "requested") {
+                  decision = "requested";
+                  label = "Request review";
+                  Icon = Send;
+                } else if (menuAction === "approved") {
+                  decision = "approved";
+                  label = "Approve";
+                  Icon = CheckCircle2;
+                } else if (menuAction === "changes_requested") {
+                  decision = "changes_requested";
+                  label = "Request changes";
+                  Icon = ThumbsDown;
+                } else if (menuAction === "rejected") {
+                  decision = "rejected";
+                  label = "Reject";
+                  Icon = XCircle;
+                }
+                if (!decision) return null;
                 return (
                   <div className="space-y-2 border-t border-border bg-cream-soft px-4 py-3">
                     <p className="text-xs font-medium text-ink-soft">{label}</p>
@@ -778,6 +783,7 @@ export function DocumentBrowser({
                   </div>
                 );
               })()}
+
 
 
               {menuAction === "version" && canUpload && (
