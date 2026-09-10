@@ -326,7 +326,6 @@ function MyWorkPage() {
         )}
       </div>
 
-
       {items.length === 0 && (
         <p className="surface-card p-4 text-sm text-ink-soft">
           Nothing needs you right now. Anything addressed to you or your department will land here.
