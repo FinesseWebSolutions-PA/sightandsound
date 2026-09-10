@@ -1471,6 +1471,7 @@ export async function writeNewDocument(input: {
   projectId: string;
   folder: string | null;
   sceneId: string | null;
+  taskId?: string | null;
   requiresApproval: boolean;
   actorId: string;
 }) {
