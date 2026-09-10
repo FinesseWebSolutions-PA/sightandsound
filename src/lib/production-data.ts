@@ -1506,21 +1506,41 @@ export async function writeAssignment(input: {
   departmentId: string;
   jobTitle: string;
   actorId: string;
+  /** Omit (or pass null) for the production-wide default team. */
+  sceneId?: string | null;
 }) {
-  const { error } = await supabase.from("project_assignments").upsert(
-    {
+  const sceneId = input.sceneId || null;
+  // Two levels share the table, so the existing row is matched on the level too.
+  let existing = supabase
+    .from("project_assignments")
+    .select("id")
+    .eq("project_id", input.projectId)
+    .eq("person_id", input.personId)
+    .eq("department_id", input.departmentId);
+  existing = sceneId ? existing.eq("scene_id", sceneId) : existing.is("scene_id", null);
+  const { data: found } = await existing.limit(1).maybeSingle();
+
+  if (found) {
+    const { error } = await supabase
+      .from("project_assignments")
+      .update({ job_title: input.jobTitle })
+      .eq("id", found.id);
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase.from("project_assignments").insert({
       project_id: input.projectId,
       person_id: input.personId,
       department_id: input.departmentId,
       job_title: input.jobTitle,
-    },
-    { onConflict: "project_id,person_id,department_id" },
-  );
-  if (error) throw new Error(error.message);
+      scene_id: sceneId,
+    });
+    if (error) throw new Error(error.message);
+  }
   await recordAudit("project", input.projectId, input.actorId, "person_assigned", {
     person_id: input.personId,
     department_id: input.departmentId,
     job_title: input.jobTitle,
+    scene_id: sceneId,
   });
 }
 
