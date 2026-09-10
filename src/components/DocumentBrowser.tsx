@@ -1123,10 +1123,10 @@ export function DocumentBrowser({
                 ) : (
                   <div className="p-3">
                     <Discussion
+                      inline
                       projectId={projectId}
                       contextType="document"
                       documentId={opened.id}
-                      heading={`Conversation on ${opened.title}`}
                       {...(highlightCommentId ? { highlightCommentId } : {})}
                     />
                   </div>
