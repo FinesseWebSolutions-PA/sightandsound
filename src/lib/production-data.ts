@@ -185,10 +185,10 @@ export type DiscussionThread = {
   created_at: string;
 };
 
+/** One message in a conversation. The table has no parent id: chat is flat. */
 export type Comment = {
   id: string;
   thread_id: string;
-  parent_comment_id: string | null;
   author_id: string;
   body: string;
   created_at: string;
@@ -716,11 +716,11 @@ export async function loadProductionData(): Promise<ProductionData> {
     .map((c) => ({
       id: c.id,
       thread_id: c.thread_id,
-      parent_comment_id: null,
       author_id: c.author_id ?? "",
       body: c.body,
       created_at: c.created_at,
-    }));
+    }))
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
 
   const commentAttachments: CommentAttachment[] = (attachmentsRes.data ?? []).map((a) => ({
     id: a.id,
@@ -1058,14 +1058,9 @@ async function writeMentions(
     mentioned_person_id: string | null;
     mentioned_department_id: string | null;
   }[] = [];
-  const notificationRows: {
-    person_id: string;
-    type: string;
-    project_id: string | null;
-    source_comment_id: string;
-    source_entity_type: string;
-    source_entity_id: string | null;
-  }[] = [];
+  // One notice per person per message: someone reached both directly and through
+  // their department hears about it once, and never about their own message.
+  const notified = new Map<string, string>();
 
   for (const department of departments) {
     if (!body.includes(`@${department.name}`)) continue;
@@ -1077,14 +1072,8 @@ async function writeMentions(
     // A department mention reaches the designated owner and any leads — never the whole roster.
     const recipients = new Set([department.owner_id, ...department.lead_ids].filter(Boolean));
     for (const recipient of recipients) {
-      notificationRows.push({
-        person_id: recipient,
-        type: "department_mention",
-        project_id: projectId || null,
-        source_comment_id: commentId,
-        source_entity_type: sourceEntityType,
-        source_entity_id: sourceEntityId,
-      });
+      if (recipient === authorId) continue;
+      if (!notified.has(recipient)) notified.set(recipient, "department_mention");
     }
   }
 
@@ -1095,17 +1084,18 @@ async function writeMentions(
       mentioned_person_id: person.id,
       mentioned_department_id: null,
     });
-    if (person.id !== authorId) {
-      notificationRows.push({
-        person_id: person.id,
-        type: "mention",
-        project_id: projectId || null,
-        source_comment_id: commentId,
-        source_entity_type: sourceEntityType,
-        source_entity_id: sourceEntityId,
-      });
-    }
+    // A direct mention wins over a department one for the same person.
+    if (person.id !== authorId) notified.set(person.id, "mention");
   }
+
+  const notificationRows = [...notified.entries()].map(([person_id, type]) => ({
+    person_id,
+    type,
+    project_id: projectId || null,
+    source_comment_id: commentId,
+    source_entity_type: sourceEntityType,
+    source_entity_id: sourceEntityId,
+  }));
 
   if (mentionRows.length) await supabase.from("mentions").insert(mentionRows);
   if (notificationRows.length) await supabase.from("notifications").insert(notificationRows);
@@ -1156,18 +1146,42 @@ export async function writeThread(input: {
   people: Person[];
   attachments?: StagedAttachment[];
 }) {
-  const { data, error } = await supabase
-    .from("discussion_threads")
-    .insert({
-      project_id: input.projectId,
-      context_type: input.contextType,
-      task_id: input.taskId,
-      document_id: input.documentId,
-      created_by: input.authorId,
-    })
-    .select("id")
-    .single();
-  if (error) throw new Error(error.message);
+  // A work item or a document keeps exactly one conversation, so if one already
+  // exists (including one just created by a double tap) the message joins it.
+  let threadId: string | null = null;
+  if (input.contextType !== "project") {
+    const column = input.contextType === "task" ? "task_id" : "document_id";
+    const anchor = input.contextType === "task" ? input.taskId : input.documentId;
+    if (anchor) {
+      const { data: existing } = await supabase
+        .from("discussion_threads")
+        .select("id")
+        .eq("project_id", input.projectId)
+        .eq("context_type", input.contextType)
+        .eq(column, anchor)
+        .order("created_at")
+        .limit(1)
+        .maybeSingle();
+      if (existing) threadId = existing.id;
+    }
+  }
+
+  if (!threadId) {
+    const { data, error } = await supabase
+      .from("discussion_threads")
+      .insert({
+        project_id: input.projectId,
+        context_type: input.contextType,
+        task_id: input.taskId,
+        document_id: input.documentId,
+        created_by: input.authorId,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    threadId = data.id;
+  }
+  const data = { id: threadId };
 
   // The table has no subject column, so the subject opens the first message and
   // becomes the thread heading when the data is read back.

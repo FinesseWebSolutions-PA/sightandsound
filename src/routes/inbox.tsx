@@ -55,13 +55,14 @@ type Item = {
   /** The title itself, as the link into context — one obvious way in. */
   open: React.ReactNode;
   /** Set when the item came from a message, so it can be answered right here. */
-  reply?: { threadId: string; parentCommentId: string };
+  reply?: { threadId: string };
 };
 
-function InlineReply({ threadId, parentCommentId }: { threadId: string; parentCommentId: string }) {
+function InlineReply({ threadId }: { threadId: string }) {
   const { addComment, can } = useStore();
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
   if (!can.comment) return null;
 
   if (!open) {
@@ -80,10 +81,14 @@ function InlineReply({ threadId, parentCommentId }: { threadId: string; parentCo
       className="mt-1 w-full space-y-2"
       onSubmit={(e) => {
         e.preventDefault();
-        if (!body.trim()) return;
-        addComment(threadId, parentCommentId, body.trim());
-        setBody("");
-        setOpen(false);
+        if (!body.trim() || sending) return;
+        setSending(true);
+        void addComment(threadId, body.trim())
+          .then(() => {
+            setBody("");
+            setOpen(false);
+          })
+          .finally(() => setSending(false));
       }}
     >
       <MentionInput
@@ -96,9 +101,10 @@ function InlineReply({ threadId, parentCommentId }: { threadId: string; parentCo
       <div className="flex gap-2">
         <button
           type="submit"
-          className="min-h-11 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-ink-soft"
+          disabled={sending || !body.trim()}
+          className="min-h-11 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-ink-soft disabled:opacity-60"
         >
-          Send
+          {sending ? "Sending…" : "Send"}
         </button>
         <button
           type="button"
@@ -230,7 +236,7 @@ function MyWorkPage() {
               : n.kind.replace("_", " "),
         title: humanTitle,
         ...(comment ? { detail: `“${snippet(comment.body, 140)}”` } : {}),
-        ...(comment ? { reply: { threadId: comment.thread_id, parentCommentId: comment.id } } : {}),
+        ...(comment ? { reply: { threadId: comment.thread_id } } : {}),
         open,
       });
     }
@@ -374,7 +380,11 @@ function MyWorkPage() {
                       <p className="mt-1">{item.open}</p>
                       {item.detail && <p className="mt-0.5 text-sm text-ink-soft">{item.detail}</p>}
                       <div className="mt-1 flex flex-wrap items-center gap-x-4">
-                        {item.reply && <InlineReply {...item.reply} />}
+                        {/* Answering here posts as the person signed in, so it is only
+                            offered when looking at your own day. */}
+                        {item.reply && viewedId === currentUserId && (
+                          <InlineReply {...item.reply} />
+                        )}
                         {item.notificationId && (
                           <button
                             type="button"

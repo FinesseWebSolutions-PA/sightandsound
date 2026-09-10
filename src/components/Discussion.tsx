@@ -62,7 +62,12 @@ function Composer({
 }: {
   placeholder: string;
   submitLabel: string;
-  onSubmit: (body: string, subject: string, attachments: StagedAttachment[]) => void;
+  /** Resolves false when the message could not be saved, so the text is kept. */
+  onSubmit: (
+    body: string,
+    subject: string,
+    attachments: StagedAttachment[],
+  ) => void | Promise<boolean | void>;
   /** Where uploaded files are filed in storage. */
   projectId: string;
   threadKey: string;
@@ -77,6 +82,7 @@ function Composer({
   const [staged, setStaged] = useState<StagedAttachment[]>([]);
   const [uploading, setUploading] = useState(0);
   const [uploadError, setUploadError] = useState("");
+  const [sending, setSending] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
@@ -122,12 +128,19 @@ function Composer({
       className={cn("space-y-2", compact ? "pt-2" : "surface-card p-4")}
       onSubmit={(e) => {
         e.preventDefault();
-        if (uploading > 0) return;
+        // One send at a time: a second tap while the first is saving does nothing.
+        if (uploading > 0 || sending) return;
         if ((!body.trim() && staged.length === 0) || (withSubject && !subject.trim())) return;
-        onSubmit(body.trim(), subject.trim(), staged);
-        setBody("");
-        setSubject("");
-        setStaged([]);
+        const outgoing = { body: body.trim(), subject: subject.trim(), staged };
+        setSending(true);
+        void Promise.resolve(onSubmit(outgoing.body, outgoing.subject, outgoing.staged))
+          .then((ok) => {
+            if (ok === false) return;
+            setBody("");
+            setSubject("");
+            setStaged([]);
+          })
+          .finally(() => setSending(false));
       }}
     >
       {withSubject && (
@@ -148,6 +161,7 @@ function Composer({
         rows={compact ? 2 : 3}
         ariaLabel="Message"
         inputRef={areaRef}
+        onEnterSubmit={() => formRef.current?.requestSubmit()}
       />
 
       {(staged.length > 0 || uploading > 0 || uploadError) && (
@@ -205,11 +219,20 @@ function Composer({
         </div>
         <button
           type="submit"
-          disabled={uploading > 0}
+          disabled={
+            uploading > 0 ||
+            sending ||
+            (!body.trim() && staged.length === 0) ||
+            (withSubject && !subject.trim())
+          }
           className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-ink-soft disabled:opacity-60 sm:w-auto"
         >
-          <Send aria-hidden className="size-4" />
-          {submitLabel}
+          {sending ? (
+            <Loader2 aria-hidden className="size-4 animate-spin" />
+          ) : (
+            <Send aria-hidden className="size-4" />
+          )}
+          {sending ? "Sending…" : submitLabel}
         </button>
       </div>
     </form>
@@ -224,7 +247,7 @@ function Message({
   highlighted,
   id,
   mine,
-  reply = false,
+  
   projectId,
 }: {
   authorId: string;
@@ -234,7 +257,6 @@ function Message({
   highlighted: boolean;
   id: string;
   mine: boolean;
-  reply?: boolean;
 }) {
   const { commentAttachments } = useStore();
   const author = personById(authorId);
@@ -244,7 +266,6 @@ function Message({
       id={`comment-${id}`}
       className={cn(
         "flex gap-2",
-        reply && "pl-6",
         mine ? "flex-row-reverse" : "flex-row",
         highlighted && "-mx-1 rounded-lg bg-gold-tint/50 px-1 py-1 ring-1 ring-gold",
       )}
@@ -313,9 +334,9 @@ export function Discussion({
     isClosed,
     currentUserId,
   } = useStore();
-  const [replyTo, setReplyTo] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [anchorId, setAnchorId] = useState("");
+  const endRef = useRef<HTMLDivElement>(null);
 
   const locked = isClosed(projectId);
   const canPost = can.comment && !locked;
@@ -353,6 +374,15 @@ export function Discussion({
     const el = document.getElementById(`comment-${highlightCommentId}`);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [highlightCommentId, visible.length]);
+
+  // After sending, the newest message is brought into view inside the transcript.
+  const lastMessageId = comments
+    .filter((c) => visible.some((t) => t.id === c.thread_id))
+    .reduce<string>((latest, c) => (latest > c.created_at ? latest : c.created_at + c.id), "");
+  useEffect(() => {
+    if (highlightCommentId || !lastMessageId) return;
+    endRef.current?.scrollIntoView({ block: "nearest" });
+  }, [lastMessageId, highlightCommentId]);
 
   const contextLabel = (threadTaskId: string | null, threadDocumentId: string | null) => {
     if (threadTaskId) return tasks.find((t) => t.id === threadTaskId)?.title ?? "Work item";
@@ -418,8 +448,8 @@ export function Discussion({
               withSubject={needsSubject}
               placeholder="Write the first message…"
               submitLabel="Send"
-              onSubmit={(body, subject, attachments) => {
-                createThread({
+              onSubmit={async (body, subject, attachments) => {
+                const ok = await createThread({
                   projectId,
                   contextType,
                   taskId: resolvedTaskId,
@@ -428,9 +458,11 @@ export function Discussion({
                   body,
                   attachments,
                 });
+                if (!ok) return false;
                 setAnchorId("");
                 setShowNew(false);
                 onSent?.();
+                return true;
               }}
             />
           )}
@@ -463,8 +495,8 @@ export function Discussion({
               autoFocus={autoFocusComposer}
               placeholder="Message about this…"
               submitLabel="Send"
-              onSubmit={(body, _subject, attachments) => {
-                createThread({
+              onSubmit={async (body, _subject, attachments) => {
+                const ok = await createThread({
                   projectId,
                   contextType,
                   taskId: resolvedTaskId,
@@ -473,7 +505,9 @@ export function Discussion({
                   body,
                   attachments,
                 });
+                if (!ok) return false;
                 onSent?.();
+                return true;
               }}
             />
             </ComposerBar>
@@ -482,8 +516,11 @@ export function Discussion({
       )}
 
       {visible.map((thread) => {
-        const threadComments = comments.filter((c) => c.thread_id === thread.id);
-        const roots = threadComments.filter((c) => !c.parent_comment_id);
+        // Chat here is flat, in the order it was said — the table keeps no reply parent.
+        const threadComments = comments
+          .filter((c) => c.thread_id === thread.id)
+          .slice()
+          .sort((a, b) => a.created_at.localeCompare(b.created_at));
         return (
           <article key={thread.id}>
             <ChatPanel>
@@ -498,68 +535,28 @@ export function Discussion({
               </header>
             )}
             <Transcript>
-              {roots.map((root, index) => {
-                const replies = threadComments.filter((c) => c.parent_comment_id === root.id);
-                const previous = index > 0 ? roots[index - 1] : undefined;
+              {threadComments.map((message, index) => {
+                const previous = index > 0 ? threadComments[index - 1] : undefined;
                 const newDay =
                   !previous ||
                   new Date(previous.created_at).toDateString() !==
-                    new Date(root.created_at).toDateString();
+                    new Date(message.created_at).toDateString();
                 return (
-                  <div key={root.id} className="space-y-2">
-                    {newDay && <DayDivider date={root.created_at} />}
+                  <div key={message.id} className="space-y-2">
+                    {newDay && <DayDivider date={message.created_at} />}
                     <Message
                       projectId={projectId}
-                      id={root.id}
-                      authorId={root.author_id}
-                      body={root.body}
-                      createdAt={root.created_at}
-                      mine={root.author_id === currentUserId}
-                      highlighted={highlightCommentId === root.id}
+                      id={message.id}
+                      authorId={message.author_id}
+                      body={message.body}
+                      createdAt={message.created_at}
+                      mine={message.author_id === currentUserId}
+                      highlighted={highlightCommentId === message.id}
                     />
-                    {replies.map((reply) => (
-                      <Message
-                        key={reply.id}
-                        projectId={projectId}
-                        reply
-                        id={reply.id}
-                        authorId={reply.author_id}
-                        body={reply.body}
-                        createdAt={reply.created_at}
-                        mine={reply.author_id === currentUserId}
-                        highlighted={highlightCommentId === reply.id}
-                      />
-                    ))}
-
-                    {canPost && (
-                      <div className="pl-9">
-                        {replyTo === root.id ? (
-                          <Composer
-                            compact
-                            projectId={projectId}
-                            threadKey={thread.id}
-                            autoFocus
-                            placeholder="Write a reply…"
-                            submitLabel="Reply"
-                            onSubmit={(body, _subject, attachments) => {
-                              addComment(thread.id, root.id, body, attachments);
-                              setReplyTo(null);
-                            }}
-                          />
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setReplyTo(root.id)}
-                            className="inline-flex min-h-11 items-center text-sm font-medium text-ink-soft hover:text-ink hover:underline"
-                          >
-                            Reply
-                          </button>
-                        )}
-                      </div>
-                    )}
                   </div>
                 );
               })}
+              <div ref={endRef} />
             </Transcript>
             {canPost && (
               <ComposerBar>
@@ -571,9 +568,11 @@ export function Discussion({
                   autoFocus={autoFocusComposer}
                   placeholder="Message…"
                   submitLabel="Send"
-                  onSubmit={(body, _subject, attachments) => {
-                    addComment(thread.id, null, body, attachments);
+                  onSubmit={async (body, _subject, attachments) => {
+                    const ok = await addComment(thread.id, body, attachments);
+                    if (!ok) return false;
                     onSent?.();
+                    return true;
                   }}
                 />
               </ComposerBar>

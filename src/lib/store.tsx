@@ -102,12 +102,15 @@ type Store = {
   setPortalUrl: (projectId: string, url: string) => void;
   addDocumentVersion: (documentId: string, note: string) => void;
   recordApproval: (documentId: string, decision: Approval["decision"], note: string) => void;
+  /**
+   * Posts a message into an existing conversation. Chat is flat: no parent id.
+   * Resolves true when the message was saved.
+   */
   addComment: (
     threadId: string,
-    parentCommentId: string | null,
     body: string,
     attachments?: StagedAttachment[],
-  ) => void;
+  ) => Promise<boolean>;
   /** Uploads a file for a conversation before the message is posted. */
   uploadAttachment: (
     file: File,
@@ -129,7 +132,7 @@ type Store = {
     subject: string;
     body: string;
     attachments?: StagedAttachment[];
-  }) => void;
+  }) => Promise<boolean>;
   /** Personal Inbox read state; works on any production, closed ones included. */
   markNotifications: (ids: string[], read: boolean) => void;
 };
@@ -243,19 +246,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const projectOfThread = (threadId: string) =>
     dataRef.current?.discussionThreads.find((t) => t.id === threadId)?.project_id;
 
-  const run = useCallback(
-    (work: () => Promise<unknown>) => {
+  /** Awaitable save: reports back whether the change actually landed. */
+  const runAsync = useCallback(
+    async (work: () => Promise<unknown>): Promise<boolean> => {
       setSaving(true);
-      void work()
-        .then(() => refresh())
-        .catch((e: unknown) => {
-          setError(e instanceof Error ? e.message : "That change could not be saved.");
-          // Drop any optimistic edit that did not land.
-          void refresh().catch(() => undefined);
-        })
-        .finally(() => setSaving(false));
+      try {
+        await work();
+        await refresh();
+        return true;
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "That change could not be saved.");
+        // Drop any optimistic edit that did not land.
+        await refresh().catch(() => undefined);
+        return false;
+      } finally {
+        setSaving(false);
+      }
     },
     [refresh],
+  );
+
+  const run = useCallback(
+    (work: () => Promise<unknown>) => {
+      void runAsync(work);
+    },
+    [runAsync],
   );
 
   const setTaskStatus = useCallback(
@@ -366,16 +381,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [allowed, data, run],
   );
 
-  const addComment = useCallback(
-    (
-      threadId: string,
-      _parentCommentId: string | null,
-      body: string,
-      attachments?: StagedAttachment[],
-    ) => {
-      const thread = data?.discussionThreads.find((t) => t.id === threadId);
-      if (!thread || !allowed(projectOfThread(threadId), "contribute")) return;
-      run(() =>
+  const addComment = useCallback<Store["addComment"]>(
+    async (threadId, body, attachments) => {
+      const thread = dataRef.current?.discussionThreads.find((t) => t.id === threadId);
+      if (!thread || !allowed(projectOfThread(threadId), "contribute")) return false;
+      if (!body.trim() && !(attachments && attachments.length > 0)) return false;
+      return await runAsync(() =>
         writeComment({
           threadId,
           body,
@@ -383,22 +394,46 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           projectId: thread.project_id,
           sourceEntityType: thread.context_type,
           sourceEntityId: thread.task_id ?? thread.document_id ?? thread.project_id,
-          departments: data?.departments ?? [],
-          people: data?.people ?? [],
+          departments: dataRef.current?.departments ?? [],
+          people: dataRef.current?.people ?? [],
           ...(attachments && attachments.length > 0 ? { attachments } : {}),
         }),
       );
     },
-    [allowed, data, run],
+    [allowed, runAsync],
   );
 
   const createThread = useCallback<Store["createThread"]>(
-    ({ projectId, contextType, taskId = null, documentId = null, subject, body, attachments }) => {
-      if (!allowed(projectId, "contribute")) return;
+    async ({
+      projectId,
+      contextType,
+      taskId = null,
+      documentId = null,
+      subject,
+      body,
+      attachments,
+    }) => {
+      if (!allowed(projectId, "contribute")) return false;
       // The table requires the id that matches the context, so refuse an unanchored thread.
-      if (contextType === "task" && !taskId) return;
-      if (contextType === "document" && !documentId) return;
-      run(() =>
+      if (contextType === "task" && !taskId) return false;
+      if (contextType === "document" && !documentId) return false;
+      if (!body.trim() && !(attachments && attachments.length > 0)) return false;
+      // One conversation per work item / document: if one exists already, this
+      // message joins it instead of starting a second one.
+      const existing = dataRef.current?.discussionThreads.find(
+        (t) =>
+          t.project_id === projectId &&
+          t.context_type === contextType &&
+          (contextType === "task"
+            ? t.task_id === taskId
+            : contextType === "document"
+              ? t.document_id === documentId
+              : false),
+      );
+      if (existing) {
+        return await addComment(existing.id, body, attachments);
+      }
+      return await runAsync(() =>
         writeThread({
           projectId,
           contextType,
@@ -407,13 +442,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           subject,
           body,
           authorId: currentUserIdRef.current,
-          departments: data?.departments ?? [],
-          people: data?.people ?? [],
+          departments: dataRef.current?.departments ?? [],
+          people: dataRef.current?.people ?? [],
           ...(attachments && attachments.length > 0 ? { attachments } : {}),
         }),
       );
     },
-    [allowed, data, run],
+    [addComment, allowed, runAsync],
   );
 
   const uploadAttachment = useCallback(
