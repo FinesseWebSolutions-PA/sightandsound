@@ -261,7 +261,12 @@ export function MasterTimeline({
     [childrenOf],
   );
 
-  /** One band per set, in running order — the production is planned set by set. */
+  /**
+   * The production timeline is planned set by set: it shows only the sets, their
+   * dates and the chain between them. Work items appear on a set's own schedule.
+   */
+  const setsOnly = !pinnedSceneId;
+
   const groups: Group[] = useMemo(
     () =>
       (pinnedSceneId ? projectScenes.filter((s) => s.id === pinnedSceneId) : projectScenes).map(
@@ -269,10 +274,10 @@ export function MasterTimeline({
           key: s.id,
           scene: s,
           label: s.name,
-          rows: nest(projectTasks.filter((t) => t.scene_id === s.id)),
+          rows: setsOnly ? [] : nest(projectTasks.filter((t) => t.scene_id === s.id)),
         }),
       ),
-    [pinnedSceneId, projectScenes, projectTasks, nest],
+    [pinnedSceneId, projectScenes, projectTasks, nest, setsOnly],
   );
 
   const visibleTaskIds = useMemo(() => {
