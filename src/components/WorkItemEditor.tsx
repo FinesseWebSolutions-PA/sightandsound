@@ -116,7 +116,7 @@ export function WorkItemEditor({
   // Nesting is one level deep, so only top-level work items from this production can be a parent.
   const parentOptions = otherTasks.filter((t) => t.project_id === projectId && !t.parent_task_id);
 
-  async function save() {
+  async function save({ override = false }: { override?: boolean } = {}) {
     if (!title.trim()) {
       setProblem("Give the work item a title.");
       return;
@@ -129,6 +129,19 @@ export function WorkItemEditor({
       setProblem("Choose the set this work belongs to.");
       return;
     }
+    if (!override) {
+      const clashes = dependencyConflicts({
+        startDate: startDate || null,
+        dueDate: dueDate || null,
+        dependencies: waitsOn,
+        tasks,
+      });
+      if (clashes.length > 0) {
+        setConflicts(clashes.map((c) => c.message));
+        return;
+      }
+    }
+    setConflicts([]);
     const ok = await saveWorkItem({
       ...(existing ? { id: existing.id } : {}),
       projectId,
