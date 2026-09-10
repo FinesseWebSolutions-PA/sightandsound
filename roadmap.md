@@ -72,3 +72,8 @@
 - Images show as previews; every file has Open (signed link) and, for contributors/admins on open productions, "Save to project docs".
 - Saving asks for a name and a folder (existing folder or a new one), creates the document at revision 1 pointing at the same file, and the message then shows "Saved to <folder>" linking to it.
 - Documents list shows folders, and a document can be moved into an existing or new folder.
+
+## Staffing (done)
+- Company-wide Team & Roles page: department, lead flag, access level per person; default department head; reusable job titles per department.
+- Per-production Team & Departments tab: turn departments on/off, name the production's department head, assign people with a preset or custom job for that show, change or remove assignments.
+- Admin-only on open productions; viewers and closed productions stay read-only. Every change is recorded in history.
