@@ -34,7 +34,13 @@ import {
   removeJobTitlePreset,
   writeTaskDates,
   writeTaskStatus,
+  writeTask,
+  removeTask,
+  writeTaskDependency,
+  removeTaskDependency,
   writeThread,
+  type DependencyType,
+  type WorkItemInput,
   type Approval,
   type AuditEntry,
   type Comment,
@@ -166,6 +172,18 @@ type Store = {
   setDepartmentOwner: (departmentId: string, personId: string) => void;
   addJobTitlePreset: (departmentId: string, title: string) => void;
   deleteJobTitlePreset: (id: string, departmentId: string) => void;
+  /** Creates or edits a work item. Resolves false when the save did not land. */
+  saveWorkItem: (input: Omit<WorkItemInput, "actorId">) => Promise<boolean>;
+  deleteWorkItem: (taskId: string, projectId: string) => Promise<boolean>;
+  addDependency: (input: {
+    taskId: string;
+    dependsOnTaskId: string;
+    type: DependencyType;
+    lagHours: number;
+    hardConstraint: boolean;
+    projectId: string;
+  }) => Promise<boolean>;
+  removeDependency: (id: string, taskId: string, projectId: string) => Promise<boolean>;
 };
 
 const StoreContext = createContext<Store | null>(null);
@@ -640,6 +658,46 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [run],
   );
 
+  /* ---------------------------------------------------------- work items */
+
+  const saveWorkItem = useCallback<Store["saveWorkItem"]>(
+    async (input) => {
+      if (!allowed(input.projectId, "admin")) return false;
+      if (!input.title.trim()) return false;
+      return await runAsync(() => writeTask({ ...input, actorId: currentUserIdRef.current }));
+    },
+    [allowed, runAsync],
+  );
+
+  const deleteWorkItem = useCallback<Store["deleteWorkItem"]>(
+    async (taskId, projectId) => {
+      if (!allowed(projectId, "admin")) return false;
+      return await runAsync(() => removeTask(taskId, projectId, currentUserIdRef.current));
+    },
+    [allowed, runAsync],
+  );
+
+  const addDependency = useCallback<Store["addDependency"]>(
+    async (input) => {
+      if (!allowed(input.projectId, "admin")) return false;
+      return await runAsync(() =>
+        writeTaskDependency({ ...input, actorId: currentUserIdRef.current }),
+      );
+    },
+    [allowed, runAsync],
+  );
+
+  const removeDependency = useCallback<Store["removeDependency"]>(
+    async (id, taskId, projectId) => {
+      if (!allowed(projectId, "admin")) return false;
+      return await runAsync(() =>
+        removeTaskDependency(id, taskId, projectId, currentUserIdRef.current),
+      );
+    },
+    [allowed, runAsync],
+  );
+
+
   const markNotifications = useCallback(
     (ids: string[], read: boolean) => {
       if (ids.length === 0) return;
@@ -712,6 +770,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             setDepartmentOwner,
             addJobTitlePreset,
             deleteJobTitlePreset,
+            saveWorkItem,
+            deleteWorkItem,
+            addDependency,
+            removeDependency,
           }
         : {
             role,
@@ -766,6 +828,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             setDepartmentOwner: () => {},
             addJobTitlePreset: () => {},
             deleteJobTitlePreset: () => {},
+            saveWorkItem: async () => false,
+            deleteWorkItem: async () => false,
+            addDependency: async () => false,
+            removeDependency: async () => false,
           },
     [
       role,
@@ -798,6 +864,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setDepartmentOwner,
       addJobTitlePreset,
       deleteJobTitlePreset,
+      saveWorkItem,
+      deleteWorkItem,
+      addDependency,
+      removeDependency,
     ],
   );
 

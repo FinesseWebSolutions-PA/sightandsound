@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, CalendarClock, Link2, MessageSquare } from "lucide-react";
+import { AlertTriangle, CalendarClock, Link2, MessageSquare, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { StatusBadge } from "@/components/StatusBadge";
@@ -14,7 +14,14 @@ import {
 import { daysBetween, toISO } from "@/lib/schedule";
 import type { Task } from "@/lib/production-data";
 
-export function DepartmentWorkQueue({ projectId }: { projectId: string }) {
+export function DepartmentWorkQueue({
+  projectId,
+  onAddWork,
+}: {
+  projectId: string;
+  /** Present only when the viewer may plan work; opens the editor for that department. */
+  onAddWork?: (departmentId: string) => void;
+}) {
   const { tasks } = useStore();
   const projectTasks = useMemo(
     () => tasks.filter((t) => t.project_id === projectId),
@@ -68,12 +75,24 @@ export function DepartmentWorkQueue({ projectId }: { projectId: string }) {
           });
           return (
             <section key={dept.id} className="surface-card overflow-hidden">
-              <header className="panel-header px-4 py-3">
-                <h3 className="text-base font-semibold text-ink">{dept.name}</h3>
-                <p className="mt-0.5 text-xs text-ink-soft">
-                  {open.length} open · {blocked.length} blocked · {dueSoon.length} due within two
-                  weeks
-                </p>
+              <header className="panel-header flex items-start gap-3 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-base font-semibold text-ink">{dept.name}</h3>
+                  <p className="mt-0.5 text-xs text-ink-soft">
+                    {open.length} open · {blocked.length} blocked · {dueSoon.length} due within two
+                    weeks
+                  </p>
+                </div>
+                {onAddWork && (
+                  <button
+                    type="button"
+                    onClick={() => onAddWork(dept.id)}
+                    className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-border bg-card px-3 text-sm font-semibold text-ink"
+                  >
+                    <Plus aria-hidden className="size-4" />
+                    Add work
+                  </button>
+                )}
               </header>
               {open.length === 0 ? (
                 <p className="px-4 py-4 text-sm text-ink-soft">Nothing open for this department.</p>

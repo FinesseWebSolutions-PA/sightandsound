@@ -109,6 +109,7 @@ export type Task = {
   milestone_id: string;
   scene_id: string;
   title: string;
+  description: string;
   status: TaskStatus;
   start_date: string;
   due_date: string;
@@ -577,6 +578,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     milestone_id: t.milestone_id ?? "",
     scene_id: t.scene_id ?? "",
     title: t.title,
+    description: t.description ?? "",
     status: asTaskStatus(t.status),
     start_date: dateOnly(t.start_date) || dateOnly(t.due_date),
     due_date: dateOnly(t.due_date) || dateOnly(t.start_date),
@@ -1584,4 +1586,143 @@ export async function removeJobTitlePreset(id: string, departmentId: string, act
   const { error } = await supabase.from("department_job_titles").delete().eq("id", id);
   if (error) throw new Error(error.message);
   await recordAudit("department", departmentId, actorId, "job_title_removed", { id });
+}
+
+/* -------------------------------------------------- work items: create / edit */
+
+export type WorkItemInput = {
+  /** Present when editing an existing work item. */
+  id?: string;
+  projectId: string;
+  title: string;
+  description: string;
+  departmentId: string;
+  sceneId: string | null;
+  milestoneId: string | null;
+  ownerId: string | null;
+  startDate: string | null;
+  dueDate: string | null;
+  status: TaskStatus;
+  affectsRehearsal: boolean;
+  affectsPerformance: boolean;
+  actorId: string;
+};
+
+/** Creates or updates one work item, then lets the database recompute the schedule. */
+export async function writeTask(input: WorkItemInput): Promise<string> {
+  const row = {
+    project_id: input.projectId,
+    title: input.title.trim(),
+    description: input.description.trim() || null,
+    department_id: input.departmentId || null,
+    scene_id: input.sceneId || null,
+    milestone_id: input.milestoneId || null,
+    owner_id: input.ownerId || null,
+    start_date: input.startDate || null,
+    due_date: input.dueDate || null,
+    status: toTaskStatusColumn(input.status),
+    affects_rehearsal: input.affectsRehearsal,
+    affects_performance: input.affectsPerformance,
+    updated_at: new Date().toISOString(),
+  };
+
+  let taskId = input.id ?? "";
+  if (input.id) {
+    const { error } = await supabase.from("tasks").update(row).eq("id", input.id);
+    if (error) throw new Error(error.message);
+  } else {
+    const { count } = await supabase
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", input.projectId);
+    const { data, error } = await supabase
+      .from("tasks")
+      .insert({ ...row, sort_order: (count ?? 0) + 1, created_by: input.actorId || null })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    taskId = data.id;
+  }
+
+  await refreshSchedule([input.projectId]);
+  await recordAudit("task", taskId, input.actorId, input.id ? "task_updated" : "task_created", {
+    title: row.title,
+    department_id: row.department_id,
+    scene_id: row.scene_id,
+    milestone_id: row.milestone_id,
+    owner_id: row.owner_id,
+    start_date: row.start_date,
+    due_date: row.due_date,
+  });
+  return taskId;
+}
+
+/** Tells the caller whether a work item can be removed outright, and why not. */
+export async function taskRemovalBlockers(taskId: string): Promise<string[]> {
+  const [deps, threads, docs] = await Promise.all([
+    supabase.from("task_dependencies").select("id").eq("depends_on_task_id", taskId),
+    supabase.from("discussion_threads").select("id").eq("task_id", taskId),
+    supabase.from("documents").select("id").eq("task_id", taskId),
+  ]);
+  const blockers: string[] = [];
+  if ((deps.data?.length ?? 0) > 0) blockers.push("other work waits on it");
+  if ((threads.data?.length ?? 0) > 0) blockers.push("it has a conversation");
+  if ((docs.data?.length ?? 0) > 0) blockers.push("documents are attached to it");
+  return blockers;
+}
+
+export async function removeTask(taskId: string, projectId: string, actorId: string) {
+  const blockers = await taskRemovalBlockers(taskId);
+  if (blockers.length > 0) {
+    throw new Error(`This work item cannot be removed because ${blockers.join(", ")}.`);
+  }
+  const { error: depError } = await supabase
+    .from("task_dependencies")
+    .delete()
+    .eq("task_id", taskId);
+  if (depError) throw new Error(depError.message);
+  const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+  if (error) throw new Error(error.message);
+  await refreshSchedule([projectId]);
+  await recordAudit("task", taskId, actorId, "task_removed", {});
+}
+
+export async function writeTaskDependency(input: {
+  taskId: string;
+  dependsOnTaskId: string;
+  type: DependencyType;
+  lagHours: number;
+  hardConstraint: boolean;
+  projectId: string;
+  actorId: string;
+}) {
+  if (input.taskId === input.dependsOnTaskId) {
+    throw new Error("A work item cannot wait on itself.");
+  }
+  const { error } = await supabase.from("task_dependencies").insert({
+    task_id: input.taskId,
+    depends_on_task_id: input.dependsOnTaskId,
+    type: input.type,
+    lag_hours: input.lagHours,
+    hard_constraint: input.hardConstraint,
+  });
+  if (error) throw new Error(error.message);
+  await refreshSchedule([input.projectId]);
+  await recordAudit("task", input.taskId, input.actorId, "dependency_added", {
+    depends_on_task_id: input.dependsOnTaskId,
+    type: input.type,
+    lag_hours: input.lagHours,
+  });
+}
+
+export async function removeTaskDependency(
+  id: string,
+  taskId: string,
+  projectId: string,
+  actorId: string,
+) {
+  const { error } = await supabase.from("task_dependencies").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  await refreshSchedule([projectId]);
+  await recordAudit("task", taskId, actorId, "dependency_removed", { id });
 }
