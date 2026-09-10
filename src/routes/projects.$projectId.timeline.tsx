@@ -27,7 +27,7 @@ const views = [
     blurb: "What each department owes, and what's blocking it",
   },
   { id: "scenes", label: "Set Readiness", blurb: "Set by set, department by department" },
-  { id: "list", label: "Work & conversations", blurb: "Milestone list with comments in place" },
+  { id: "list", label: "Work & conversations", blurb: "Work item list with comments in place" },
 ] as const;
 
 type ViewId = (typeof views)[number]["id"];
