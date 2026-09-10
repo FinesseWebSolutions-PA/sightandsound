@@ -10,7 +10,7 @@ import { DepartmentWorkQueue } from "@/components/schedule/DepartmentWorkQueue";
 import { MasterTimeline } from "@/components/schedule/MasterTimeline";
 import { SceneReadinessMatrix } from "@/components/schedule/SceneReadinessMatrix";
 import { departments, personById, taskDependencies, useStore } from "@/lib/store";
-import { formatDate, formatDateTime, milestoneStatusMeta, taskStatusMeta } from "@/lib/status";
+import { formatDate, formatDateTime, taskStatusMeta } from "@/lib/status";
 import { activityFor, snippet } from "@/lib/threads";
 import type { Task, TaskStatus } from "@/lib/production-data";
 
