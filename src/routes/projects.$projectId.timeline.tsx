@@ -486,87 +486,24 @@ function TimelineTab() {
       )}
 
       <div className={view === "list" ? "space-y-5" : "hidden"}>
-        {projectMilestones.map((milestone) => {
-          const milestoneTasks = projectTasks
-            .filter((t) => t.milestone_id === milestone.id)
-            .sort((a, b) => a.due_date.localeCompare(b.due_date));
-          return (
-            <section key={milestone.id} className="surface-card overflow-hidden">
-              <header className="panel-header px-4 py-3 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-base font-semibold text-ink">{milestone.name}</h3>
-                    {milestone.is_core && (
-                      <span className="rule-label inline-flex items-center gap-1">
-                        <Lock aria-hidden className="size-3" /> Core
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-0.5 text-xs text-ink-soft">
-                    {[
-                      departments.find((d) => d.id === milestone.department_id)?.name,
-                      personById(milestone.owner_id)?.full_name,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-2 sm:mt-0">
-                  <StatusBadge meta={milestoneStatusMeta[milestone.status]} size="sm" />
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-2 sm:mt-0 sm:ml-auto">
-                  <span className="rule-label">Due</span>
-                  {canEditDates ? (
-                    <input
-                      type="date"
-                      aria-label={`Due date for ${milestone.name}`}
-                      value={milestone.due_date}
-                      onChange={(e) => setMilestoneDate(milestone.id, e.target.value)}
-                      className="min-h-11 rounded-md border border-border bg-card px-2.5 text-base text-ink sm:min-h-0 sm:py-1 sm:text-xs"
-                    />
-                  ) : (
-                    <span className="text-sm text-ink">{formatDate(milestone.due_date)}</span>
-                  )}
-                </div>
-              </header>
-
-              <TaskList
-                rows={milestoneTasks}
-                canUpdate={canUpdate}
-                onStatus={setTaskStatus}
-                taskTitle={taskTitle}
-                emptyLabel="No work items under this milestone yet."
-                {...threadProps}
-              />
-            </section>
-          );
-        })}
-
-        {unscheduled.length > 0 && (
-          <section className="surface-card overflow-hidden">
-            <header className="panel-header px-4 py-3 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
-              <h3 className="text-base font-semibold text-ink">Not tied to a milestone yet</h3>
-              <span className="mt-0.5 block text-xs text-ink-soft sm:mt-0">
-                Work items that still need to be placed on the schedule
-              </span>
-            </header>
-            <TaskList
-              rows={unscheduled}
-              canUpdate={canUpdate}
-              onStatus={setTaskStatus}
-              taskTitle={taskTitle}
-              emptyLabel="Nothing here."
-              {...threadProps}
-            />
-          </section>
-        )}
-
-        {projectMilestones.length === 0 && unscheduled.length === 0 && (
-          <p className="surface-card p-4 text-sm text-ink-soft">
-            No milestones or work items on this production yet.
-          </p>
-        )}
+        <section className="surface-card overflow-hidden">
+          <header className="panel-header px-4 py-3 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+            <h3 className="text-base font-semibold text-ink">Work items</h3>
+            <span className="mt-0.5 block text-xs text-ink-soft sm:mt-0">
+              Everything on this production, soonest due first
+            </span>
+          </header>
+          <TaskList
+            rows={listTasks}
+            canUpdate={canUpdate}
+            onStatus={setTaskStatus}
+            taskTitle={taskTitle}
+            emptyLabel="No work items on this production yet."
+            {...threadProps}
+          />
+        </section>
       </div>
+
 
       {openTaskId && (
         <TaskDetailPanel
