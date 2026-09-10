@@ -168,6 +168,8 @@ export type Store = {
     personId: string;
     departmentId: string;
     jobTitle: string;
+    /** Leave out for the production's default team; pass a set id to staff that set. */
+    sceneId?: string | null;
   }) => void;
   setAssignmentJobTitle: (assignmentId: string, projectId: string, jobTitle: string) => void;
   unassignPerson: (assignmentId: string, projectId: string) => void;
