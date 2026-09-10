@@ -163,12 +163,12 @@ export function DocumentBrowser({
   const projectDocs = documents.filter(
     (d) => d.project_id === projectId && (!pinnedSceneId || d.scene_id === pinnedSceneId),
   );
-  const [selectedId, setSelectedId] = useState(openDocumentId ?? projectDocs[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState(openDocumentId ?? "");
   // Arriving from the Inbox or the Dashboard opens that exact document.
   useEffect(() => {
     if (openDocumentId) setSelectedId(openDocumentId);
   }, [openDocumentId]);
-  const selected = projectDocs.find((d) => d.id === selectedId) ?? projectDocs[0];
+
   const [note, setNote] = useState("");
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"list" | "grid">("list");
