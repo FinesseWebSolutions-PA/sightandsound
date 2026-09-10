@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, X } from "lucide-react";
 
+import { PersonPicker } from "@/components/PersonPicker";
 import { departmentJobTitles, departments, people, useStore } from "@/lib/store";
 import { projectStatusMeta } from "@/lib/status";
 import type { ProjectStatus } from "@/lib/production-data";
@@ -184,19 +185,14 @@ export function NewProductionDialog({
             <label className="block text-sm font-medium text-ink" htmlFor="np-owner">
               Production lead
             </label>
-            <select
-              id="np-owner"
-              value={ownerId}
-              onChange={(e) => setOwnerId(e.target.value)}
-              className={field}
-            >
-              <option value="">Unassigned for now</option>
-              {people.map((person) => (
-                <option key={person.id} value={person.id}>
-                  {person.full_name}
-                </option>
-              ))}
-            </select>
+            <div className="mt-1">
+              <PersonPicker
+                label="Production lead"
+                value={ownerId}
+                onChange={setOwnerId}
+                placeholder="Unassigned for now"
+              />
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-ink" htmlFor="np-start">

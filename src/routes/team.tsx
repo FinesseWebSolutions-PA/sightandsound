@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Crown, Plus, Users, X } from "lucide-react";
 
+import { PersonPicker } from "@/components/PersonPicker";
 import {
   departmentJobTitles,
   departments,
@@ -139,19 +140,18 @@ function GlobalTeamPage() {
                   Default department head
                 </p>
                 {editable ? (
-                  <select
-                    aria-label={`Default head of ${dept.name}`}
-                    value={dept.owner_id}
-                    onChange={(e) => setDepartmentOwner(dept.id, e.target.value)}
-                    className="mt-1 min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
-                  >
-                    <option value="">No default head</option>
-                    {people.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.full_name} — {p.title}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="mt-1">
+                    <PersonPicker
+                      label={`Default head of ${dept.name}`}
+                      value={dept.owner_id}
+                      onChange={(id: string) => setDepartmentOwner(dept.id, id)}
+                      placeholder="No default head"
+                      suggestedIds={people
+                        .filter((p) => p.primary_department_id === dept.id)
+                        .map((p) => p.id)}
+                      suggestedLabel={`In ${dept.name}`}
+                    />
+                  </div>
                 ) : (
                   <p className="mt-0.5 text-ink">
                     {personById(dept.owner_id)?.full_name ?? "No default head"}
