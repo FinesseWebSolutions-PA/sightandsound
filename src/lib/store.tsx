@@ -239,6 +239,8 @@ export type Store = {
   reorderScene: (sceneId: string, neighbourId: string, projectId: string) => Promise<boolean>;
   /** Starts a new production. Admin only; resolves the new production's id. */
   createProduction: (input: Omit<NewProductionInput, "actorId">) => Promise<string | null>;
+  /** Edits a production's own settings. Admin only; closed ones can be reopened. */
+  updateProduction: (projectId: string, input: ProductionSettingsInput) => Promise<boolean>;
 };
 
 /**
