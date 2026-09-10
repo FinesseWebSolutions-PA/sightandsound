@@ -103,7 +103,7 @@
   --info: oklch(0.402 0.088 245);
   --info-bg: oklch(0.925 0.032 240);
 
-  --background: oklch(0.956 0.013 92);
+  --background: oklch(0.928 0.018 90);
   --foreground: var(--warm-gray-900);
   --card: oklch(1 0 0);
   --card-foreground: var(--warm-gray-900);
