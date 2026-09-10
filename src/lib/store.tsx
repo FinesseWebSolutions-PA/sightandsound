@@ -192,10 +192,25 @@ export type Store = {
     projectId: string;
   }) => Promise<boolean>;
   removeDependency: (id: string, taskId: string, projectId: string) => Promise<boolean>;
-  /** Scenes a production's work can be tied to. Admin only, open productions. */
+  /** Sets: the unit of work inside a production. Admin only, open productions. */
   createScene: (projectId: string, name: string) => Promise<string | null>;
   renameScene: (sceneId: string, projectId: string, name: string) => void;
   deleteScene: (sceneId: string, projectId: string) => Promise<boolean>;
+  /** Lead, status, committed dates, and which set this one follows. */
+  updateScene: (
+    sceneId: string,
+    projectId: string,
+    fields: {
+      owner_id?: string | null;
+      status?: SetStatus;
+      start_date?: string | null;
+      due_date?: string | null;
+      depends_on_scene_id?: string | null;
+      lag_days?: number;
+    },
+  ) => Promise<boolean>;
+  /** Swaps a set with its neighbour in the running order. */
+  reorderScene: (sceneId: string, neighbourId: string, projectId: string) => Promise<boolean>;
   /** Starts a new production. Admin only; resolves the new production's id. */
   createProduction: (input: Omit<NewProductionInput, "actorId">) => Promise<string | null>;
 };
