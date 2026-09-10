@@ -37,6 +37,7 @@ export function TaskDetailPanel({
   highlightCommentId,
   askDepartmentId,
   onEdit,
+  onAddSubTask,
 }: {
   taskId: string;
   onClose: () => void;
@@ -44,6 +45,8 @@ export function TaskDetailPanel({
   askDepartmentId?: string;
   /** Present only when the viewer may restructure this work item. */
   onEdit?: (taskId: string) => void;
+  /** Opens the single task form with this work item preset as the parent. */
+  onAddSubTask?: (parentTaskId: string) => void;
 }) {
   const {
     tasks,
@@ -54,7 +57,6 @@ export function TaskDetailPanel({
     setTaskStatus,
     unapprovedDocuments,
     isClosed,
-    saveWorkItem,
     uploadDocument,
     saving,
   } = useStore();
@@ -63,7 +65,6 @@ export function TaskDetailPanel({
   const task = tasks.find((t) => t.id === activeId) ?? tasks.find((t) => t.id === taskId);
   // An "Ask <Department>" prefill is used once: after the message is sent it is gone.
   const [askUsed, setAskUsed] = useState(false);
-  const [subTitle, setSubTitle] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [needsApproval, setNeedsApproval] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -73,7 +74,6 @@ export function TaskDetailPanel({
   useEffect(() => {
     setAskUsed(false);
     setActiveId(taskId);
-    setSubTitle("");
   }, [taskId, askDepartmentId]);
 
 
@@ -102,27 +102,6 @@ export function TaskDetailPanel({
   const parent = task.parent_task_id ? tasks.find((t) => t.id === task.parent_task_id) : undefined;
   const canAddSub = can.editCoreTimeline && !locked && !task.parent_task_id;
   const subDone = subItems.filter((t) => t.status === "complete").length;
-
-  async function addSubItem() {
-    const title = subTitle.trim();
-    if (!title || saving) return;
-    const ok = await saveWorkItem({
-      projectId: task!.project_id,
-      title,
-      description: "",
-      departmentId: task!.department_id,
-      sceneId: task!.scene_id,
-      milestoneId: task!.milestone_id || null,
-      parentTaskId: task!.id,
-      ownerId: task!.assignee_id || null,
-      startDate: task!.start_date || null,
-      dueDate: task!.due_date || null,
-      status: "not_started",
-      affectsRehearsal: task!.affects_rehearsal,
-      affectsPerformance: task!.affects_performance,
-    });
-    if (ok) setSubTitle("");
-  }
 
   /** Files attach straight to this work item — no folders to choose. */
   async function addFiles(files: File[]) {
@@ -254,7 +233,7 @@ export function TaskDetailPanel({
             )}
           </dl>
 
-          {(subItems.length > 0 || canAddSub) && (
+          {(subItems.length > 0 || (canAddSub && onAddSubTask)) && (
             <section className="rounded-md border border-border bg-card">
               <div className="flex items-center justify-between border-b border-border px-3 py-2">
                 <p className="text-xs font-semibold text-ink">Sub-tasks</p>
@@ -291,30 +270,17 @@ export function TaskDetailPanel({
                   ))}
                 </ul>
               )}
-              {canAddSub && (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void addSubItem();
-                  }}
-                  className="flex items-center gap-2 border-t border-border px-3 py-2"
-                >
-                  <input
-                    value={subTitle}
-                    onChange={(e) => setSubTitle(e.target.value)}
-                    placeholder="Add a sub-task"
-                    aria-label={`Add a sub-task to ${task.title}`}
-                    className="min-h-11 min-w-0 flex-1 rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
-                  />
+              {canAddSub && onAddSubTask && (
+                <div className="border-t border-border px-3 py-2">
                   <button
-                    type="submit"
-                    disabled={!subTitle.trim() || saving}
-                    className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md bg-ink px-3 text-sm font-semibold text-cream disabled:opacity-50"
+                    type="button"
+                    onClick={() => onAddSubTask(task.id)}
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-ink px-3 text-sm font-semibold text-cream"
                   >
                     <Plus aria-hidden className="size-4" />
-                    Add
+                    Add sub-task
                   </button>
-                </form>
+                </div>
               )}
             </section>
           )}
