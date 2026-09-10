@@ -81,7 +81,7 @@ export function TaskDetailPanel({
   const pendingDocs = unapprovedDocuments(task.id);
   const canUpdate = can.updateWork && !locked;
   const dept = departments.find((d) => d.id === task.department_id);
-  const milestone = milestones.find((m) => m.id === task.milestone_id);
+  const milestone = undefined as { name: string } | undefined;
   const scene = scenes.find((s) => s.id === task.scene_id);
   const waitsOn = taskDependencies.filter((d) => d.task_id === task.id);
   const blocks = taskDependencies.filter((d) => d.depends_on_task_id === task.id);
