@@ -66,7 +66,7 @@ export function TaskDetailPanel({
   // An "Ask <Department>" prefill is used once: after the message is sent it is gone.
   const [askUsed, setAskUsed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [needsApproval, setNeedsApproval] = useState(true);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
 
   // A fresh work item, or a fresh department to ask, starts the prefill over so it
@@ -104,8 +104,9 @@ export function TaskDetailPanel({
   const subDone = subItems.filter((t) => t.status === "complete").length;
 
   /** Files attach straight to this work item — no folders to choose. */
-  async function addFiles(files: File[]) {
+  async function addFiles(files: File[], requiresApproval: boolean) {
     if (files.length === 0 || uploading || !task) return;
+    setPendingFiles([]);
     setUploading(true);
     try {
       for (const file of files) {
@@ -115,7 +116,7 @@ export function TaskDetailPanel({
           folder: null,
           sceneId: task.scene_id,
           taskId: task.id,
-          requiresApproval: needsApproval,
+          requiresApproval,
         });
       }
     } finally {
@@ -365,7 +366,7 @@ export function TaskDetailPanel({
               </p>
             )}
             {canUpdate && (
-              <div className="flex items-center gap-2 border-t border-border px-3 py-2">
+              <>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -374,19 +375,46 @@ export function TaskDetailPanel({
                   onChange={(e) => {
                     const files = Array.from(e.target.files ?? []);
                     e.target.value = "";
-                    void addFiles(files);
+                    setPendingFiles(files);
                   }}
                 />
-                <label className="flex items-center gap-1.5 text-xs text-ink-soft">
-                  <input
-                    type="checkbox"
-                    checked={needsApproval}
-                    onChange={(e) => setNeedsApproval(e.target.checked)}
-                    className="size-4"
-                  />
-                  Needs approval
-                </label>
-              </div>
+                {pendingFiles.length > 0 && (
+                  <div className="border-t border-border px-3 py-2.5">
+                    <p className="text-xs font-semibold text-ink">
+                      Does {pendingFiles.length === 1 ? "this document" : "this set of documents"}{" "}
+                      need approval?
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-ink-soft">
+                      {pendingFiles.map((f) => f.name).join(", ")}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={uploading}
+                        onClick={() => void addFiles(pendingFiles, true)}
+                        className="min-h-9 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+                      >
+                        Needs approval
+                      </button>
+                      <button
+                        type="button"
+                        disabled={uploading}
+                        onClick={() => void addFiles(pendingFiles, false)}
+                        className="min-h-9 rounded-md border border-border bg-card px-3 text-xs font-semibold text-ink disabled:opacity-60"
+                      >
+                        No approval needed
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPendingFiles([])}
+                        className="min-h-9 rounded-md px-2 text-xs font-medium text-ink-soft"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </section>
 
