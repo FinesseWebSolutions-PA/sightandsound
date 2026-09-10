@@ -1,8 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { Bell, Inbox, Menu, ShieldCheck } from "lucide-react";
+import { Bell, Inbox } from "lucide-react";
 
-import { people, roleDescriptions, roleLabels, useStore } from "@/lib/store";
+import { people, roleLabels, useStore } from "@/lib/store";
 import type { Role } from "@/lib/production-data";
 
 const roles: Role[] = ["admin", "contributor", "viewer"];
