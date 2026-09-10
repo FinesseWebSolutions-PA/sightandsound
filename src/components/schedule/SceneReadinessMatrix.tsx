@@ -87,8 +87,30 @@ function cellFor(tasks: Task[], documents: Document[], approvals: Approval[], to
   };
 }
 
-function CellLink({ cell, projectId, label }: { cell: Cell; projectId: string; label: string }) {
+function CellLink({
+  cell,
+  projectId,
+  label,
+  onAddWork,
+}: {
+  cell: Cell;
+  projectId: string;
+  label: string;
+  onAddWork?: () => void;
+}) {
   if (!cell.meta) {
+    if (onAddWork) {
+      return (
+        <button
+          type="button"
+          onClick={onAddWork}
+          aria-label={`Add work for ${label}`}
+          className="block min-h-11 w-full rounded-md px-2 py-2 text-left text-xs font-semibold text-ink-soft hover:bg-cream-soft"
+        >
+          + Add work
+        </button>
+      );
+    }
     return <span className="block px-2 py-2 text-xs text-ink-soft">—</span>;
   }
   const body = (
@@ -128,7 +150,14 @@ function CellLink({ cell, projectId, label }: { cell: Cell; projectId: string; l
   return <span className={shared}>{body}</span>;
 }
 
-export function SceneReadinessMatrix({ projectId }: { projectId: string }) {
+export function SceneReadinessMatrix({
+  projectId,
+  onAddWork,
+}: {
+  projectId: string;
+  /** Present only when the viewer may plan work; opens the editor for that scene. */
+  onAddWork?: (sceneId: string, departmentId: string) => void;
+}) {
   const { scenes, tasks, documents, approvals } = useStore();
   const today = toISO(new Date());
 
@@ -199,6 +228,7 @@ export function SceneReadinessMatrix({ projectId }: { projectId: string }) {
                       cell={cell}
                       projectId={projectId}
                       label={`${scene.name}, ${dept.name}`}
+                      {...(onAddWork ? { onAddWork: () => onAddWork(scene.id, dept.id) } : {})}
                     />
                   </li>
                 ))}
@@ -237,6 +267,7 @@ export function SceneReadinessMatrix({ projectId }: { projectId: string }) {
                       cell={cell}
                       projectId={projectId}
                       label={`${scene.name}, ${dept.name}`}
+                      {...(onAddWork ? { onAddWork: () => onAddWork(scene.id, dept.id) } : {})}
                     />
                   </td>
                 ))}

@@ -1,8 +1,9 @@
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
-import { ArrowUpRight, Clock, Link2, Lock, MessageSquare } from "lucide-react";
+import { ArrowUpRight, Clock, Link2, Lock, MessageSquare, Plus } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 
 import { TaskDetailPanel } from "@/components/TaskDetailPanel";
+import { WorkItemEditor } from "@/components/WorkItemEditor";
 
 import { StatusBadge } from "@/components/StatusBadge";
 import { DepartmentWorkQueue } from "@/components/schedule/DepartmentWorkQueue";
@@ -326,6 +327,14 @@ function TimelineTab() {
   const locked = isClosed(projectId);
   const canEditDates = can.editCoreTimeline && !locked;
   const canUpdate = can.updateWork && !locked;
+  // Only an admin on an open production can add or restructure work items.
+  const canPlan = can.adminConfig && !locked;
+
+  const [editor, setEditor] = useState<{
+    taskId?: string;
+    departmentId?: string;
+    sceneId?: string;
+  } | null>(null);
 
   const projectMilestones = milestones
     .filter((m) => m.project_id === projectId)
@@ -376,8 +385,18 @@ function TimelineTab() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-4">
-        <div className="min-w-0">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
           <h2 className="font-display text-2xl text-ink sm:text-3xl">Schedule</h2>
+          {canPlan && (
+            <button
+              type="button"
+              onClick={() => setEditor({})}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-gold-deep px-3.5 text-sm font-semibold text-white"
+            >
+              <Plus aria-hidden className="size-4" />
+              Add work item
+            </button>
+          )}
         </div>
         {!canEditDates && (
           <p className="flex items-start gap-1.5 rounded-md border border-border bg-cream px-3 py-2 text-xs text-ink-soft">
@@ -415,8 +434,23 @@ function TimelineTab() {
       </div>
 
       {view === "master" && <MasterTimeline projectId={projectId} />}
-      {view === "queue" && <DepartmentWorkQueue projectId={projectId} />}
-      {view === "scenes" && <SceneReadinessMatrix projectId={projectId} />}
+      {view === "queue" && (
+        <DepartmentWorkQueue
+          projectId={projectId}
+          {...(canPlan ? { onAddWork: (departmentId: string) => setEditor({ departmentId }) } : {})}
+        />
+      )}
+      {view === "scenes" && (
+        <SceneReadinessMatrix
+          projectId={projectId}
+          {...(canPlan
+            ? {
+                onAddWork: (sceneId: string, departmentId: string) =>
+                  setEditor({ sceneId, departmentId }),
+              }
+            : {})}
+        />
+      )}
 
       {view !== "list" && (
         <section className="surface-card p-4">
@@ -533,8 +567,19 @@ function TimelineTab() {
             setOpenTaskId(null);
             setAskId(null);
           }}
+          {...(canPlan ? { onEdit: (id: string) => setEditor({ taskId: id }) } : {})}
           {...(search.comment ? { highlightCommentId: search.comment } : {})}
           {...(askId ? { askDepartmentId: askId } : {})}
+        />
+      )}
+
+      {editor && (
+        <WorkItemEditor
+          projectId={projectId}
+          {...(editor.taskId ? { taskId: editor.taskId } : {})}
+          {...(editor.departmentId ? { presetDepartmentId: editor.departmentId } : {})}
+          {...(editor.sceneId ? { presetSceneId: editor.sceneId } : {})}
+          onClose={() => setEditor(null)}
         />
       )}
     </div>

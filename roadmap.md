@@ -77,3 +77,10 @@
 - Company-wide Team & Roles page: department, lead flag, access level per person; default department head; reusable job titles per department.
 - Per-production Team & Departments tab: turn departments on/off, name the production's department head, assign people with a preset or custom job for that show, change or remove assignments.
 - Admin-only on open productions; viewers and closed productions stay read-only. Every change is recorded in history.
+
+## Adding and editing work (done)
+- One editor panel for creating and editing a work item: title, notes, department, scene, assigned person (from that production's staffing), status, planned start/finish, build milestone, and rehearsal/performance risk flags.
+- Openable from "Add work item" on Schedule, "Add work" per department in the Department Work Queue, an empty cell in Scene Readiness, and Edit on any open work item.
+- Dependencies edited in place: choose what it waits on, the relationship type, and lag in days (negative for overlap); remove one at any time. Every change re-runs the central schedule calculation.
+- Removing is guarded: work with a conversation, attached documents, or other work waiting on it must be completed instead.
+- Admin-only on open productions; contributors keep status/date updates; viewers and closed productions read-only. All changes recorded in history.
