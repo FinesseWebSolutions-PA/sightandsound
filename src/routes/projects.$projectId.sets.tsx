@@ -53,6 +53,7 @@ function SetsTab() {
   const canEdit = can.adminConfig && !isClosed(projectId);
   const [newName, setNewName] = useState("");
   const [selectedId, setSelectedId] = useState(search.set ?? "");
+  const [adding, setAdding] = useState(false);
   const { createScene } = useStore();
 
   const projectSets = useMemo(
