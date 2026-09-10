@@ -107,6 +107,7 @@ export function MasterTimeline({
   } = useStore();
   const readOnly = isClosed(projectId) || !can.editCoreTimeline;
   const wide = useWideScreen();
+  const [openSetId, setOpenSetId] = useState<string | null>(null);
 
 
   const projectTasks = useMemo(
