@@ -244,10 +244,29 @@ export function DocumentBrowser({
     | "rejected"
     | "version";
   const [menuAction, setMenuAction] = useState<MenuAction>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     setMenuAction(null);
+    setMenuOpen(false);
     setNote("");
   }, [selectedId]);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onClick);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onClick);
+    };
+  }, [menuOpen]);
+
 
   /**
    * A review note behaves like a chat message: it lands in this document's
