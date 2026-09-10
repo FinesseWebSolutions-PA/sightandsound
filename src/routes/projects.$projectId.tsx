@@ -42,7 +42,7 @@ function ProjectWorkspace() {
 
   return (
     <div>
-      <div className="border-b border-border bg-cream">
+      <div className="border-b border-border bg-card shadow-sm">
         <div className="mx-auto max-w-[1400px] px-4 pt-5 sm:px-6 sm:pt-8">
           <Link to="/" className="rule-label inline-flex min-h-11 items-center hover:text-ink">
             Productions
