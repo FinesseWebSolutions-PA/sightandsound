@@ -12,18 +12,17 @@ import { cn } from "@/lib/utils";
 
 /** Chat panel shell so every conversation in the app reads the same way. */
 function ChatPanel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">{children}</div>
-  );
+  return <div className="surface-card overflow-hidden">{children}</div>;
 }
 
 function Transcript({ children }: { children: React.ReactNode }) {
   return (
-    <div className="max-h-[26rem] space-y-3 overflow-y-auto bg-cream-soft/70 px-3 py-3 sm:px-4">
+    <div className="max-h-[26rem] space-y-3 overflow-y-auto bg-cream-deep/70 px-3 py-3 sm:px-4">
       {children}
     </div>
   );
 }
+
 
 function ComposerBar({ children }: { children: React.ReactNode }) {
   return <div className="border-t border-border bg-card px-3 py-2 sm:px-4">{children}</div>;
@@ -283,10 +282,11 @@ function Message({
         </p>
         <div
           className={cn(
-            "mt-1 inline-block rounded-2xl px-3 py-2 text-left",
-            mine ? "bg-gold-tint" : "bg-cream-soft",
+            "mt-1 inline-block rounded-2xl border px-3 py-2 text-left shadow-sm",
+            mine ? "border-gold/45 bg-gold-tint" : "border-border bg-card",
           )}
         >
+
           {body && <MentionText body={body} />}
           {files.length > 0 && <AttachmentList attachments={files} projectId={projectId} />}
         </div>
