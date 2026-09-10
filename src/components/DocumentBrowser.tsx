@@ -398,7 +398,7 @@ export function DocumentBrowser({
                   type="button"
                   disabled={uploading}
                   onClick={() => fileInputRef.current?.click()}
-                  className="btn-primary min-h-9 gap-1.5 px-3 text-sm"
+                  className="btn-primary min-h-9 shrink-0 gap-1.5 whitespace-nowrap px-3 text-sm"
                 >
                   <FileUp aria-hidden className="size-4" />
                   {uploading ? "Uploading…" : "Add document"}
