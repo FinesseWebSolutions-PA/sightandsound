@@ -608,7 +608,7 @@ export function MasterTimeline({
                   className="sticky left-0 z-10 shrink-0 border-r border-border-strong bg-band px-4 py-2"
                   style={{ width: NAME_COL }}
                 >
-                  <span className="rule-label">Sets & work</span>
+                  <span className="rule-label">{setsOnly ? "Sets" : "Sets & work"}</span>
                 </div>
                 <div className="relative py-2" style={{ width: chartWidth }}>
                   {projectMilestones.map((m) => (
