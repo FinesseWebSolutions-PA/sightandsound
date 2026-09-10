@@ -427,7 +427,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             },
             isClosed: (projectId: string) => isClosed(projectId) === true,
             projects: data.projects,
-
+            scenes: data.scenes,
             tasks: data.tasks,
             milestones: data.milestones,
             documents: data.documents,
