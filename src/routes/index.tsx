@@ -41,7 +41,7 @@ export const Route = createFileRoute("/")({
 const statusFilters: ("all" | ProjectStatus)[] = ["all", "active", "planning", "closed"];
 
 function PortfolioPage() {
-  const { projects, milestones, can } = useStore();
+  const { projects, can } = useStore();
   const [status, setStatus] = useState<"all" | ProjectStatus>("all");
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
@@ -55,12 +55,6 @@ function PortfolioPage() {
     [projects, status],
   );
 
-  const nextKeyDate = (projectId: string) => {
-    const open = milestones
-      .filter((m) => m.project_id === projectId && m.status !== "complete")
-      .sort((a, b) => a.due_date.localeCompare(b.due_date));
-    return open[0];
-  };
 
   return (
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-10">
@@ -106,7 +100,7 @@ function PortfolioPage() {
       <div className="mt-6 space-y-4">
         {rows.map((project) => {
           const involved = projectDepartments.filter((pd) => pd.project_id === project.id);
-          const next = nextKeyDate(project.id);
+          
           const status = projectStatusMeta[project.status];
           const owner = personById(project.owner_id);
           const initials = (owner?.full_name ?? "")
@@ -161,7 +155,7 @@ function PortfolioPage() {
                 </span>
                 <span className="flex shrink-0 items-center gap-1.5 text-xs text-ink-soft">
                   <CalendarDays aria-hidden className="size-3.5" />
-                  {next ? formatDate(next.due_date) : formatDate(project.opening_date)}
+                  {formatDate(project.opening_date)}
                 </span>
               </div>
 

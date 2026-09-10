@@ -99,7 +99,6 @@ export function MasterTimeline({
 }) {
   const {
     tasks,
-    milestones,
     scenes,
     can,
     isClosed,
@@ -109,13 +108,7 @@ export function MasterTimeline({
   const readOnly = isClosed(projectId) || !can.editCoreTimeline;
   const wide = useWideScreen();
 
-  const projectMilestones = useMemo(
-    () =>
-      milestones
-        .filter((m) => m.project_id === projectId)
-        .sort((a, b) => a.due_date.localeCompare(b.due_date)),
-    [milestones, projectId],
-  );
+
   const projectTasks = useMemo(
     () => tasks.filter((t) => t.project_id === projectId),
     [tasks, projectId],
@@ -158,10 +151,8 @@ export function MasterTimeline({
 
   const locked = readOnly || clean;
 
-  const span = useMemo(
-    () => spanOf(projectTasks, projectMilestones),
-    [projectTasks, projectMilestones],
-  );
+  const span = useMemo(() => spanOf(projectTasks, []), [projectTasks]);
+
   const totalDays = Math.max(1, daysBetween(span.start, span.end));
 
   /* ---------------- zoom + horizontal scroll ---------------- */
@@ -600,15 +591,8 @@ export function MasterTimeline({
                   <span className="rule-label">{setsOnly ? "Sets" : "Sets & work"}</span>
                 </div>
                 <div className="relative py-2" style={{ width: chartWidth }}>
-                  {projectMilestones.map((m) => (
-                    <span
-                      key={m.id}
-                      style={{ left: xAt(span, m.forecast_date || m.due_date, pxPerDay) }}
-                      title={`${m.name} · ${formatDate(m.forecast_date || m.due_date)}`}
-                      className="absolute bottom-0.5 size-3 -translate-x-1/2 rotate-45 border-2 border-gold-deep bg-gold"
-                    />
-                  ))}
                   {ticks.map((t) => (
+
                     <span
                       key={t.key}
                       style={{ left: t.left }}

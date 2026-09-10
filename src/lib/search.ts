@@ -85,16 +85,16 @@ export function searchAll(sources: Sources, query: string): SearchHit[] {
 
   for (const t of tasks) {
     if (!has(t.title, q) && !has(personName(t.assignee_id), q)) continue;
-    const milestone = milestones.find((m) => m.id === t.milestone_id)?.name;
     hits.push({
       kind: "task",
       id: `t-${t.id}`,
       projectId: t.project_id,
       taskId: t.id,
       title: t.title,
-      breadcrumb: [projectName(t.project_id), milestone, deptName(t.department_id)]
+      breadcrumb: [projectName(t.project_id), deptName(t.department_id)]
         .filter(Boolean)
         .join(" › "),
+
     });
   }
 
