@@ -161,7 +161,7 @@ function PortfolioPage() {
                 </span>
                 <span className="flex shrink-0 items-center gap-1.5 text-xs text-ink-soft">
                   <CalendarDays aria-hidden className="size-3.5" />
-                  {next ? formatDate(next.due_date) : formatDate(project.opening_date)}
+                  {formatDate(project.opening_date)}
                 </span>
               </div>
 
