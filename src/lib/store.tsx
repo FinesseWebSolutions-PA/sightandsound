@@ -12,12 +12,14 @@ import { Loader2 } from "lucide-react";
 
 import {
   loadProductionData,
+  previewTaskReschedule,
   writeApproval,
   writeComment,
   writeDocumentVersion,
   writeMilestoneDate,
   writeNotificationRead,
   writePortalUrl,
+  writeTaskDates,
   writeTaskStatus,
   writeThread,
 
@@ -35,7 +37,9 @@ import {
   type ProductionData,
   type Project,
   type ProjectDepartment,
+  type ReschedulePreviewRow,
   type Role,
+  type Scene,
   type Task,
   type TaskDependency,
   type TaskStatus,
@@ -69,6 +73,7 @@ type Store = {
   /** A closed production is an archive: browsable by everyone, editable by no one. */
   isClosed: (projectId: string) => boolean;
   projects: Project[];
+  scenes: Scene[];
   tasks: Task[];
   milestones: Milestone[];
   documents: Document[];
@@ -80,6 +85,14 @@ type Store = {
   notifications: Notification[];
   saving: boolean;
   setTaskStatus: (taskId: string, status: TaskStatus) => void;
+  /** Moves a work item's planned dates; the database recomputes the rest. */
+  setTaskDates: (taskId: string, startDate: string, dueDate: string) => void;
+  /** Read-only "what would this do?" check, straight from the database. */
+  previewReschedule: (
+    taskId: string,
+    startDate: string,
+    dueDate: string,
+  ) => Promise<ReschedulePreviewRow[]>;
   setMilestoneDate: (milestoneId: string, dueDate: string) => void;
   setPortalUrl: (projectId: string, url: string) => void;
   addDocumentVersion: (documentId: string, note: string) => void;
@@ -238,6 +251,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [allowed, run],
   );
 
+  const setTaskDates = useCallback(
+    (taskId: string, startDate: string, dueDate: string) => {
+      if (!allowed(projectOfTask(taskId), "admin")) return;
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              tasks: prev.tasks.map((t) =>
+                t.id === taskId ? { ...t, start_date: startDate, due_date: dueDate } : t,
+              ),
+            }
+          : prev,
+      );
+      run(() => writeTaskDates(taskId, startDate, dueDate, currentUserIdRef.current));
+    },
+    [allowed, run],
+  );
+
+  const previewReschedule = useCallback(
+    (taskId: string, startDate: string, dueDate: string) =>
+      previewTaskReschedule(taskId, startDate, dueDate),
+    [],
+  );
+
+
+
   const setMilestoneDate = useCallback(
     (milestoneId: string, dueDate: string) => {
       if (!allowed(projectOfMilestone(milestoneId), "admin")) return;
@@ -388,7 +427,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             },
             isClosed: (projectId: string) => isClosed(projectId) === true,
             projects: data.projects,
-
+            scenes: data.scenes,
             tasks: data.tasks,
             milestones: data.milestones,
             documents: data.documents,
@@ -400,6 +439,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             notifications: data.notifications,
             saving,
             setTaskStatus,
+            setTaskDates,
+            previewReschedule,
             setMilestoneDate,
             setPortalUrl,
             addDocumentVersion,
@@ -420,6 +461,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       data,
       saving,
       setTaskStatus,
+      setTaskDates,
+      previewReschedule,
       setMilestoneDate,
       setPortalUrl,
       addDocumentVersion,

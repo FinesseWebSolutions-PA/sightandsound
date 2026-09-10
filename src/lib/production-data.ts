@@ -53,6 +53,16 @@ export type ProjectDepartment = {
 
 export type MilestoneStatus = "not_started" | "in_progress" | "complete" | "at_risk";
 
+/** How much spare time an item has before it delays the production. */
+export type Criticality = "critical" | "near_critical" | "normal";
+
+export type Scene = {
+  id: string;
+  project_id: string;
+  name: string;
+  sort_order: number;
+};
+
 export type Milestone = {
   id: string;
   project_id: string;
@@ -62,6 +72,13 @@ export type Milestone = {
   owner_id: string;
   department_id: string;
   is_core: boolean;
+  /** Live best estimate from the central schedule calculation. */
+  forecast_date: string;
+  actual_date: string;
+  criticality: Criticality;
+  total_float_hours: number | null;
+  affects_rehearsal: boolean;
+  affects_performance: boolean;
 };
 
 export type TaskStatus = "not_started" | "in_progress" | "in_review" | "blocked" | "complete";
@@ -70,16 +87,52 @@ export type Task = {
   id: string;
   project_id: string;
   milestone_id: string;
+  scene_id: string;
   title: string;
   status: TaskStatus;
+  start_date: string;
   due_date: string;
   assignee_id: string;
   department_id: string;
+  /** Live best estimate from the central schedule calculation. */
+  forecast_start: string;
+  forecast_finish: string;
+  actual_start: string;
+  actual_finish: string;
+  criticality: Criticality;
+  total_float_hours: number | null;
+  affects_rehearsal: boolean;
+  affects_performance: boolean;
 };
 
+export type DependencyType =
+  | "finish_to_start"
+  | "start_to_start"
+  | "finish_to_finish"
+  | "start_to_finish";
+
 export type TaskDependency = {
+  id: string;
   task_id: string;
   depends_on_task_id: string;
+  type: DependencyType;
+  lag_hours: number;
+  hard_constraint: boolean;
+};
+
+/** One row of the reschedule preview returned by the database. */
+export type ReschedulePreviewRow = {
+  entity_type: "task" | "milestone";
+  entity_id: string;
+  name: string;
+  department_id: string | null;
+  current_finish: string;
+  new_finish: string;
+  shift_days: number;
+  affects_rehearsal: boolean;
+  affects_performance: boolean;
+  crosses_protected_date: boolean;
+  protected_label: string | null;
 };
 
 export type ApprovalState = "draft" | "in_review" | "approved" | "changes_requested" | "rejected";
@@ -87,6 +140,8 @@ export type ApprovalState = "draft" | "in_review" | "approved" | "changes_reques
 export type Document = {
   id: string;
   project_id: string;
+  task_id: string;
+  scene_id: string;
   title: string;
   kind: string;
   department_id: string;
@@ -178,6 +233,7 @@ export type ProductionData = {
   people: Person[];
   projects: Project[];
   projectDepartments: ProjectDepartment[];
+  scenes: Scene[];
   milestones: Milestone[];
   tasks: Task[];
   taskDependencies: TaskDependency[];
@@ -190,6 +246,18 @@ export type ProductionData = {
   notifications: Notification[];
   auditLog: AuditEntry[];
 };
+
+/**
+ * The database owns the schedule maths, so the client only ever calls it.
+ * The generated types do not describe these functions yet, hence the cast.
+ */
+type RpcCaller = (
+  name: string,
+  args: Record<string, unknown>,
+) => Promise<{ data: unknown; error: { message: string } | null }>;
+
+const callRpc = (name: string, args: Record<string, unknown>) =>
+  (supabase.rpc as unknown as RpcCaller)(name, args);
 
 /* ----------------------------------------------------------------- helpers */
 
@@ -274,14 +342,59 @@ function humanize(value: string): string {
 
 /* -------------------------------------------------------------------- read */
 
+function asCriticality(value: string | null | undefined): Criticality {
+  return value === "critical" || value === "near_critical" ? value : "normal";
+}
+
+function asDependencyType(value: string | null | undefined): DependencyType {
+  return value === "start_to_start" ||
+    value === "finish_to_finish" ||
+    value === "start_to_finish"
+    ? value
+    : "finish_to_start";
+}
+
+/**
+ * Asks the database to recompute float, criticality and forecast dates for every
+ * production, so every view reads one shared set of numbers.
+ */
+export async function refreshSchedule(projectIds: string[]): Promise<void> {
+  await Promise.all(
+    projectIds.map(async (id) => {
+      const { error } = await callRpc("compute_project_schedule", { p_project_id: id });
+      if (error) throw new Error(error.message);
+    }),
+  );
+}
+
+/** Preview of what a proposed reschedule would do downstream. */
+export async function previewTaskReschedule(
+  taskId: string,
+  newStart: string,
+  newFinish: string,
+): Promise<ReschedulePreviewRow[]> {
+  const { data, error } = await callRpc("preview_task_reschedule", {
+    p_task_id: taskId,
+    p_new_start: newStart,
+    p_new_finish: newFinish,
+  });
+  if (error) throw new Error(error.message);
+  return (data as ReschedulePreviewRow[] | null) ?? [];
+}
+
 /** Reads every table and maps it into the shapes the interface renders. */
 export async function loadProductionData(): Promise<ProductionData> {
+  const { data: projectIdRows, error: projectIdError } = await supabase.from("projects").select("id");
+  if (projectIdError) throw new Error(projectIdError.message);
+  await refreshSchedule((projectIdRows ?? []).map((p) => p.id));
+
   const [
     peopleRes,
     departmentsRes,
     membershipsRes,
     projectsRes,
     projectDepartmentsRes,
+    scenesRes,
     milestonesRes,
     tasksRes,
     taskDependenciesRes,
@@ -299,6 +412,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     supabase.from("department_memberships").select("*"),
     supabase.from("projects").select("*").order("created_at"),
     supabase.from("project_departments").select("*"),
+    supabase.from("scenes").select("*").order("sort_order"),
     supabase.from("milestones").select("*").order("sort_order"),
     supabase.from("tasks").select("*").order("sort_order"),
     supabase.from("task_dependencies").select("*"),
@@ -318,6 +432,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     membershipsRes,
     projectsRes,
     projectDepartmentsRes,
+    scenesRes,
     milestonesRes,
     tasksRes,
     taskDependenciesRes,
@@ -374,15 +489,32 @@ export async function loadProductionData(): Promise<ProductionData> {
   const milestoneRows = milestonesRes.data ?? [];
   const taskRows = tasksRes.data ?? [];
 
+  const scenes: Scene[] = (scenesRes.data ?? []).map((s) => ({
+    id: s.id,
+    project_id: s.project_id,
+    name: s.name,
+    sort_order: s.sort_order,
+  }));
+
   const tasks: Task[] = taskRows.map((t) => ({
     id: t.id,
     project_id: t.project_id,
     milestone_id: t.milestone_id ?? "",
+    scene_id: t.scene_id ?? "",
     title: t.title,
     status: asTaskStatus(t.status),
+    start_date: dateOnly(t.start_date) || dateOnly(t.due_date),
     due_date: dateOnly(t.due_date) || dateOnly(t.start_date),
     assignee_id: t.owner_id ?? "",
     department_id: t.department_id ?? "",
+    forecast_start: dateOnly(t.forecast_start) || dateOnly(t.start_date),
+    forecast_finish: dateOnly(t.forecast_finish) || dateOnly(t.due_date),
+    actual_start: dateOnly(t.actual_start),
+    actual_finish: dateOnly(t.actual_finish),
+    criticality: asCriticality(t.criticality),
+    total_float_hours: t.total_float_hours === null ? null : Number(t.total_float_hours),
+    affects_rehearsal: t.affects_rehearsal ?? false,
+    affects_performance: t.affects_performance ?? false,
   }));
 
   const projects: Project[] = (projectsRes.data ?? []).map((p) => {
@@ -415,6 +547,9 @@ export async function loadProductionData(): Promise<ProductionData> {
   const milestones: Milestone[] = milestoneRows.map((m) => {
     const first = tasks.find((t) => t.milestone_id === m.id);
     const project = projects.find((p) => p.id === m.project_id);
+    const mineFloat = tasks
+      .filter((t) => t.milestone_id === m.id && t.total_float_hours !== null)
+      .map((t) => t.total_float_hours as number);
     return {
       id: m.id,
       project_id: m.project_id,
@@ -424,6 +559,12 @@ export async function loadProductionData(): Promise<ProductionData> {
       owner_id: first?.assignee_id || project?.owner_id || "",
       department_id: first?.department_id ?? "",
       is_core: true,
+      forecast_date: dateOnly(m.forecast_date) || dateOnly(m.due_date),
+      actual_date: dateOnly(m.actual_date),
+      criticality: asCriticality(m.criticality),
+      total_float_hours: mineFloat.length ? Math.min(...mineFloat) : null,
+      affects_rehearsal: m.affects_rehearsal ?? false,
+      affects_performance: m.affects_performance ?? false,
     };
   });
 
@@ -504,6 +645,8 @@ export async function loadProductionData(): Promise<ProductionData> {
     return {
       id: d.id,
       project_id: d.project_id,
+      task_id: d.task_id ?? "",
+      scene_id: d.scene_id ?? "",
       title: d.title,
       kind: dept ? `${dept} document` : "Production document",
       department_id: task?.department_id ?? "",
@@ -661,11 +804,16 @@ export async function loadProductionData(): Promise<ProductionData> {
     people,
     projects,
     projectDepartments,
+    scenes,
     milestones,
     tasks,
     taskDependencies: (taskDependenciesRes.data ?? []).map((d) => ({
+      id: d.id,
       task_id: d.task_id,
       depends_on_task_id: d.depends_on_task_id,
+      type: asDependencyType(d.type),
+      lag_hours: Number(d.lag_hours ?? 0),
+      hard_constraint: d.hard_constraint ?? true,
     })),
     documents,
     documentVersions,
@@ -712,6 +860,27 @@ export async function writeMilestoneDate(milestoneId: string, dueDate: string, a
     .eq("id", milestoneId);
   if (error) throw new Error(error.message);
   await recordAudit("milestone", milestoneId, actorId, "date_changed", { due_date: dueDate });
+}
+
+/** Commits a reschedule of a work item, then lets the database recompute the schedule. */
+export async function writeTaskDates(
+  taskId: string,
+  startDate: string,
+  dueDate: string,
+  actorId: string,
+) {
+  const { data, error } = await supabase
+    .from("tasks")
+    .update({ start_date: startDate, due_date: dueDate, updated_at: new Date().toISOString() })
+    .eq("id", taskId)
+    .select("project_id")
+    .single();
+  if (error) throw new Error(error.message);
+  await refreshSchedule([data.project_id]);
+  await recordAudit("task", taskId, actorId, "dates_changed", {
+    start_date: startDate,
+    due_date: dueDate,
+  });
 }
 
 export async function writePortalUrl(projectId: string, url: string, actorId: string) {
