@@ -65,7 +65,7 @@ export function WorkItemEditor({
   const [departmentId, setDepartmentId] = useState(
     existing?.department_id ?? presetDepartmentId ?? departments[0]?.id ?? "",
   );
-  const [sceneId, setSceneId] = useState(existing?.scene_id ?? presetSceneId ?? "");
+  const [sceneId, setSceneId] = useState(existing?.scene_id || presetSceneId || "");
   const [milestoneId, setMilestoneId] = useState(existing?.milestone_id ?? "");
   const [parentTaskId, setParentTaskId] = useState(
     existing?.parent_task_id ?? presetParentTaskId ?? "",
@@ -133,13 +133,17 @@ export function WorkItemEditor({
       setProblem("The finish date cannot be before the start date.");
       return;
     }
+    if (!sceneId) {
+      setProblem("Choose the set this work belongs to.");
+      return;
+    }
     const ok = await saveWorkItem({
       ...(existing ? { id: existing.id } : {}),
       projectId,
       title,
       description: notes,
       departmentId,
-      sceneId: sceneId || null,
+      sceneId,
       milestoneId: milestoneId || null,
       parentTaskId: parentTaskId || null,
       ownerId: ownerId || null,
@@ -244,7 +248,7 @@ export function WorkItemEditor({
                   }}
                   className={field}
                 >
-                  <option value="">Production-wide (no set)</option>
+                  <option value="">Choose a set…</option>
                   {projectScenes.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}

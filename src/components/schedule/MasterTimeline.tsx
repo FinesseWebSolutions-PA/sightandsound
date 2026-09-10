@@ -21,7 +21,7 @@ import {
   dependencyTypeLabel,
   formatDate,
   formatFloat,
-  milestoneStatusMeta,
+  setStatusMeta,
   taskStatusMeta,
 } from "@/lib/status";
 import {
@@ -36,7 +36,7 @@ import {
   ZOOM_MAX,
   ZOOM_MIN,
 } from "@/lib/schedule";
-import type { Milestone, ReschedulePreviewRow, Task } from "@/lib/production-data";
+import type { ReschedulePreviewRow, Scene, Task } from "@/lib/production-data";
 
 /** Bar colouring is driven by the shared calculation, never chosen per view. */
 function barClasses(task: Task): string {
@@ -65,7 +65,7 @@ const NAME_COL = 352; // 22rem — the fixed work-item column
 const ROW_H = 80;
 
 type Row = { task: Task; isChild: boolean };
-type Group = { key: string; milestone: Milestone | null; label: string; rows: Row[] };
+type Group = { key: string; scene: Scene; label: string; rows: Row[] };
 type Arrow = {
   id: string;
   label: string;
@@ -90,7 +90,14 @@ function useWideScreen(): boolean {
   return wide;
 }
 
-export function MasterTimeline({ projectId }: { projectId: string }) {
+export function MasterTimeline({
+  projectId,
+  sceneId: pinnedSceneId,
+}: {
+  projectId: string;
+  /** When given, the chart shows only this set — used inside a set's own workspace. */
+  sceneId?: string;
+}) {
   const {
     tasks,
     milestones,
@@ -122,14 +129,34 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
     [scenes, projectId],
   );
 
-  const [mode, setMode] = useState<"global" | "set">("global");
-  const [sceneId, setSceneId] = useState<string>("");
   const [clean, setClean] = useState(false);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [openTask, setOpenTask] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  const [hoveredScene, setHoveredScene] = useState<string | null>(null);
 
-  const activeSceneId = sceneId || projectScenes[0]?.id || "";
+  /** Hovering a set lights up the sets downstream of it in the chain. */
+  const setChain = useMemo(() => {
+    if (!hoveredScene) return null;
+    const lit = new Set<string>([hoveredScene]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const s of projectScenes) {
+        if (!lit.has(s.id) && s.depends_on_scene_id && lit.has(s.depends_on_scene_id)) {
+          lit.add(s.id);
+          grew = true;
+        }
+      }
+    }
+    let up = projectScenes.find((s) => s.id === hoveredScene)?.depends_on_scene_id;
+    while (up && !lit.has(up)) {
+      lit.add(up);
+      up = projectScenes.find((s) => s.id === up)?.depends_on_scene_id;
+    }
+    return lit;
+  }, [hoveredScene, projectScenes]);
+
   const locked = readOnly || clean;
 
   const span = useMemo(
@@ -234,37 +261,19 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
     [childrenOf],
   );
 
-  const groups: Group[] = useMemo(() => {
-    if (mode === "set") {
-      const sceneTasks = projectTasks.filter((t) => t.scene_id === activeSceneId);
-      const used = departments.filter((d) => sceneTasks.some((t) => t.department_id === d.id));
-      const bands = (used.length ? used : departments).map((d) => ({
-        key: `dept-${d.id}`,
-        milestone: null,
-        label: d.name,
-        rows: nest(sceneTasks.filter((t) => t.department_id === d.id)),
-      }));
-      return bands;
-    }
-    return [
-      ...projectMilestones.map((m) => ({
-        key: m.id,
-        milestone: m,
-        label: m.name,
-        rows: nest(projectTasks.filter((t) => t.milestone_id === m.id)),
-      })),
-      {
-        key: "unscheduled",
-        milestone: null,
-        label: "Not tied to a milestone yet",
-        rows: nest(
-          projectTasks.filter(
-            (t) => !t.milestone_id || !projectMilestones.some((m) => m.id === t.milestone_id),
-          ),
-        ),
-      },
-    ].filter((g) => g.rows.length > 0 || g.milestone);
-  }, [mode, activeSceneId, projectTasks, projectMilestones, nest]);
+  /** One band per set, in running order — the production is planned set by set. */
+  const groups: Group[] = useMemo(
+    () =>
+      (pinnedSceneId ? projectScenes.filter((s) => s.id === pinnedSceneId) : projectScenes).map(
+        (s) => ({
+          key: s.id,
+          scene: s,
+          label: s.name,
+          rows: nest(projectTasks.filter((t) => t.scene_id === s.id)),
+        }),
+      ),
+    [pinnedSceneId, projectScenes, projectTasks, nest],
+  );
 
   const visibleTaskIds = useMemo(() => {
     const ids = new Set<string>();
@@ -306,7 +315,7 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
   const [arrows, setArrows] = useState<Arrow[]>([]);
   const [surfaceHeight, setSurfaceHeight] = useState(0);
 
-  const layoutKey = `${mode}|${activeSceneId}|${pxPerDay}|${[...visibleTaskIds].sort().join(",")}`;
+  const layoutKey = `${pinnedSceneId ?? ""}|${pxPerDay}|${[...visibleTaskIds].sort().join(",")}|${groups.map((g) => g.key).join(",")}`;
 
   useLayoutEffect(() => {
     if (!wide) {
@@ -338,8 +347,27 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
         to: dep.task_id,
       });
     }
+    // Set-to-set chain: each set starts after the one it follows finishes.
+    for (const s of projectScenes) {
+      if (!s.depends_on_scene_id) continue;
+      const fromEl = barRefs.current.get(`set-${s.depends_on_scene_id}`);
+      const toEl = barRefs.current.get(`set-${s.id}`);
+      if (!fromEl || !toEl) continue;
+      const a = fromEl.getBoundingClientRect();
+      const b = toEl.getBoundingClientRect();
+      next.push({
+        id: `set-chain-${s.id}`,
+        label: s.lag_days ? `then +${s.lag_days}d` : "then",
+        x1: a.right - base.left,
+        y1: a.top + a.height / 2 - base.top,
+        x2: b.left - base.left,
+        y2: b.top + b.height / 2 - base.top,
+        from: `set-${s.depends_on_scene_id}`,
+        to: `set-${s.id}`,
+      });
+    }
     setArrows(next);
-  }, [layoutKey, wide, visibleTaskIds]);
+  }, [layoutKey, wide, visibleTaskIds, projectScenes]);
 
   /* ---------------- drag to reschedule ---------------- */
 
@@ -488,37 +516,6 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
     <div className="space-y-4">
       {/* view controls */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex overflow-hidden rounded-full border border-border-strong">
-          {(["global", "set"] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setMode(m)}
-              aria-pressed={mode === m}
-              className={`min-h-11 px-4 text-sm font-semibold ${
-                mode === m ? "bg-ink text-cream-soft" : "bg-card text-ink-soft hover:bg-cream"
-              }`}
-            >
-              {m === "global" ? "Whole production" : "One set"}
-            </button>
-          ))}
-        </div>
-
-        {mode === "set" && (
-          <select
-            aria-label="Set"
-            value={activeSceneId}
-            onChange={(e) => setSceneId(e.target.value)}
-            className="min-h-11 rounded-md border border-border-strong bg-card px-2.5 text-sm font-medium text-ink"
-          >
-            {projectScenes.length === 0 && <option value="">No sets yet</option>}
-            {projectScenes.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        )}
 
         <div className="flex overflow-hidden rounded-md border border-border-strong">
           {(
@@ -601,9 +598,17 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
                   className="sticky left-0 z-10 shrink-0 border-r border-border-strong bg-band px-4 py-2"
                   style={{ width: NAME_COL }}
                 >
-                  <span className="rule-label">Work item</span>
+                  <span className="rule-label">Sets & work</span>
                 </div>
                 <div className="relative py-2" style={{ width: chartWidth }}>
+                  {projectMilestones.map((m) => (
+                    <span
+                      key={m.id}
+                      style={{ left: xAt(span, m.forecast_date || m.due_date, pxPerDay) }}
+                      title={`${m.name} · ${formatDate(m.forecast_date || m.due_date)}`}
+                      className="absolute bottom-0.5 size-3 -translate-x-1/2 rotate-45 border-2 border-gold-deep bg-gold"
+                    />
+                  ))}
                   {ticks.map((t) => (
                     <span
                       key={t.key}
@@ -634,7 +639,12 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
                   </marker>
                 </defs>
                 {arrows.map((a) => {
-                  const lit = chain ? chain.has(a.from) && chain.has(a.to) : false;
+                  const lit = setChain
+                    ? setChain.has(a.from.replace("set-", "")) &&
+                      setChain.has(a.to.replace("set-", ""))
+                    : chain
+                      ? chain.has(a.from) && chain.has(a.to)
+                      : false;
                   const mid = a.x2 > a.x1 ? (a.x1 + a.x2) / 2 : a.x1 + 14;
                   const d = `M ${a.x1} ${a.y1} H ${mid} V ${a.y2} H ${a.x2}`;
                   return (
@@ -669,18 +679,24 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
             <div>
               {groups.map((group) => {
                 const isCollapsed = collapsed[group.key] === true;
-                const m = group.milestone;
-                const slip = m ? slipDays(m.due_date, m.forecast_date) : 0;
+                const s = group.scene;
+                const slip = slipDays(s.due_date, s.forecast_finish);
+                const setPlanned = placePx(span, s.start_date, s.due_date, pxPerDay);
+                const setLive = placePx(span, s.forecast_start, s.forecast_finish, pxPerDay);
+                const setDimmed = setChain ? !setChain.has(s.id) : false;
+                const follows = projectScenes.find((o) => o.id === s.depends_on_scene_id);
                 return (
                   <section key={group.key}>
-                    <header className="group-header sticky left-0 z-10">
+                    <header className="group-header flex items-stretch">
                       <button
                         type="button"
                         onClick={() =>
                           setCollapsed((cur) => ({ ...cur, [group.key]: !isCollapsed }))
                         }
+                        onMouseEnter={() => wide && setHoveredScene(s.id)}
+                        onMouseLeave={() => wide && setHoveredScene(null)}
                         aria-expanded={!isCollapsed}
-                        className="flex items-start gap-2 px-4 py-2.5 text-left"
+                        className="flex shrink-0 items-start gap-2 px-4 py-2.5 text-left lg:sticky lg:left-0 lg:z-10 lg:bg-band"
                         style={wide ? { width: NAME_COL } : undefined}
                       >
                         {isCollapsed ? (
@@ -690,36 +706,45 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
                         )}
                         <span className="min-w-0 flex-1">
                           <span className="flex flex-wrap items-center gap-2">
-                            {m && <Diamond aria-hidden className="size-3.5 text-gold-deep" />}
-                            <span className="text-xs font-bold text-ink">{group.label}</span>
+                            <span className="text-sm font-bold text-ink">{group.label}</span>
                             <span className="rounded-full border border-border-strong bg-card px-2 py-0.5 text-[11px] font-semibold text-ink-soft">
                               {group.rows.length}
                             </span>
-                            {m && !clean && (
-                              <StatusBadge meta={milestoneStatusMeta[m.status]} size="sm" />
-                            )}
+                            {!clean && <StatusBadge meta={setStatusMeta[s.status]} size="sm" />}
                           </span>
-                          {m && (
-                            <span className="mt-1 block text-xs text-ink-soft">
-                              Committed {formatDate(m.due_date)} · Forecast{" "}
-                              {formatDate(m.forecast_date)}
-                              {slip > 0 && (
-                                <span className="font-semibold text-danger">
-                                  {" "}
-                                  · {slip} days late
-                                </span>
-                              )}
-                              {m.affects_performance && " · affects performance"}
-                            </span>
-                          )}
+                          <span className="mt-1 block text-xs text-ink-soft">
+                            Committed {formatDate(s.due_date)} · Forecast{" "}
+                            {formatDate(s.forecast_finish)}
+                            {slip > 0 && (
+                              <span className="font-semibold text-danger"> · {slip} days late</span>
+                            )}
+                            {follows && ` · follows ${follows.name}`}
+                          </span>
                         </span>
                       </button>
-                      {m && wide && (
-                        <span
-                          style={{ left: NAME_COL + xAt(span, m.forecast_date, pxPerDay) }}
-                          className="absolute bottom-1 size-3.5 -translate-x-1/2 rotate-45 border-2 border-gold-deep bg-gold shadow-sm"
-                          aria-hidden
-                        />
+                      {wide && (
+                        <div className="relative" style={{ width: chartWidth, minHeight: 56 }}>
+                          <span
+                            style={{ left: setPlanned.left, width: setPlanned.width }}
+                            aria-hidden
+                            className={`absolute top-3.5 h-2 rounded-full border border-border-strong bg-card ${setDimmed ? "opacity-30" : ""}`}
+                          />
+                          <span
+                            ref={(el) => {
+                              if (el) barRefs.current.set(`set-${s.id}`, el);
+                              else barRefs.current.delete(`set-${s.id}`);
+                            }}
+                            onMouseEnter={() => setHoveredScene(s.id)}
+                            onMouseLeave={() => setHoveredScene(null)}
+                            style={{ left: setLive.left, width: setLive.width }}
+                            title={`${s.name} · ${setStatusMeta[s.status].label}`}
+                            className={`absolute top-6 flex h-6 items-center overflow-hidden rounded-md border border-ink bg-ink px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm ${
+                              setDimmed ? "opacity-40" : ""
+                            }`}
+                          >
+                            {s.name}
+                          </span>
+                        </div>
                       )}
                     </header>
 
@@ -798,9 +823,7 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
                         })}
                         {group.rows.length === 0 && (
                           <li className="px-4 py-3 text-sm text-ink-soft">
-                            {mode === "set"
-                              ? "No work for this department on this set yet."
-                              : "No work items under this milestone yet."}
+                            No work on this set yet.
                           </li>
                         )}
                       </ul>

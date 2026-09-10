@@ -90,7 +90,7 @@ export function TaskDetailPanel({
       title,
       description: "",
       departmentId: task!.department_id,
-      sceneId: task!.scene_id || null,
+      sceneId: task!.scene_id,
       milestoneId: task!.milestone_id || null,
       parentTaskId: task!.id,
       ownerId: task!.assignee_id || null,
