@@ -389,6 +389,9 @@ export function SceneReadinessMatrix({
           </tbody>
         </table>
       </div>
+        </>
+      )}
     </div>
+
   );
 }
