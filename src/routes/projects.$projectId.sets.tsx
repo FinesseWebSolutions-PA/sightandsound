@@ -136,7 +136,7 @@ function SetsTab() {
       {projectSets.length === 0 ? (
         <p className="surface-card p-4 text-sm text-ink-soft">
           No sets on this production yet
-          {canEdit ? " — add the first one above." : "."}
+          {canEdit ? " — use the + button to add the first one." : "."}
         </p>
       ) : (
         <div className="grid gap-4 lg:grid-cols-[20rem_1fr]">
