@@ -160,6 +160,7 @@ export type Store = {
   setDocumentApprovalRequirement: (documentId: string, requiresApproval: boolean) => void;
   setDocumentFolder: (documentId: string, folder: string) => void;
   setDocumentSet: (documentId: string, sceneId: string | null) => void;
+  deleteDocument: (documentId: string) => void;
   createThread: (input: {
     projectId: string;
     contextType: ThreadContext;
