@@ -46,55 +46,31 @@ export function SetTasksPanel({
             </p>
           </div>
           {canEdit && (
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setQuickParent(null);
-                  setQuickOpen(true);
-                  setQuickTitle("");
-                }}
-                className="min-h-11 rounded-md bg-ink px-3 text-sm font-medium text-cream-soft hover:opacity-90"
-              >
-                <Plus className="mr-1 inline size-4" aria-hidden="true" />
-                Add task
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditorTaskId(undefined);
-                  setEditorOpen(true);
-                }}
-                className="min-h-11 rounded-md border border-border px-3 text-sm font-medium text-ink-soft hover:bg-cream"
-              >
-                With details
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => openNew()}
+              className="min-h-11 rounded-md bg-ink px-3 text-sm font-medium text-cream-soft hover:opacity-90"
+            >
+              <Plus className="mr-1 inline size-4" aria-hidden="true" />
+              Add task
+            </button>
           )}
         </header>
         {setTasks.length === 0 ? (
-          canEdit && quickOpen && quickParent === null ? (
-            quickAddRow(null)
-          ) : (
-            <div className="px-4 py-6">
-              <p className="text-sm text-ink-soft">
-                No tasks on this set yet. Add the first one to start its schedule.
-              </p>
-              {canEdit && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuickParent(null);
-                    setQuickOpen(true);
-                    setQuickTitle("");
-                  }}
-                  className="mt-2 min-h-11 text-sm font-medium text-gold-deep hover:underline"
-                >
-                  + Add the first task
-                </button>
-              )}
-            </div>
-          )
+          <div className="px-4 py-6">
+            <p className="text-sm text-ink-soft">
+              No tasks on this set yet. Add the first one to start its schedule.
+            </p>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => openNew()}
+                className="mt-2 min-h-11 text-sm font-medium text-gold-deep hover:underline"
+              >
+                + Add the first task
+              </button>
+            )}
+          </div>
         ) : (
           <ul className="row-list">
             {setTasks
@@ -129,11 +105,7 @@ export function SetTasksPanel({
                     {canEdit && !t.parent_task_id && (
                       <button
                         type="button"
-                        onClick={() => {
-                          setQuickParent(t.id);
-                          setQuickOpen(true);
-                          setQuickTitle("");
-                        }}
+                        onClick={() => openNew(t.id)}
                         className="min-h-11 rounded-md border border-border px-2.5 text-xs font-medium text-ink-soft hover:bg-cream"
                       >
                         + Sub-task
@@ -154,16 +126,11 @@ export function SetTasksPanel({
                   </li>
                 ));
                 }).flat()}
-            {canEdit && quickOpen && <li>{quickAddRow(quickParent)}</li>}
-            {canEdit && !quickOpen && (
+            {canEdit && (
               <li>
                 <button
                   type="button"
-                  onClick={() => {
-                    setQuickParent(null);
-                    setQuickOpen(true);
-                    setQuickTitle("");
-                  }}
+                  onClick={() => openNew()}
                   className="min-h-11 w-full px-4 py-3 text-left text-sm font-medium text-gold-deep hover:bg-cream"
                 >
                   + Add task
@@ -194,10 +161,12 @@ export function SetTasksPanel({
         <WorkItemEditor
           projectId={projectId}
           {...(editorTaskId ? { taskId: editorTaskId } : {})}
+          {...(editorParentId ? { presetParentTaskId: editorParentId } : {})}
           presetSceneId={sceneId}
           onClose={() => {
             setEditorOpen(false);
             setEditorTaskId(undefined);
+            setEditorParentId(undefined);
           }}
         />
       )}
