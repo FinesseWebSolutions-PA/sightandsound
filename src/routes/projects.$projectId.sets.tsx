@@ -75,32 +75,49 @@ function SetsTab() {
     }
   };
 
+  const [adding, setAdding] = useState(false);
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="font-display text-2xl text-ink sm:text-3xl">Sets</h2>
-        <p className="mt-1 max-w-2xl text-sm text-ink-soft">
-          Each set is its own unit of work inside this production. A set has a lead, its own dates,
-          its own team and its own conversation — and it can follow another set, so a slip on one
-          pushes everything behind it.{" "}
-          <Link
-            to="/projects/$projectId/timeline"
-            params={{ projectId }}
-            className="font-medium text-gold-deep underline"
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="font-display text-2xl text-ink sm:text-3xl">Sets</h2>
+          <p className="mt-1 max-w-2xl text-sm text-ink-soft">
+            Each set is its own unit of work inside this production. A set has a lead, its own dates,
+            its own team and its own conversation — and it can follow another set, so a slip on one
+            pushes everything behind it.{" "}
+            <Link
+              to="/projects/$projectId/timeline"
+              params={{ projectId }}
+              className="font-medium text-gold-deep underline"
+            >
+              See the schedule
+            </Link>
+          </p>
+        </div>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => setAdding((v) => !v)}
+            aria-expanded={adding}
+            aria-label="Add set"
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-ink hover:border-gold-deep hover:text-gold-deep"
           >
-            See the schedule
-          </Link>
-        </p>
+            <Plus aria-hidden className="size-5" />
+          </button>
+        )}
       </div>
 
-      {canEdit && (
+      {canEdit && adding && (
         <div className="surface-card flex flex-wrap gap-2 p-3">
           <input
+            autoFocus
             aria-label="New set name"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") void add();
+              if (e.key === "Escape") setAdding(false);
             }}
             placeholder="e.g. Set 4 — The Flood"
             className="min-h-11 flex-1 rounded-md border border-border bg-card px-3 text-base text-ink focus:ring-2 focus:ring-ring focus:outline-none sm:text-sm"
@@ -111,7 +128,6 @@ function SetsTab() {
             disabled={!newName.trim()}
             className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-ink-soft disabled:opacity-60"
           >
-            <Plus aria-hidden className="size-4" />
             Add set
           </button>
         </div>
