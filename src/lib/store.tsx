@@ -987,6 +987,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       createScene,
       renameScene,
       deleteScene,
+      updateScene,
+      reorderScene,
       createProduction,
     ],
   );
