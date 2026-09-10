@@ -165,36 +165,48 @@ function MyWorkPage() {
       const doc = thread?.document_id
         ? documents.find((d) => d.id === thread.document_id)
         : undefined;
+      const taskFromEntity =
+        !task && n.source_entity_type === "task" && n.source_entity_id
+          ? tasks.find((t) => t.id === n.source_entity_id)
+          : undefined;
       const docFromEntity =
         !doc && n.source_entity_type === "document" && n.source_entity_id
           ? documents.find((d) => d.id === n.source_entity_id)
           : undefined;
       const target = doc ?? docFromEntity;
+      const work = task ?? taskFromEntity;
 
       const author = comment ? personById(comment.author_id)?.full_name : undefined;
       const myDept = departments.find((d) => myDepartmentIds.includes(d.id));
-      const where = task
-        ? task.title
+      const where = work
+        ? work.title
         : target
           ? target.title
           : thread?.subject || "the production updates";
 
       // Read like a person talking, whenever the data supports it.
+      const workUpdateTitle =
+        !comment && work
+          ? n.summary.includes(":")
+            ? n.summary
+            : `${n.summary}: ${work.title}`
+          : undefined;
       const humanTitle =
-        author && n.kind === "mention"
+        workUpdateTitle ??
+        (author && n.kind === "mention"
           ? `${author} mentioned ${n.via_department ? (myDept?.name ?? "your department") : "you"} on ${where}`
           : author
             ? `${author} wrote on ${where}`
             : `${n.summary.replace(/^Approval /i, "").replace(/^(\w)/, (c) => c.toUpperCase())}${
                 target ? `: ${target.title}` : ""
-              }`;
+              }`);
 
       const linkClass = "text-sm font-semibold text-ink hover:underline";
-      const open = task ? (
+      const open = work ? (
         <Link
           to="/projects/$projectId/timeline"
           params={{ projectId: n.project_id }}
-          search={{ task: task.id, ...(comment ? { comment: comment.id } : {}) }}
+          search={{ task: work.id, ...(comment ? { comment: comment.id } : {}) }}
           className={linkClass}
         >
           {humanTitle}
@@ -219,21 +231,32 @@ function MyWorkPage() {
         </Link>
       );
 
+      const isWorkUpdate = n.kind === "status_change" && !comment;
       out.push({
         id: `n-${n.id}`,
-        bucket: "mentions",
+        bucket: isWorkUpdate ? "work" : "mentions",
         projectId: n.project_id,
         created_at: n.created_at,
         read: n.read,
         notificationId: n.id,
-        icon: n.via_department ? Users : n.kind === "approval" ? FileCheck2 : AtSign,
-        label: n.via_department
-          ? "Department mention"
-          : n.kind === "mention"
-            ? "Mentioned you"
+        icon: isWorkUpdate
+          ? ListChecks
+          : n.via_department
+            ? Users
             : n.kind === "approval"
-              ? "Approval"
-              : n.kind.replace("_", " "),
+              ? FileCheck2
+              : AtSign,
+        label: isWorkUpdate
+          ? "Progress update"
+          : n.via_department
+            ? "Department mention"
+            : n.kind === "mention"
+              ? "Mentioned you"
+              : n.kind === "approval"
+                ? "Approval"
+                : comment
+                  ? "New message"
+                  : n.kind.replace("_", " "),
         title: humanTitle,
         ...(comment ? { detail: `“${snippet(comment.body, 140)}”` } : {}),
         ...(comment ? { reply: { threadId: comment.thread_id } } : {}),

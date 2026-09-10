@@ -930,6 +930,12 @@ export async function loadProductionData(): Promise<ProductionData> {
         : `${who} mentioned you: “${firstLine(source.body, 60)}”`;
     } else if (source) {
       summary = `${humanize(n.type)} — “${firstLine(source.body, 60)}”`;
+    } else if (n.source_entity_type === "task" && n.source_entity_id) {
+      const title = tasks.find((t) => t.id === n.source_entity_id)?.title;
+      summary = title ? `${humanize(n.type)}: ${title}` : humanize(n.type);
+    } else if (n.source_entity_type === "document" && n.source_entity_id) {
+      const title = documents.find((d) => d.id === n.source_entity_id)?.title;
+      summary = title ? `${humanize(n.type)}: ${title}` : humanize(n.type);
     } else if (n.source_entity_type) {
       summary = `${humanize(n.type)} on a ${n.source_entity_type.replace(/_/g, " ")}`;
     }
@@ -1039,12 +1045,52 @@ async function recordAudit(
 }
 
 export async function writeTaskStatus(taskId: string, status: TaskStatus, actorId: string) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("tasks")
     .update({ status: toTaskStatusColumn(status), updated_at: new Date().toISOString() })
-    .eq("id", taskId);
+    .eq("id", taskId)
+    .select("project_id, owner_id, created_by, parent_task_id")
+    .single();
   if (error) throw new Error(error.message);
+  await notifyWorkFollowers(data, taskId, `work_${status}`, actorId);
   await recordAudit("task", taskId, actorId, "status_changed", { status });
+}
+
+/** Tells the people who follow a work item that its progress or dates moved. */
+async function notifyWorkFollowers(
+  task: {
+    project_id: string;
+    owner_id: string | null;
+    created_by: string | null;
+    parent_task_id?: string | null;
+  },
+  taskId: string,
+  type: string,
+  actorId: string,
+) {
+  const recipients: (string | null | undefined)[] = [task.owner_id, task.created_by];
+  if (task.parent_task_id) {
+    const { data: parent } = await supabase
+      .from("tasks")
+      .select("owner_id")
+      .eq("id", task.parent_task_id)
+      .maybeSingle();
+    recipients.push(parent?.owner_id);
+  }
+  const { data: project } = await supabase
+    .from("projects")
+    .select("owner_id")
+    .eq("id", task.project_id)
+    .maybeSingle();
+  recipients.push(project?.owner_id);
+  await notifyPeople({
+    recipients,
+    type,
+    projectId: task.project_id,
+    sourceEntityType: "task",
+    sourceEntityId: taskId,
+    actorId,
+  });
 }
 
 export async function writeMilestoneDate(milestoneId: string, dueDate: string, actorId: string) {
@@ -1067,10 +1113,11 @@ export async function writeTaskDates(
     .from("tasks")
     .update({ start_date: startDate, due_date: dueDate, updated_at: new Date().toISOString() })
     .eq("id", taskId)
-    .select("project_id")
+    .select("project_id, owner_id, created_by, parent_task_id")
     .single();
   if (error) throw new Error(error.message);
   await refreshSchedule([data.project_id]);
+  await notifyWorkFollowers(data, taskId, "work_rescheduled", actorId);
   await recordAudit("task", taskId, actorId, "dates_changed", {
     start_date: startDate,
     due_date: dueDate,
@@ -1351,6 +1398,73 @@ async function writeMentions(
 
   if (mentionRows.length) await supabase.from("mentions").insert(mentionRows);
   if (notificationRows.length) await supabase.from("notifications").insert(notificationRows);
+  return new Set(notified.keys());
+}
+
+/**
+ * Files one notice per person for something that happened to their work, never
+ * telling the person who did it and never twice for the same event.
+ */
+async function notifyPeople(input: {
+  recipients: (string | null | undefined)[];
+  exclude?: Iterable<string>;
+  type: string;
+  projectId: string | null;
+  sourceEntityType: string;
+  sourceEntityId: string | null;
+  sourceCommentId?: string | null;
+  actorId: string;
+}) {
+  const excluded = new Set(input.exclude ?? []);
+  excluded.add(input.actorId);
+  const recipients = [...new Set(input.recipients.filter((id): id is string => Boolean(id)))].filter(
+    (id) => !excluded.has(id),
+  );
+  if (recipients.length === 0) return;
+  await supabase.from("notifications").insert(
+    recipients.map((person_id) => ({
+      person_id,
+      type: input.type,
+      project_id: input.projectId || null,
+      source_comment_id: input.sourceCommentId ?? null,
+      source_entity_type: input.sourceEntityType,
+      source_entity_id: input.sourceEntityId,
+    })),
+  );
+}
+
+/** Everyone already part of a conversation: who started it, who has written in it, and who owns what it is about. */
+async function conversationParticipants(threadId: string): Promise<string[]> {
+  const { data: thread } = await supabase
+    .from("discussion_threads")
+    .select("created_by, task_id, document_id")
+    .eq("id", threadId)
+    .maybeSingle();
+  const { data: authors } = await supabase
+    .from("comments")
+    .select("author_id")
+    .eq("thread_id", threadId);
+  const people: (string | null | undefined)[] = [
+    thread?.created_by,
+    ...(authors ?? []).map((a) => a.author_id),
+  ];
+  if (thread?.task_id) {
+    const { data: task } = await supabase
+      .from("tasks")
+      .select("owner_id, created_by")
+      .eq("id", thread.task_id)
+      .maybeSingle();
+    people.push(task?.owner_id, task?.created_by);
+  }
+  if (thread?.document_id) {
+    const { data: doc } = await supabase
+      .from("documents")
+      .select("created_by")
+      .eq("id", thread.document_id)
+      .maybeSingle();
+    people.push(doc?.created_by);
+  }
+  return people.filter((id): id is string => Boolean(id));
 }
 
 export async function writeComment(input: {
@@ -1371,7 +1485,7 @@ export async function writeComment(input: {
     .single();
   if (error) throw new Error(error.message);
   await writeAttachmentRows(data.id, input.attachments ?? [], input.authorId);
-  await writeMentions(
+  const mentioned = await writeMentions(
     input.body,
     data.id,
     input.projectId,
@@ -1381,6 +1495,18 @@ export async function writeComment(input: {
     input.people,
     input.authorId,
   );
+  // Everyone already in the conversation hears about a new message, even without
+  // being named in it — but only once, so a mention does not arrive twice.
+  await notifyPeople({
+    recipients: await conversationParticipants(input.threadId),
+    exclude: mentioned,
+    type: "new_message",
+    projectId: input.projectId,
+    sourceEntityType: input.sourceEntityType,
+    sourceEntityId: input.sourceEntityId,
+    sourceCommentId: data.id,
+    actorId: input.authorId,
+  });
   await recordAudit("comment", data.id, input.authorId, "comment_posted", {
     thread_id: input.threadId,
   });
@@ -1962,7 +2088,14 @@ export async function writeTask(input: WorkItemInput): Promise<string> {
   };
 
   let taskId = input.id ?? "";
+  let previousOwnerId: string | null = null;
   if (input.id) {
+    const { data: before } = await supabase
+      .from("tasks")
+      .select("owner_id")
+      .eq("id", input.id)
+      .maybeSingle();
+    previousOwnerId = before?.owner_id ?? null;
     // A work item with sub-items summarises them, so its own dates and status are
     // never written directly — the database rolls them up from the children.
     const { data: children } = await supabase
@@ -1992,6 +2125,17 @@ export async function writeTask(input: WorkItemInput): Promise<string> {
   }
 
   await refreshSchedule([input.projectId]);
+  // Being handed work is the update people most need to hear about.
+  if (input.ownerId && input.ownerId !== previousOwnerId) {
+    await notifyPeople({
+      recipients: [input.ownerId],
+      type: "work_assigned",
+      projectId: input.projectId,
+      sourceEntityType: "task",
+      sourceEntityId: taskId,
+      actorId: input.actorId,
+    });
+  }
   await recordAudit("task", taskId, input.actorId, input.id ? "task_updated" : "task_created", {
     title: row.title,
     department_id: row.department_id,
