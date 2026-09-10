@@ -788,11 +788,13 @@ export function MasterTimeline({
                             />
                           )}
                           {/* committed plan: the bar people read */}
-                          <span
+                          <button
+                            type="button"
                             ref={(el) => {
                               if (el) barRefs.current.set(`set-${s.id}`, el);
                               else barRefs.current.delete(`set-${s.id}`);
                             }}
+                            onClick={() => setOpenSetId(s.id)}
                             onMouseEnter={() => setHoveredScene(s.id)}
                             onMouseLeave={() => setHoveredScene(null)}
                             style={{ left: setPlanned.left, width: setPlanned.width }}
@@ -802,7 +804,7 @@ export function MasterTimeline({
                             }`}
                           >
                             {setPlanned.width > 84 ? s.name : ""}
-                          </span>
+                          </button>
                           {/* slip past the committed finish, drawn as an overhang */}
                           {slip > 0 && (
                             <span
