@@ -42,7 +42,7 @@ const statusFilters: ("all" | ProjectStatus)[] = ["all", "active", "planning", "
 
 function PortfolioPage() {
   const { projects, can } = useStore();
-  const [status, setStatus] = useState<"all" | ProjectStatus>("all");
+  const [status, setStatus] = useState<"all" | ProjectStatus>("active");
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
 
