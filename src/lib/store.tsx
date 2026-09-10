@@ -42,6 +42,8 @@ import {
   writeProduction,
   writeScene,
   writeSceneName,
+  writeSceneFields,
+  writeSceneOrder,
   removeScene,
   writeThread,
   type DependencyType,
