@@ -12,8 +12,8 @@ import {
   milestoneStatusMeta,
   taskStatusMeta,
 } from "@/lib/status";
-import { addDays, daysBetween, monthTicks, place, pointAt, spanOf, slipDays } from "@/lib/schedule";
-import type { Milestone, ReschedulePreviewRow, Task } from "@/lib/production-data";
+import { daysBetween, monthTicks, place, pointAt, spanOf, slipDays } from "@/lib/schedule";
+import type { Milestone, Task } from "@/lib/production-data";
 
 /** Bar colouring is driven by the shared calculation, never chosen per view. */
 function barClasses(task: Task): string {
