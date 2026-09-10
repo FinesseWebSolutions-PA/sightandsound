@@ -12,18 +12,17 @@ import { cn } from "@/lib/utils";
 
 /** Chat panel shell so every conversation in the app reads the same way. */
 function ChatPanel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">{children}</div>
-  );
+  return <div className="surface-card overflow-hidden">{children}</div>;
 }
 
 function Transcript({ children }: { children: React.ReactNode }) {
   return (
-    <div className="max-h-[26rem] space-y-3 overflow-y-auto bg-cream-soft/70 px-3 py-3 sm:px-4">
+    <div className="max-h-[26rem] space-y-3 overflow-y-auto bg-cream-deep/70 px-3 py-3 sm:px-4">
       {children}
     </div>
   );
 }
+
 
 function ComposerBar({ children }: { children: React.ReactNode }) {
   return <div className="border-t border-border bg-card px-3 py-2 sm:px-4">{children}</div>;
@@ -283,10 +282,11 @@ function Message({
         </p>
         <div
           className={cn(
-            "mt-1 inline-block rounded-2xl px-3 py-2 text-left",
-            mine ? "bg-gold-tint" : "bg-cream-soft",
+            "mt-1 inline-block rounded-2xl border px-3 py-2 text-left shadow-sm",
+            mine ? "border-gold/45 bg-gold-tint" : "border-border bg-card",
           )}
         >
+
           {body && <MentionText body={body} />}
           {files.length > 0 && <AttachmentList attachments={files} projectId={projectId} />}
         </div>
@@ -341,7 +341,7 @@ function ThreadPanel({
   return (
     <article>
       <ChatPanel>
-        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-card px-3 py-2 sm:px-4">
+        <header className="panel-header flex flex-wrap items-center justify-between gap-2 px-3 py-2 sm:px-4">
           {!inline && (
             <div className="min-w-0">
               <h3 className="truncate text-sm font-semibold text-ink">{title}</h3>
@@ -357,9 +357,10 @@ function ThreadPanel({
                 aria-selected={tab === key}
                 onClick={() => setTab(key)}
                 className={cn(
-                  "inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors",
-                  tab === key ? "bg-ink text-cream-soft" : "text-ink-soft hover:bg-cream",
+                  "inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm transition-colors",
+                  tab === key ? "chip-selected font-semibold" : "chip-quiet font-medium hover:bg-cream",
                 )}
+
               >
                 {key === "messages" ? (
                   <MessageSquarePlus aria-hidden className="size-4" />

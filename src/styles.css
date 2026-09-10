@@ -44,11 +44,17 @@
 
   --color-cream: var(--cream-100);
   --color-cream-soft: var(--cream-50);
+  --color-cream-deep: var(--cream-200);
   --color-gold: var(--gold-500);
   --color-gold-deep: var(--gold-700);
   --color-gold-tint: var(--gold-100);
   --color-ink: var(--warm-gray-900);
   --color-ink-soft: var(--warm-gray-700);
+
+  --color-bar: var(--bar);
+  --color-bar-foreground: var(--bar-foreground);
+  --color-bar-border: var(--bar-border);
+  --color-bar-muted: var(--bar-muted);
 
   --color-success: var(--success);
   --color-success-bg: var(--success-bg);
@@ -62,6 +68,7 @@
   --color-neutral-status-bg: var(--cream-100);
 }
 
+
 :root {
   --radius: 0.5rem;
 
@@ -69,24 +76,31 @@
   --font-display-family: "Cormorant Garamond", Georgia, serif;
   --font-mono-family: "IBM Plex Mono", ui-monospace, monospace;
 
-  --gold-500: oklch(0.723 0.096 70.5);
-  --gold-700: oklch(0.487 0.093 66);
-  --gold-100: oklch(0.945 0.029 84);
-  --warm-gray-700: oklch(0.508 0.018 55);
-  --warm-gray-900: oklch(0.263 0.011 55);
-  --cream-100: oklch(0.928 0.021 95);
-  --cream-50: oklch(0.981 0.006 90);
+  /* Straight from the logo: amber #C8883C, cream #E5DFCB, deep brown-black. */
+  --gold-500: oklch(0.664 0.116 62);
+  --gold-700: oklch(0.468 0.089 60);
+  --gold-100: oklch(0.936 0.036 82);
+  --warm-gray-700: oklch(0.492 0.019 55);
+  --warm-gray-900: oklch(0.245 0.012 55);
+  --cream-200: oklch(0.912 0.024 92);
+  --cream-100: oklch(0.94 0.021 93);
+  --cream-50: oklch(0.972 0.009 91);
 
-  --success: oklch(0.457 0.076 158);
-  --success-bg: oklch(0.944 0.021 158);
-  --warning: oklch(0.503 0.098 66);
-  --warning-bg: oklch(0.958 0.038 88);
-  --danger: oklch(0.473 0.128 26);
-  --danger-bg: oklch(0.937 0.02 20);
-  --info: oklch(0.438 0.075 245);
-  --info-bg: oklch(0.945 0.015 240);
+  --bar: oklch(0.238 0.012 55);
+  --bar-foreground: var(--cream-50);
+  --bar-muted: oklch(0.76 0.02 82);
+  --bar-border: oklch(0.352 0.016 55);
 
-  --background: var(--cream-50);
+  --success: oklch(0.418 0.086 158);
+  --success-bg: oklch(0.918 0.041 158);
+  --warning: oklch(0.462 0.104 66);
+  --warning-bg: oklch(0.932 0.062 88);
+  --danger: oklch(0.436 0.144 26);
+  --danger-bg: oklch(0.918 0.04 22);
+  --info: oklch(0.402 0.088 245);
+  --info-bg: oklch(0.925 0.032 240);
+
+  --background: oklch(0.956 0.013 92);
   --foreground: var(--warm-gray-900);
   --card: oklch(1 0 0);
   --card-foreground: var(--warm-gray-900);
@@ -96,15 +110,17 @@
   --primary-foreground: var(--cream-50);
   --secondary: var(--cream-100);
   --secondary-foreground: var(--warm-gray-900);
-  --muted: oklch(0.958 0.008 90);
+  --muted: oklch(0.945 0.012 90);
   --muted-foreground: var(--warm-gray-700);
   --accent: var(--gold-100);
   --accent-foreground: var(--gold-700);
   --destructive: var(--danger);
   --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.885 0.014 88);
-  --input: oklch(0.885 0.014 88);
+  --border: oklch(0.842 0.019 88);
+  --input: oklch(0.842 0.019 88);
   --ring: var(--gold-500);
+  --shadow-card: 0 1px 2px oklch(0.245 0.012 55 / 0.06), 0 6px 16px -12px oklch(0.245 0.012 55 / 0.18);
+
 }
 
 @layer base {
@@ -152,7 +168,33 @@
   background-color: var(--card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
 }
+
+/* The tinted, ruled strip at the top of any panel, table or conversation. */
+@utility panel-header {
+  background-color: var(--cream-50);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* A thin gold rule that marks where a section starts. */
+@utility section-rule {
+  padding-left: 0.625rem;
+  border-left: 3px solid var(--gold-500);
+}
+
+@utility chip-selected {
+  background-color: var(--warm-gray-900);
+  color: var(--cream-50);
+  border: 1px solid var(--warm-gray-900);
+}
+
+@utility chip-quiet {
+  background-color: var(--card);
+  color: var(--warm-gray-700);
+  border: 1px solid var(--color-border);
+}
+
 
 @utility gold-rule {
   border-top: 2px solid var(--gold-500);

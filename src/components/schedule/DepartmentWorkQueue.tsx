@@ -46,7 +46,7 @@ export function DepartmentWorkQueue({ projectId }: { projectId: string }) {
             aria-pressed={active === d.id}
             className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold ${
               active === d.id
-                ? "border-gold-deep bg-gold-pale text-ink"
+                ? "chip-selected"
                 : "border-border bg-card text-ink-soft"
             }`}
           >
@@ -68,7 +68,7 @@ export function DepartmentWorkQueue({ projectId }: { projectId: string }) {
           });
           return (
             <section key={dept.id} className="surface-card overflow-hidden">
-              <header className="border-b border-border bg-cream-soft px-4 py-3">
+              <header className="panel-header px-4 py-3">
                 <h3 className="text-base font-semibold text-ink">{dept.name}</h3>
                 <p className="mt-0.5 text-xs text-ink-soft">
                   {open.length} open · {blocked.length} blocked · {dueSoon.length} due within two

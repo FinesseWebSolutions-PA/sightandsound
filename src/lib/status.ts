@@ -89,12 +89,13 @@ export function formatFloat(hours: number | null): string {
 }
 
 export const toneClasses: Record<Tone, string> = {
-  success: "bg-success-bg text-success border-success/25",
-  warning: "bg-warning-bg text-warning border-warning/25",
-  danger: "bg-danger-bg text-danger border-danger/25",
-  info: "bg-info-bg text-info border-info/25",
-  neutral: "bg-neutral-status-bg text-ink-soft border-ink-soft/25",
+  success: "bg-success-bg text-success border-success/45 font-semibold",
+  warning: "bg-warning-bg text-warning border-warning/45 font-semibold",
+  danger: "bg-danger-bg text-danger border-danger/45 font-semibold",
+  info: "bg-info-bg text-info border-info/45 font-semibold",
+  neutral: "bg-cream text-ink-soft border-ink-soft/35 font-semibold",
 };
+
 
 export function formatDate(value: string): string {
   const date = new Date(value.length <= 10 ? `${value}T12:00:00Z` : value);

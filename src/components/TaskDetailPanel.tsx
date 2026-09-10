@@ -79,7 +79,7 @@ export function TaskDetailPanel({
         aria-label={task.title}
         className="relative flex h-full w-full max-w-lg flex-col overflow-y-auto bg-card shadow-2xl"
       >
-        <header className="sticky top-0 z-10 flex items-start gap-3 border-b border-border bg-cream-soft px-4 py-3">
+        <header className="sticky top-0 z-10 flex items-start gap-3 panel-header px-4 py-3">
           <div className="min-w-0 flex-1">
             <p className="rule-label">
               {dept?.name ?? "Work item"}

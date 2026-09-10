@@ -402,11 +402,10 @@ function TimelineTab() {
               role="tab"
               aria-selected={view === v.id}
               onClick={() => setView(v.id)}
-              className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold ${
-                view === v.id
-                  ? "border-gold-deep bg-gold-pale text-ink"
-                  : "border-border bg-card text-ink-soft"
+              className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold ${
+                view === v.id ? "chip-selected" : "chip-quiet hover:bg-cream"
               }`}
+
             >
               {v.label}
             </button>
@@ -451,7 +450,7 @@ function TimelineTab() {
             .sort((a, b) => a.due_date.localeCompare(b.due_date));
           return (
             <section key={milestone.id} className="surface-card overflow-hidden">
-              <header className="border-b border-border bg-cream-soft px-4 py-3 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+              <header className="panel-header px-4 py-3 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-base font-semibold text-ink">{milestone.name}</h3>
@@ -503,7 +502,7 @@ function TimelineTab() {
 
         {unscheduled.length > 0 && (
           <section className="surface-card overflow-hidden">
-            <header className="border-b border-border bg-cream-soft px-4 py-3 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+            <header className="panel-header px-4 py-3 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
               <h3 className="text-base font-semibold text-ink">Not tied to a milestone yet</h3>
               <span className="mt-0.5 block text-xs text-ink-soft sm:mt-0">
                 Work items that still need to be placed on the schedule

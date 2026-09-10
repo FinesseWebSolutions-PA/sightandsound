@@ -186,7 +186,7 @@ export function SceneReadinessMatrix({ projectId }: { projectId: string }) {
       <div className="space-y-3 lg:hidden">
         {grid.map(({ scene, cells }) => (
           <section key={scene.id} className="surface-card overflow-hidden">
-            <header className="border-b border-border bg-cream-soft px-4 py-3">
+            <header className="panel-header px-4 py-3">
               <h3 className="text-base font-semibold text-ink">{scene.name}</h3>
             </header>
             <ul className="divide-y divide-border">

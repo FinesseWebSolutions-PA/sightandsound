@@ -8,9 +8,10 @@ import type { Role } from "@/lib/production-data";
 const roles: Role[] = ["admin", "contributor", "viewer"];
 
 const tabBase =
-  "relative flex min-h-[52px] min-w-[64px] flex-1 flex-col items-center justify-center gap-1 px-2 pt-1 text-[11px] font-medium text-ink-soft transition-colors";
+  "relative flex min-h-[52px] min-w-[64px] flex-1 flex-col items-center justify-center gap-1 px-2 pt-1 text-[11px] font-medium text-bar-muted transition-colors";
 const tabActive =
-  "relative flex min-h-[52px] min-w-[64px] flex-1 flex-col items-center justify-center gap-1 px-2 pt-1 text-[11px] font-semibold text-gold-deep transition-colors";
+  "relative flex min-h-[52px] min-w-[64px] flex-1 flex-col items-center justify-center gap-1 px-2 pt-1 text-[11px] font-semibold text-gold transition-colors after:absolute after:inset-x-3 after:top-0 after:h-0.5 after:bg-gold";
+
 
 export function BottomTabBar() {
   const { role, setRole, currentUserId, notifications } = useStore();
@@ -22,7 +23,7 @@ export function BottomTabBar() {
     <>
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-cream-soft/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-bar-border bg-bar pb-[env(safe-area-inset-bottom)] md:hidden"
       >
         <div className="flex items-stretch px-2">
           <Link
@@ -40,7 +41,7 @@ export function BottomTabBar() {
               {myUnread > 0 && (
                 <span
                   aria-hidden
-                  className="absolute -top-1 -right-2.5 inline-flex min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-bold text-cream-soft"
+                  className="absolute -top-1 -right-2.5 inline-flex min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-bold text-bar"
                 >
                   {myUnread}
                 </span>

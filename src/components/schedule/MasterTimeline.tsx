@@ -210,7 +210,7 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
       </div>
 
       <div className="surface-card overflow-hidden">
-        <div className="hidden border-b border-border bg-cream-soft lg:block">
+        <div className="hidden panel-header lg:block">
           <div className="flex">
             <div className="w-[22rem] shrink-0 px-4 py-2">
               <span className="rule-label">Work item</span>
