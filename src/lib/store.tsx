@@ -945,6 +945,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             createScene: async () => null,
             renameScene: () => {},
             deleteScene: async () => false,
+            updateScene: async () => false,
+            reorderScene: async () => false,
             createProduction: async () => null,
           },
     [
