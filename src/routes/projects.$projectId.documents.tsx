@@ -140,10 +140,33 @@ function DocumentsTab() {
   const selected = projectDocs.find((d) => d.id === selectedId) ?? projectDocs[0];
   const [note, setNote] = useState("");
 
-  const act = (decision: "requested" | "approved" | "changes_requested" | "rejected") => {
-    if (!selected) return;
-    recordApproval(selected.id, decision, note || "No note added.");
-    setNote("");
+  const [sending, setSending] = useState(false);
+
+  /**
+   * A review note behaves like a chat message: it lands in this document's
+   * conversation too, so any @mentions in it actually reach people.
+   */
+  const postNoteToConversation = async (prefix: string) => {
+    if (!selected || !note.trim()) return;
+    await createThread({
+      projectId,
+      contextType: "document",
+      documentId: selected.id,
+      subject: selected.title,
+      body: `${prefix} ${note.trim()}`,
+    });
+  };
+
+  const act = async (decision: "requested" | "approved" | "changes_requested" | "rejected") => {
+    if (!selected || sending) return;
+    setSending(true);
+    try {
+      recordApproval(selected.id, decision, note || "No note added.");
+      await postNoteToConversation(`${decisionLabel[decision]} —`);
+      setNote("");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
