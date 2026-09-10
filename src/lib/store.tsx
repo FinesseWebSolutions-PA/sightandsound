@@ -134,6 +134,14 @@ export type Store = {
   setMilestoneDate: (milestoneId: string, dueDate: string) => void;
   setPortalUrl: (projectId: string, url: string) => void;
   addDocumentVersion: (documentId: string, note: string) => void;
+  /** Uploads a file straight into the documents list, filed where you are. */
+  uploadDocument: (input: {
+    projectId: string;
+    file: File;
+    folder: string | null;
+    sceneId: string | null;
+    requiresApproval: boolean;
+  }) => Promise<boolean>;
   recordApproval: (documentId: string, decision: Approval["decision"], note: string) => void;
   /**
    * Posts a message into an existing conversation. Chat is flat: no parent id.
