@@ -26,7 +26,7 @@ const views = [
     label: "Department Work Queue",
     blurb: "What each department owes, and what's blocking it",
   },
-  { id: "scenes", label: "Scene Readiness", blurb: "Scene by scene, department by department" },
+  { id: "scenes", label: "Set Readiness", blurb: "Set by set, department by department" },
   { id: "list", label: "Work & conversations", blurb: "Milestone list with comments in place" },
 ] as const;
 

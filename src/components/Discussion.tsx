@@ -455,6 +455,7 @@ export function Discussion({
   contextType,
   taskId = null,
   documentId = null,
+  sceneId = null,
   heading,
   blurb,
   inline = false,
@@ -467,6 +468,8 @@ export function Discussion({
   contextType: ThreadContext;
   taskId?: string | null;
   documentId?: string | null;
+  /** Set the conversation belongs to, when the context is a set. */
+  sceneId?: string | null;
   heading?: string;
   blurb?: string;
   /** Inline mode is used where the thing itself is shown (a work item, a document). */
@@ -520,7 +523,8 @@ export function Discussion({
       t.project_id === projectId &&
       t.context_type === contextType &&
       (taskId === null || t.task_id === taskId) &&
-      (documentId === null || t.document_id === documentId),
+      (documentId === null || t.document_id === documentId) &&
+      (sceneId === null || t.scene_id === sceneId),
   );
 
   // Jumping in from My Work lands on a specific message.
@@ -609,6 +613,7 @@ export function Discussion({
                   contextType,
                   taskId: resolvedTaskId,
                   documentId: resolvedDocumentId,
+                  sceneId,
                   subject,
                   body,
                   attachments,
@@ -656,6 +661,7 @@ export function Discussion({
                   contextType,
                   taskId: resolvedTaskId,
                   documentId: resolvedDocumentId,
+                  sceneId,
                   subject: "",
                   body,
                   attachments,

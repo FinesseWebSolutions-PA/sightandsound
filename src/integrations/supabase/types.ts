@@ -319,6 +319,7 @@ export type Database = {
           document_id: string | null
           id: string
           project_id: string
+          scene_id: string | null
           task_id: string | null
         }
         Insert: {
@@ -328,6 +329,7 @@ export type Database = {
           document_id?: string | null
           id?: string
           project_id: string
+          scene_id?: string | null
           task_id?: string | null
         }
         Update: {
@@ -337,6 +339,7 @@ export type Database = {
           document_id?: string | null
           id?: string
           project_id?: string
+          scene_id?: string | null
           task_id?: string | null
         }
         Relationships: [
@@ -359,6 +362,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discussion_threads_scene_id_fkey"
+            columns: ["scene_id"]
+            isOneToOne: false
+            referencedRelation: "scenes"
             referencedColumns: ["id"]
           },
           {
@@ -670,6 +680,7 @@ export type Database = {
           job_title: string
           person_id: string
           project_id: string
+          scene_id: string | null
           updated_at: string
         }
         Insert: {
@@ -680,6 +691,7 @@ export type Database = {
           job_title?: string
           person_id: string
           project_id: string
+          scene_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -690,6 +702,7 @@ export type Database = {
           job_title?: string
           person_id?: string
           project_id?: string
+          scene_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -712,6 +725,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_assignments_scene_id_fkey"
+            columns: ["scene_id"]
+            isOneToOne: false
+            referencedRelation: "scenes"
             referencedColumns: ["id"]
           },
         ]
@@ -808,24 +828,62 @@ export type Database = {
       }
       scenes: {
         Row: {
+          depends_on_scene_id: string | null
+          due_date: string | null
+          forecast_finish: string | null
+          forecast_start: string | null
           id: string
+          lag_days: number
           name: string
+          owner_id: string | null
           project_id: string
           sort_order: number
+          start_date: string | null
+          status: string
         }
         Insert: {
+          depends_on_scene_id?: string | null
+          due_date?: string | null
+          forecast_finish?: string | null
+          forecast_start?: string | null
           id?: string
+          lag_days?: number
           name: string
+          owner_id?: string | null
           project_id: string
           sort_order?: number
+          start_date?: string | null
+          status?: string
         }
         Update: {
+          depends_on_scene_id?: string | null
+          due_date?: string | null
+          forecast_finish?: string | null
+          forecast_start?: string | null
           id?: string
+          lag_days?: number
           name?: string
+          owner_id?: string | null
           project_id?: string
           sort_order?: number
+          start_date?: string | null
+          status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "scenes_depends_on_scene_id_fkey"
+            columns: ["depends_on_scene_id"]
+            isOneToOne: false
+            referencedRelation: "scenes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scenes_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "scenes_project_id_fkey"
             columns: ["project_id"]
@@ -1064,6 +1122,10 @@ export type Database = {
         Returns: undefined
       }
       recompute_parent_task: { Args: { p_task_id: string }; Returns: undefined }
+      recompute_scene_rollup: {
+        Args: { p_scene_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

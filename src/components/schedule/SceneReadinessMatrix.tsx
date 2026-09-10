@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, useStore } from "@/lib/store";
@@ -20,11 +20,11 @@ type Cell = {
 
 /**
  * Every cell is derived from real work: the tasks, documents and reviews for
- * that scene and department. Nothing here is decorative.
+ * that set and department. Nothing here is decorative.
  */
 function cellFor(tasks: Task[], documents: Document[], approvals: Approval[], today: string): Cell {
   if (tasks.length === 0 && documents.length === 0) {
-    return { readiness: "not_involved", meta: null, reason: "Not involved in this scene" };
+    return { readiness: "not_involved", meta: null, reason: "Not involved in this set" };
   }
 
   const blocked = tasks.find((t) => t.status === "blocked");
@@ -150,128 +150,17 @@ function CellLink({
   return <span className={shared}>{body}</span>;
 }
 
-/** Add, rename and remove the scenes a production's work can be tied to. */
-function SceneAdmin({ projectId }: { projectId: string }) {
-  const { scenes, tasks, documents, createScene, renameScene, deleteScene, saving } = useStore();
-  const [name, setName] = useState("");
-  const [editingId, setEditingId] = useState("");
-  const [editName, setEditName] = useState("");
-
-  const projectScenes = scenes
-    .filter((s) => s.project_id === projectId)
-    .sort((a, b) => a.sort_order - b.sort_order);
-
-  const add = async () => {
-    if (!name.trim()) return;
-    const id = await createScene(projectId, name);
-    if (id) setName("");
-  };
-
-  const countFor = (sceneId: string) =>
-    tasks.filter((t) => t.scene_id === sceneId).length +
-    documents.filter((d) => d.scene_id === sceneId).length;
-
-  return (
-    <section className="surface-card p-4">
-      <h3 className="text-sm font-semibold text-ink">Scenes</h3>
-      <p className="mt-1 text-xs text-ink-soft">
-        Scenes are how the build is organized. Work items and documents can be tied to one.
-      </p>
-
-      <ul className="row-list mt-3">
-        {projectScenes.map((scene) => (
-          <li key={scene.id} className="flex flex-wrap items-center gap-2 py-2">
-            {editingId === scene.id ? (
-              <>
-                <input
-                  aria-label={`Rename ${scene.name}`}
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="min-h-9 flex-1 rounded-md border border-border bg-card px-2 text-sm text-ink focus:ring-2 focus:ring-ring focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    renameScene(scene.id, projectId, editName);
-                    setEditingId("");
-                  }}
-                  className="min-h-9 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground"
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingId("")}
-                  className="min-h-9 rounded-md border border-border px-3 text-xs font-medium text-ink"
-                >
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="min-w-0 flex-1 truncate text-sm text-ink">{scene.name}</span>
-                <span className="text-xs text-ink-soft">{countFor(scene.id)} tied</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingId(scene.id);
-                    setEditName(scene.name);
-                  }}
-                  className="min-h-9 rounded-md border border-border px-3 text-xs font-medium text-ink hover:bg-cream"
-                >
-                  Rename
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void deleteScene(scene.id, projectId)}
-                  className="min-h-9 rounded-md border border-border px-3 text-xs font-medium text-danger hover:bg-cream"
-                >
-                  Remove
-                </button>
-              </>
-            )}
-          </li>
-        ))}
-        {projectScenes.length === 0 && (
-          <li className="py-2 text-sm text-ink-soft">No scenes yet — add the first one below.</li>
-        )}
-      </ul>
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        <input
-          aria-label="New scene name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") void add();
-          }}
-          placeholder="e.g. Scene 4 — The Flood"
-          className="min-h-11 flex-1 rounded-md border border-border bg-card px-3 text-sm text-ink focus:ring-2 focus:ring-ring focus:outline-none sm:min-h-9"
-        />
-        <button
-          type="button"
-          onClick={() => void add()}
-          disabled={saving || !name.trim()}
-          className="min-h-11 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-ink-soft disabled:opacity-60 sm:min-h-9"
-        >
-          Add scene
-        </button>
-      </div>
-    </section>
-  );
-}
 
 export function SceneReadinessMatrix({
   projectId,
   onAddWork,
 }: {
   projectId: string;
-  /** Present only when the viewer may plan work; opens the editor for that scene. */
+  /** Present only when the viewer may plan work; opens the editor for that set. */
   onAddWork?: (sceneId: string, departmentId: string) => void;
 }) {
-  const { scenes, tasks, documents, approvals, can, isClosed } = useStore();
+  const { scenes, tasks, documents, approvals } = useStore();
   const today = toISO(new Date());
-  const canManage = can.adminConfig && !isClosed(projectId);
 
   const projectScenes = useMemo(
     () =>
@@ -310,11 +199,9 @@ export function SceneReadinessMatrix({
 
   return (
     <div className="space-y-4">
-      {canManage && <SceneAdmin projectId={projectId} />}
-
       {projectScenes.length === 0 ? (
         <p className="surface-card p-4 text-sm text-ink-soft">
-          No scenes have been set up on this production yet.
+          No sets have been set up on this production yet. Sets are added on the Sets tab.
         </p>
       ) : (
         <>
@@ -324,7 +211,7 @@ export function SceneReadinessMatrix({
           </p>
 
 
-      {/* Phone: one card per scene */}
+      {/* Phone: one card per set */}
       <div className="space-y-3 lg:hidden">
         {grid.map(({ scene, cells }) => (
           <section key={scene.id} className="surface-card overflow-hidden">
@@ -360,7 +247,7 @@ export function SceneReadinessMatrix({
         <table className="w-full min-w-[52rem] text-sm">
           <thead>
             <tr className="border-b border-border text-left">
-              <th className="rule-label px-4 py-2">Scene</th>
+              <th className="rule-label px-4 py-2">Set</th>
               {involved.map((d) => (
                 <th key={d.id} className="rule-label px-2 py-2">
                   {d.name}

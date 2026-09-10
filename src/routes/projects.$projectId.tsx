@@ -26,6 +26,7 @@ function ProjectNotFound() {
 
 const tabs = [
   { to: "/projects/$projectId", label: "Dashboard", exact: true },
+  { to: "/projects/$projectId/sets", label: "Sets", exact: false },
   { to: "/projects/$projectId/timeline", label: "Timeline", exact: false },
   { to: "/projects/$projectId/documents", label: "Documents", exact: false },
   { to: "/projects/$projectId/discussions", label: "Conversations", exact: false },

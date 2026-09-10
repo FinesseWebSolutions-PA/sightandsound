@@ -42,6 +42,8 @@ import {
   writeProduction,
   writeScene,
   writeSceneName,
+  writeSceneFields,
+  writeSceneOrder,
   removeScene,
   writeThread,
   type DependencyType,
@@ -67,6 +69,7 @@ import {
   type ReschedulePreviewRow,
   type Role,
   type Scene,
+  type SetStatus,
   type StagedAttachment,
   type Task,
   type TaskDependency,
@@ -153,6 +156,7 @@ export type Store = {
     contextType: ThreadContext;
     taskId?: string | null;
     documentId?: string | null;
+    sceneId?: string | null;
     subject: string;
     body: string;
     attachments?: StagedAttachment[];
@@ -168,6 +172,8 @@ export type Store = {
     personId: string;
     departmentId: string;
     jobTitle: string;
+    /** Leave out for the production's default team; pass a set id to staff that set. */
+    sceneId?: string | null;
   }) => void;
   setAssignmentJobTitle: (assignmentId: string, projectId: string, jobTitle: string) => void;
   unassignPerson: (assignmentId: string, projectId: string) => void;
@@ -190,10 +196,25 @@ export type Store = {
     projectId: string;
   }) => Promise<boolean>;
   removeDependency: (id: string, taskId: string, projectId: string) => Promise<boolean>;
-  /** Scenes a production's work can be tied to. Admin only, open productions. */
+  /** Sets: the unit of work inside a production. Admin only, open productions. */
   createScene: (projectId: string, name: string) => Promise<string | null>;
   renameScene: (sceneId: string, projectId: string, name: string) => void;
   deleteScene: (sceneId: string, projectId: string) => Promise<boolean>;
+  /** Lead, status, committed dates, and which set this one follows. */
+  updateScene: (
+    sceneId: string,
+    projectId: string,
+    fields: {
+      owner_id?: string | null;
+      status?: SetStatus;
+      start_date?: string | null;
+      due_date?: string | null;
+      depends_on_scene_id?: string | null;
+      lag_days?: number;
+    },
+  ) => Promise<boolean>;
+  /** Swaps a set with its neighbour in the running order. */
+  reorderScene: (sceneId: string, neighbourId: string, projectId: string) => Promise<boolean>;
   /** Starts a new production. Admin only; resolves the new production's id. */
   createProduction: (input: Omit<NewProductionInput, "actorId">) => Promise<string | null>;
 };
@@ -472,6 +493,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       contextType,
       taskId = null,
       documentId = null,
+      sceneId = null,
       subject,
       body,
       attachments,
@@ -480,6 +502,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // The table requires the id that matches the context, so refuse an unanchored thread.
       if (contextType === "task" && !taskId) return false;
       if (contextType === "document" && !documentId) return false;
+      if (contextType === "scene" && !sceneId) return false;
       if (!body.trim() && !(attachments && attachments.length > 0)) return false;
       // One conversation per work item / document: if one exists already, this
       // message joins it instead of starting a second one.
@@ -491,7 +514,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             ? t.task_id === taskId
             : contextType === "document"
               ? t.document_id === documentId
-              : false),
+              : contextType === "scene"
+                ? t.scene_id === sceneId
+                : false),
       );
       if (existing) {
         return await addComment(existing.id, body, attachments);
@@ -502,6 +527,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           contextType,
           taskId,
           documentId,
+          sceneId,
           subject,
           body,
           authorId: currentUserIdRef.current,
@@ -582,7 +608,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const assignPerson = useCallback<Store["assignPerson"]>(
-    ({ projectId, personId, departmentId, jobTitle }) => {
+    ({ projectId, personId, departmentId, jobTitle, sceneId }) => {
       if (!allowed(projectId, "admin") || !personId || !departmentId) return;
       run(() =>
         writeAssignment({
@@ -590,6 +616,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           personId,
           departmentId,
           jobTitle,
+          sceneId: sceneId ?? null,
           actorId: currentUserIdRef.current,
         }),
       );
@@ -741,6 +768,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [allowed, runAsync],
   );
 
+  const updateScene = useCallback<Store["updateScene"]>(
+    async (sceneId, projectId, fields) => {
+      if (!allowed(projectId, "admin")) return false;
+      return await runAsync(() =>
+        writeSceneFields(sceneId, projectId, fields, currentUserIdRef.current),
+      );
+    },
+    [allowed, runAsync],
+  );
+
+  const reorderScene = useCallback<Store["reorderScene"]>(
+    async (sceneId, neighbourId, projectId) => {
+      if (!allowed(projectId, "admin") || sceneId === neighbourId) return false;
+      return await runAsync(() =>
+        writeSceneOrder(sceneId, neighbourId, projectId, currentUserIdRef.current),
+      );
+    },
+    [allowed, runAsync],
+  );
+
   const createProduction = useCallback<Store["createProduction"]>(
     async (input) => {
       if (!adminGlobal()) return null;
@@ -840,6 +887,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             createScene,
             renameScene,
             deleteScene,
+            updateScene,
+            reorderScene,
             createProduction,
           }
         : {
@@ -902,6 +951,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             createScene: async () => null,
             renameScene: () => {},
             deleteScene: async () => false,
+            updateScene: async () => false,
+            reorderScene: async () => false,
             createProduction: async () => null,
           },
     [
@@ -942,6 +993,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       createScene,
       renameScene,
       deleteScene,
+      updateScene,
+      reorderScene,
       createProduction,
     ],
   );

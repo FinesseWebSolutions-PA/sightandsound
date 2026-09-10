@@ -53,7 +53,11 @@ export type ProjectDepartment = {
   head_id: string;
 };
 
-/** One person staffed on one production, inside one department. */
+/**
+ * One person staffed on one production, inside one department. When scene_id is
+ * empty the row is the production-wide default; when it names a set, the row is
+ * that person's job on that set.
+ */
 export type ProjectAssignment = {
   id: string;
   project_id: string;
@@ -61,6 +65,7 @@ export type ProjectAssignment = {
   department_id: string;
   job_title: string;
   is_head: boolean;
+  scene_id: string;
 };
 
 /** A preset job title offered when staffing a department on a production. */
@@ -76,11 +81,23 @@ export type MilestoneStatus = "not_started" | "in_progress" | "complete" | "at_r
 /** How much spare time an item has before it delays the production. */
 export type Criticality = "critical" | "near_critical" | "normal";
 
+export type SetStatus = "not_started" | "in_progress" | "blocked" | "complete";
+
+/** A set: the real unit of work inside a production. */
 export type Scene = {
   id: string;
   project_id: string;
   name: string;
   sort_order: number;
+  owner_id: string;
+  status: SetStatus;
+  start_date: string;
+  due_date: string;
+  forecast_start: string;
+  forecast_finish: string;
+  /** The set that must finish before this one starts, if any. */
+  depends_on_scene_id: string;
+  lag_days: number;
 };
 
 export type Milestone = {
@@ -195,7 +212,7 @@ export type Approval = {
   note: string;
 };
 
-export type ThreadContext = "project" | "task" | "document";
+export type ThreadContext = "project" | "task" | "document" | "scene";
 
 export type DiscussionThread = {
   id: string;
@@ -203,6 +220,7 @@ export type DiscussionThread = {
   context_type: ThreadContext;
   task_id: string | null;
   document_id: string | null;
+  scene_id: string | null;
   subject: string;
   created_by_id: string;
   created_at: string;
@@ -353,6 +371,12 @@ function asMilestoneStatus(value: string): MilestoneStatus {
 function asTaskStatus(value: string): TaskStatus {
   if (value === "done" || value === "complete") return "complete";
   if (value === "in_progress" || value === "in_review" || value === "blocked") return value;
+  return "not_started";
+}
+
+function asSetStatus(value: string | null): SetStatus {
+  if (value === "in_progress" || value === "blocked" || value === "complete") return value;
+  if (value === "done") return "complete";
   return "not_started";
 }
 
@@ -519,6 +543,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     department_id: a.department_id,
     job_title: a.job_title ?? "",
     is_head: a.is_head ?? false,
+    scene_id: a.scene_id ?? "",
   }));
 
   const departmentJobTitles: DepartmentJobTitle[] = (jobTitlesRes.data ?? []).map((t) => ({
@@ -572,6 +597,14 @@ export async function loadProductionData(): Promise<ProductionData> {
     project_id: s.project_id,
     name: s.name,
     sort_order: s.sort_order,
+    owner_id: s.owner_id ?? "",
+    status: asSetStatus(s.status),
+    start_date: dateOnly(s.start_date),
+    due_date: dateOnly(s.due_date),
+    forecast_start: dateOnly(s.forecast_start) || dateOnly(s.start_date),
+    forecast_finish: dateOnly(s.forecast_finish) || dateOnly(s.due_date),
+    depends_on_scene_id: s.depends_on_scene_id ?? "",
+    lag_days: Number(s.lag_days ?? 0),
   }));
 
   const tasks: Task[] = taskRows.map((t) => ({
@@ -814,19 +847,24 @@ export async function loadProductionData(): Promise<ProductionData> {
   const discussionThreads: DiscussionThread[] = (threadsRes.data ?? []).map((t) => {
     const opener = comments.find((c) => c.thread_id === t.id);
     const contextType: ThreadContext =
-      t.context_type === "task" || t.context_type === "document" ? t.context_type : "project";
+      t.context_type === "task" || t.context_type === "document" || t.context_type === "scene"
+        ? t.context_type
+        : "project";
     const fallback =
       contextType === "task"
         ? tasks.find((x) => x.id === t.task_id)?.title
         : contextType === "document"
           ? documents.find((d) => d.id === t.document_id)?.title
-          : projects.find((p) => p.id === t.project_id)?.name;
+          : contextType === "scene"
+            ? scenes.find((s) => s.id === t.scene_id)?.name
+            : projects.find((p) => p.id === t.project_id)?.name;
     return {
       id: t.id,
       project_id: t.project_id,
       context_type: contextType,
       task_id: t.task_id,
       document_id: t.document_id,
+      scene_id: t.scene_id ?? null,
       subject: opener ? firstLine(opener.body) : (fallback ?? "Discussion"),
       created_by_id: t.created_by ?? "",
       created_at: t.created_at,
@@ -1217,6 +1255,7 @@ export async function writeThread(input: {
   contextType: ThreadContext;
   taskId: string | null;
   documentId: string | null;
+  sceneId?: string | null;
   subject: string;
   body: string;
   authorId: string;
@@ -1228,8 +1267,18 @@ export async function writeThread(input: {
   // exists (including one just created by a double tap) the message joins it.
   let threadId: string | null = null;
   if (input.contextType !== "project") {
-    const column = input.contextType === "task" ? "task_id" : "document_id";
-    const anchor = input.contextType === "task" ? input.taskId : input.documentId;
+    const column =
+      input.contextType === "task"
+        ? "task_id"
+        : input.contextType === "scene"
+          ? "scene_id"
+          : "document_id";
+    const anchor =
+      input.contextType === "task"
+        ? input.taskId
+        : input.contextType === "scene"
+          ? (input.sceneId ?? null)
+          : input.documentId;
     if (anchor) {
       const { data: existing } = await supabase
         .from("discussion_threads")
@@ -1252,6 +1301,7 @@ export async function writeThread(input: {
         context_type: input.contextType,
         task_id: input.taskId,
         document_id: input.documentId,
+        scene_id: input.sceneId ?? null,
         created_by: input.authorId,
       })
       .select("id")
@@ -1270,7 +1320,7 @@ export async function writeThread(input: {
     authorId: input.authorId,
     projectId: input.projectId,
     sourceEntityType: input.contextType,
-    sourceEntityId: input.taskId ?? input.documentId ?? input.projectId,
+    sourceEntityId: input.taskId ?? input.documentId ?? input.sceneId ?? input.projectId,
     departments: input.departments,
     people: input.people,
     ...(input.attachments ? { attachments: input.attachments } : {}),
@@ -1456,21 +1506,41 @@ export async function writeAssignment(input: {
   departmentId: string;
   jobTitle: string;
   actorId: string;
+  /** Omit (or pass null) for the production-wide default team. */
+  sceneId?: string | null;
 }) {
-  const { error } = await supabase.from("project_assignments").upsert(
-    {
+  const sceneId = input.sceneId || null;
+  // Two levels share the table, so the existing row is matched on the level too.
+  let existing = supabase
+    .from("project_assignments")
+    .select("id")
+    .eq("project_id", input.projectId)
+    .eq("person_id", input.personId)
+    .eq("department_id", input.departmentId);
+  existing = sceneId ? existing.eq("scene_id", sceneId) : existing.is("scene_id", null);
+  const { data: found } = await existing.limit(1).maybeSingle();
+
+  if (found) {
+    const { error } = await supabase
+      .from("project_assignments")
+      .update({ job_title: input.jobTitle })
+      .eq("id", found.id);
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase.from("project_assignments").insert({
       project_id: input.projectId,
       person_id: input.personId,
       department_id: input.departmentId,
       job_title: input.jobTitle,
-    },
-    { onConflict: "project_id,person_id,department_id" },
-  );
-  if (error) throw new Error(error.message);
+      scene_id: sceneId,
+    });
+    if (error) throw new Error(error.message);
+  }
   await recordAudit("project", input.projectId, input.actorId, "person_assigned", {
     person_id: input.personId,
     department_id: input.departmentId,
     job_title: input.jobTitle,
+    scene_id: sceneId,
   });
 }
 
@@ -1908,9 +1978,74 @@ export async function removeScene(sceneId: string, projectId: string, actorId: s
   const cleared = await Promise.all([
     supabase.from("tasks").update({ scene_id: null }).eq("scene_id", sceneId),
     supabase.from("documents").update({ scene_id: null }).eq("scene_id", sceneId),
+    // Sets that followed this one in the chain now follow nothing.
+    supabase
+      .from("scenes")
+      .update({ depends_on_scene_id: null })
+      .eq("depends_on_scene_id", sceneId),
+    supabase.from("project_assignments").delete().eq("scene_id", sceneId),
   ]);
   for (const r of cleared) if (r.error) throw new Error(r.error.message);
   const { error } = await supabase.from("scenes").delete().eq("id", sceneId);
   if (error) throw new Error(error.message);
   await recordAudit("project", projectId, actorId, "scene_removed", { scene_id: sceneId });
+}
+
+/** Updates one set's lead, status, committed dates, or place in the chain. */
+export async function writeSceneFields(
+  sceneId: string,
+  projectId: string,
+  fields: {
+    owner_id?: string | null;
+    status?: SetStatus;
+    start_date?: string | null;
+    due_date?: string | null;
+    depends_on_scene_id?: string | null;
+    lag_days?: number;
+  },
+  actorId: string,
+) {
+  const patch: {
+    owner_id?: string | null;
+    status?: string;
+    start_date?: string | null;
+    due_date?: string | null;
+    depends_on_scene_id?: string | null;
+    lag_days?: number;
+  } = {};
+  if ("owner_id" in fields) patch['owner_id'] = fields.owner_id || null;
+  if (fields.status) patch['status'] = fields.status;
+  if ("start_date" in fields) patch['start_date'] = fields.start_date || null;
+  if ("due_date" in fields) patch['due_date'] = fields.due_date || null;
+  if ("depends_on_scene_id" in fields)
+    patch['depends_on_scene_id'] = fields.depends_on_scene_id || null;
+  if (typeof fields.lag_days === "number") patch['lag_days'] = fields.lag_days;
+  if (Object.keys(patch).length === 0) return;
+
+  const { error } = await supabase.from("scenes").update(patch).eq("id", sceneId);
+  if (error) throw new Error(error.message);
+  await recordAudit("project", projectId, actorId, "scene_updated", { scene_id: sceneId, ...patch });
+}
+
+/** Moves a set up or down in the running order by swapping with its neighbour. */
+export async function writeSceneOrder(
+  sceneId: string,
+  neighbourId: string,
+  projectId: string,
+  actorId: string,
+) {
+  const { data, error: readError } = await supabase
+    .from("scenes")
+    .select("id, sort_order")
+    .in("id", [sceneId, neighbourId]);
+  if (readError) throw new Error(readError.message);
+  const a = data?.find((r) => r.id === sceneId);
+  const b = data?.find((r) => r.id === neighbourId);
+  if (!a || !b) return;
+  const updates = await Promise.all([
+    supabase.from("scenes").update({ sort_order: b.sort_order }).eq("id", a.id),
+    supabase.from("scenes").update({ sort_order: a.sort_order }).eq("id", b.id),
+  ]);
+  for (const u of updates) if (u.error) throw new Error(u.error.message);
+  await recordAudit("project", projectId, actorId, "scene_reordered", { scene_id: sceneId });
 }
