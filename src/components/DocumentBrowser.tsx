@@ -226,6 +226,20 @@ export function DocumentBrowser({
   });
 
   const [sending, setSending] = useState(false);
+  /** Which action row in the document menu is open; only one at a time. */
+  type MenuAction =
+    | null
+    | "folder"
+    | "requested"
+    | "approved"
+    | "changes_requested"
+    | "rejected"
+    | "version";
+  const [menuAction, setMenuAction] = useState<MenuAction>(null);
+  useEffect(() => {
+    setMenuAction(null);
+    setNote("");
+  }, [selectedId]);
 
   /**
    * A review note behaves like a chat message: it lands in this document's
