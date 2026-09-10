@@ -374,22 +374,11 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
         </div>
       </div>
 
-      <p className="text-xs text-ink-soft">
-        The pale bar is the committed plan; the coloured bar is the live forecast from the shared
-        schedule calculation. Nudging a work item always shows its knock-on effect first.
-        {projectTasks.length > 0 &&
-          ` Window: ${formatDate(span.start)} – ${formatDate(span.end)} (${daysBetween(span.start, span.end)} days).`}
-      </p>
-
-      {preview && (
-        <ImpactPreview
-          state={preview}
-          onClose={() => setPreview(null)}
-          onConfirm={() => {
-            setTaskDates(preview.task.id, preview.start, preview.finish);
-            setPreview(null);
-          }}
-        />
+      {projectTasks.length > 0 && (
+        <p className="text-xs text-ink-soft">
+          {formatDate(span.start)} – {formatDate(span.end)} ·{" "}
+          {daysBetween(span.start, span.end)} days
+        </p>
       )}
     </div>
   );
