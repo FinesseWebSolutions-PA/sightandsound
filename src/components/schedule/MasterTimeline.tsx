@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, ChevronDown, ChevronRight, Diamond, Link2, Lock, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Diamond, Link2, Lock } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { StatusBadge } from "@/components/StatusBadge";
