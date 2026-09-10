@@ -266,7 +266,7 @@ function TeamTab() {
         <header className="panel-header px-4 py-3">
           <h3 className="text-sm font-semibold text-ink">Everyone with access</h3>
         </header>
-        <ul className="divide-y divide-border lg:hidden">
+        <ul className="row-list lg:hidden">
           {people.map((p) => (
             <li key={p.id} className="px-4 py-3">
               <p className="text-sm font-medium text-ink">{p.full_name}</p>
@@ -287,7 +287,7 @@ function TeamTab() {
               <th className="rule-label px-4 py-2">Access</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="row-list">
             {people.map((p) => (
               <tr key={p.id}>
                 <td className="px-4 py-2.5 text-ink">{p.full_name}</td>

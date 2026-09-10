@@ -173,7 +173,7 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
                 </header>
 
                 {!isCollapsed && (
-                  <ul className="divide-y divide-border">
+                  <ul className="row-list">
                     {group.rows.map((task) => {
                       const waitsOn = taskDependencies.filter((d) => d.task_id === task.id);
                       const bar = place(span, task.forecast_start, task.forecast_finish);

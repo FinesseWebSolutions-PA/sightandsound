@@ -67,7 +67,7 @@ function GlobalTeamPage() {
         <header className="panel-header px-4 py-3">
           <h2 className="text-sm font-semibold text-ink">People</h2>
         </header>
-        <ul className="divide-y divide-border">
+        <ul className="row-list">
           {people.map((p) => (
             <li key={p.id} className="flex flex-col gap-2 px-4 py-3 lg:flex-row lg:items-center">
               <div className="min-w-0 lg:flex-1">

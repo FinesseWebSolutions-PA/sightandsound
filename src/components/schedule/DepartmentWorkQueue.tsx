@@ -97,7 +97,7 @@ export function DepartmentWorkQueue({
               {open.length === 0 ? (
                 <p className="px-4 py-4 text-sm text-ink-soft">Nothing open for this department.</p>
               ) : (
-                <ul className="divide-y divide-border">
+                <ul className="row-list">
                   {open.map((task) => {
                     const blocks = blockers(task);
                     const days = daysBetween(today, task.forecast_finish);

@@ -154,7 +154,7 @@ function DocumentsTab() {
       <div className="grid items-start gap-6 lg:grid-cols-[1.3fr_1fr]">
         <section className="surface-card overflow-hidden">
           {/* Phones get full-width tappable rows instead of a table. */}
-          <ul className="divide-y divide-border lg:hidden">
+          <ul className="row-list lg:hidden">
             {projectDocs.map((doc) => (
               <li key={doc.id}>
                 <button
@@ -195,7 +195,7 @@ function DocumentsTab() {
                   <th className="rule-label px-4 py-2.5">Comments</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="row-list">
                 {projectDocs.map((doc) => (
                   <tr
                     key={doc.id}
@@ -392,7 +392,7 @@ function DocumentsTab() {
                 <History aria-hidden className="size-4 text-ink-soft" />
                 <h4 className="text-sm font-semibold text-ink">Version history</h4>
               </header>
-              <ul className="divide-y divide-border">
+              <ul className="row-list">
                 {documentVersions
                   .filter((v) => v.document_id === selected.id)
                   .sort((a, b) => b.version - a.version)
@@ -423,7 +423,7 @@ function DocumentsTab() {
               <header className="panel-header px-4 py-2.5">
                 <h4 className="text-sm font-semibold text-ink">Review record</h4>
               </header>
-              <ul className="divide-y divide-border">
+              <ul className="row-list">
                 {approvals
                   .filter((a) => a.document_id === selected.id)
                   .sort((a, b) => b.created_at.localeCompare(a.created_at))

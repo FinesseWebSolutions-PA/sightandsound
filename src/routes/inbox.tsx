@@ -364,7 +364,7 @@ function MyWorkPage() {
                 </span>
               )}
             </header>
-            <ul className="divide-y divide-border">
+            <ul className="row-list">
               {rows.map((item) => (
                 <li key={item.id} className={cn("px-4 py-4", item.read ? "" : "bg-gold-tint/25")}>
                   <div className="flex gap-3">

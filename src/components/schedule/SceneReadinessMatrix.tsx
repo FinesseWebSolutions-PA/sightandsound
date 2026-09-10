@@ -218,7 +218,7 @@ export function SceneReadinessMatrix({
             <header className="panel-header px-4 py-3">
               <h3 className="text-base font-semibold text-ink">{scene.name}</h3>
             </header>
-            <ul className="divide-y divide-border">
+            <ul className="row-list">
               {cells
                 .filter((c) => c.cell.meta)
                 .map(({ dept, cell }) => (
@@ -255,7 +255,7 @@ export function SceneReadinessMatrix({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="row-list">
             {grid.map(({ scene, cells }) => (
               <tr key={scene.id} className="align-top">
                 <th scope="row" className="px-4 py-3 text-left text-sm font-semibold text-ink">

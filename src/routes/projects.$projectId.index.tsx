@@ -204,7 +204,7 @@ function DashboardTab() {
         <div className="space-y-6 lg:col-span-2">
           {attention.length > 0 && (
             <Panel title="Needs attention" icon={AlertTriangle}>
-              <ul className="divide-y divide-border">
+              <ul className="row-list">
                 {attention.map((item) => (
                   <li key={item.id} className="py-3 first:pt-0 last:pb-0">
                     <p className="rule-label">{item.label}</p>
@@ -243,7 +243,7 @@ function DashboardTab() {
           )}
 
           <Panel title="Department readiness" icon={ListChecks}>
-            <ul className="divide-y divide-border">
+            <ul className="row-list">
               {involved.map((pd) => {
                 const dept = departments.find((d) => d.id === pd.department_id);
                 return (
@@ -276,7 +276,7 @@ function DashboardTab() {
             }
           >
             {/* Phones get a stacked list; the table appears once there is room for it. */}
-            <ul className="divide-y divide-border sm:hidden">
+            <ul className="row-list sm:hidden">
               {openTasks.slice(0, 8).map((task) => (
                 <li key={task.id} className="py-3 first:pt-0 last:pb-0">
                   <Link
@@ -314,7 +314,7 @@ function DashboardTab() {
                   <th className="rule-label pb-2">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="row-list">
                 {openTasks.slice(0, 8).map((task) => (
                   <tr key={task.id}>
                     <td className="py-2.5 pr-3">
