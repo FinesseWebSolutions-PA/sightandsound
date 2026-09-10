@@ -969,6 +969,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             setMilestoneDate,
             setPortalUrl,
             addDocumentVersion,
+            uploadDocument,
             recordApproval,
             addComment,
             createThread,
@@ -1035,6 +1036,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             setMilestoneDate: () => {},
             setPortalUrl: () => {},
             addDocumentVersion: () => {},
+            uploadDocument: async () => false,
             recordApproval: () => {},
             addComment: async () => false,
             uploadAttachment: async () => {
@@ -1085,6 +1087,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setMilestoneDate,
       setPortalUrl,
       addDocumentVersion,
+      uploadDocument,
       recordApproval,
       addComment,
       createThread,
