@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { Discussion } from "@/components/Discussion";
+import { MentionInput } from "@/components/MentionInput";
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, personById, useStore } from "@/lib/store";
 import { approvalStateMeta, formatDate, formatDateTime } from "@/lib/status";
