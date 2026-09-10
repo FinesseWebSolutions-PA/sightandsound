@@ -34,6 +34,7 @@ export function WorkItemEditor({
   taskId,
   presetDepartmentId,
   presetSceneId,
+  presetParentTaskId,
   onClose,
 }: {
   projectId: string;
@@ -41,6 +42,8 @@ export function WorkItemEditor({
   taskId?: string;
   presetDepartmentId?: string;
   presetSceneId?: string;
+  /** Pre-scopes a new work item as a sub-item of this one. */
+  presetParentTaskId?: string;
   onClose: () => void;
 }) {
   const {
@@ -63,6 +66,9 @@ export function WorkItemEditor({
   );
   const [sceneId, setSceneId] = useState(existing?.scene_id ?? presetSceneId ?? "");
   const [milestoneId, setMilestoneId] = useState(existing?.milestone_id ?? "");
+  const [parentTaskId, setParentTaskId] = useState(
+    existing?.parent_task_id ?? presetParentTaskId ?? "",
+  );
   const [ownerId, setOwnerId] = useState(existing?.assignee_id ?? "");
   const [startDate, setStartDate] = useState(existing?.start_date ?? "");
   const [dueDate, setDueDate] = useState(existing?.due_date ?? "");
@@ -108,6 +114,13 @@ export function WorkItemEditor({
   const otherTasks = tasks.filter((t) => t.project_id === projectId && t.id !== existing?.id);
   const waitsOn = existing ? taskDependencies.filter((d) => d.task_id === existing.id) : [];
 
+  const children = existing ? tasks.filter((t) => t.parent_task_id === existing.id) : [];
+  const rollsUp = children.length > 0;
+  // Nesting is one level deep, so only top-level work items can be a parent.
+  const parentOptions = otherTasks.filter(
+    (t) => !t.parent_task_id && !tasks.some((c) => c.parent_task_id === existing?.id),
+  );
+
   async function save() {
     if (!title.trim()) {
       setProblem("Give the work item a title.");
@@ -125,6 +138,7 @@ export function WorkItemEditor({
       departmentId,
       sceneId: sceneId || null,
       milestoneId: milestoneId || null,
+      parentTaskId: parentTaskId || null,
       ownerId: ownerId || null,
       startDate: startDate || null,
       dueDate: dueDate || null,
@@ -223,6 +237,32 @@ export function WorkItemEditor({
                 ))}
               </select>
             </label>
+            {rollsUp ? (
+              <p className="rounded-md border border-border bg-cream-soft px-3 py-2 text-xs text-ink-soft">
+                This work item has {children.length} sub-item
+                {children.length === 1 ? "" : "s"}, so it summarises them and cannot be placed
+                under another work item.
+              </p>
+            ) : (
+              <label className="block">
+                <span className="text-sm font-medium text-ink">Part of</span>
+                <select
+                  value={parentTaskId}
+                  onChange={(e) => setParentTaskId(e.target.value)}
+                  className={field}
+                >
+                  <option value="">Stands on its own</option>
+                  {parentOptions.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.title}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1 block text-xs text-ink-soft">
+                  Sub-items roll up into their parent's dates and status.
+                </span>
+              </label>
+            )}
             <label className="block">
               <span className="text-sm font-medium text-ink">Assigned to</span>
               <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)} className={field}>
@@ -240,45 +280,59 @@ export function WorkItemEditor({
                 </span>
               )}
             </label>
-            <label className="block">
-              <span className="text-sm font-medium text-ink">Status</span>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as TaskStatus)}
-                className={field}
-              >
-                {statusOptions.map((s) => (
-                  <option key={s} value={s}>
-                    {statusText[s]}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {rollsUp ? (
+              <p className="text-sm text-ink-soft">
+                Status: <span className="font-semibold text-ink">{statusText[status]}</span> — taken
+                from the sub-items.
+              </p>
+            ) : (
+              <label className="block">
+                <span className="text-sm font-medium text-ink">Status</span>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as TaskStatus)}
+                  className={field}
+                >
+                  {statusOptions.map((s) => (
+                    <option key={s} value={s}>
+                      {statusText[s]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </section>
 
           {/* When */}
           <section className="space-y-3 border-t border-border pt-4">
             <h3 className="rule-label">When</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block">
-                <span className="text-sm font-medium text-ink">Planned start</span>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className={field}
-                />
-              </label>
-              <label className="block">
-                <span className="text-sm font-medium text-ink">Planned finish</span>
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className={field}
-                />
-              </label>
-            </div>
+            {rollsUp ? (
+              <p className="rounded-md border border-border bg-cream-soft px-3 py-2 text-sm text-ink-soft">
+                {startDate || "—"} to {dueDate || "—"} — these follow the sub-items. Change a
+                sub-item's dates and this moves with them.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-sm font-medium text-ink">Planned start</span>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className={field}
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium text-ink">Planned finish</span>
+                  <input
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className={field}
+                  />
+                </label>
+              </div>
+            )}
             <label className="block">
               <span className="text-sm font-medium text-ink">Build milestone</span>
               <select
