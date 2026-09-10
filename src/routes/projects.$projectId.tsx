@@ -110,11 +110,12 @@ function ProjectWorkspace() {
                 to={tab.to}
                 params={{ projectId }}
                 activeOptions={{ exact: tab.exact }}
-                className="flex min-h-11 shrink-0 snap-start items-center rounded-t-md border-b-2 border-transparent px-4 text-sm font-medium whitespace-nowrap text-ink-soft transition-colors hover:bg-cream-soft hover:text-ink"
+                className="flex min-h-11 shrink-0 snap-start items-center rounded-t-md border border-transparent border-b-2 px-4 text-sm font-medium whitespace-nowrap text-ink-soft transition-colors hover:bg-cream hover:text-ink"
                 activeProps={{
                   className:
-                    "flex min-h-11 shrink-0 snap-start items-center rounded-t-md border-b-2 border-gold bg-cream-soft px-4 text-sm font-semibold whitespace-nowrap text-ink",
+                    "flex min-h-11 shrink-0 snap-start items-center rounded-t-md border border-border border-b-2 border-b-gold bg-card px-4 text-sm font-semibold whitespace-nowrap text-ink shadow-sm",
                 }}
+
               >
                 {tab.label}
               </Link>
