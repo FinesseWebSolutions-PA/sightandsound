@@ -582,7 +582,11 @@ export function MasterTimeline({
           <span className="rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
             Ctrl or ⌘ + scroll to zoom
           </span>
-          {readOnly ? (
+          {setsOnly ? (
+            <span className="rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
+              Open a set to plan the work inside it
+            </span>
+          ) : readOnly ? (
             <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
               <Lock aria-hidden className="size-3.5" /> Dates are read-only for you here
             </span>
