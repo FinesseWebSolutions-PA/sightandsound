@@ -1,9 +1,12 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Users } from "lucide-react";
 
 import { departments, people } from "@/lib/store";
 import { initials } from "@/lib/threads";
 import { cn } from "@/lib/utils";
+
+const POPUP_HEIGHT_ESTIMATE = 260;
+const POPUP_MARGIN = 8;
 
 type Suggestion =
   | { kind: "department"; id: string; label: string; hint: string }
@@ -61,9 +64,11 @@ export function MentionInput({
 }) {
   const localRef = useRef<HTMLTextAreaElement>(null);
   const areaRef = inputRef ?? localRef;
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const [token, setToken] = useState<{ start: number; query: string } | null>(null);
   const [highlight, setHighlight] = useState(0);
   const caretAfterInsert = useRef<number | null>(null);
+  const [popupPos, setPopupPos] = useState<{ top: number; left: number; width: number; placeAbove: boolean } | null>(null);
 
   // People and departments are matched together but presented as two labelled
   // groups, so it is always obvious which kind of mention you are choosing.
@@ -112,6 +117,38 @@ export function MentionInput({
     }
   }, [value, areaRef]);
 
+  // Position the suggestion popup with fixed coordinates so it escapes any
+  // parent overflow/clip context and flips above the field when space below
+  // is tight (e.g. a composer pinned to the bottom of the screen).
+  useEffect(() => {
+    if (!open) {
+      setPopupPos(null);
+      return;
+    }
+    const update = () => {
+      const area = areaRef.current;
+      const wrapper = wrapperRef.current;
+      if (!area || !wrapper) return;
+      const rect = area.getBoundingClientRect();
+      const wrapperRect = wrapper.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const placeAbove = spaceBelow < POPUP_HEIGHT_ESTIMATE && rect.top > POPUP_HEIGHT_ESTIMATE;
+      setPopupPos({
+        top: placeAbove ? rect.top - POPUP_MARGIN : rect.bottom + POPUP_MARGIN,
+        left: wrapperRect.left,
+        width: Math.min(Math.max(wrapperRect.width, 288), window.innerWidth - 32),
+        placeAbove,
+      });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open, areaRef]);
+
   const sync = (next: string, caret: number) => {
     const found = activeToken(next, caret);
     setToken(found);
@@ -129,7 +166,7 @@ export function MentionInput({
   };
 
   return (
-    <div className="relative">
+    <div ref={wrapperRef} className="relative">
       <textarea
         ref={areaRef}
         value={value}
@@ -172,8 +209,16 @@ export function MentionInput({
         )}
       />
 
-      {open && (
-        <div className="absolute z-40 mt-1 w-full overflow-hidden rounded-lg border border-border bg-popover shadow-lg sm:w-80">
+      {open && popupPos && (
+        <div
+          className="fixed z-[100] overflow-hidden rounded-lg border border-border bg-popover shadow-xl"
+          style={{
+            top: popupPos.top,
+            left: popupPos.left,
+            width: popupPos.width,
+            maxHeight: "min(24rem, 70vh)",
+          }}
+        >
           <ul
             role="listbox"
             aria-label="Mention suggestions"
