@@ -1073,10 +1073,10 @@ async function notifyWorkFollowers(
   }
   const { data: project } = await supabase
     .from("projects")
-    .select("production_lead_id")
+    .select("owner_id")
     .eq("id", task.project_id)
     .maybeSingle();
-  recipients.push(project?.production_lead_id);
+  recipients.push(project?.owner_id);
   await notifyPeople({
     recipients,
     type,
