@@ -602,7 +602,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const assignPerson = useCallback<Store["assignPerson"]>(
-    ({ projectId, personId, departmentId, jobTitle }) => {
+    ({ projectId, personId, departmentId, jobTitle, sceneId }) => {
       if (!allowed(projectId, "admin") || !personId || !departmentId) return;
       run(() =>
         writeAssignment({
@@ -610,6 +610,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           personId,
           departmentId,
           jobTitle,
+          sceneId: sceneId ?? null,
           actorId: currentUserIdRef.current,
         }),
       );
