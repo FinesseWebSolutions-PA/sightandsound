@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, FileText, Link2, MessageSquare, Users, X } from "lucide-react";
+import { ArrowUpRight, FileText, Link2, MessageSquare, Pencil, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Discussion } from "@/components/Discussion";
@@ -25,11 +25,14 @@ export function TaskDetailPanel({
   onClose,
   highlightCommentId,
   askDepartmentId,
+  onEdit,
 }: {
   taskId: string;
   onClose: () => void;
   highlightCommentId?: string;
   askDepartmentId?: string;
+  /** Present only when the viewer may restructure this work item. */
+  onEdit?: (taskId: string) => void;
 }) {
   const { tasks, documents, milestones, scenes, can, setTaskStatus, isClosed } = useStore();
   const task = tasks.find((t) => t.id === taskId);
@@ -87,6 +90,16 @@ export function TaskDetailPanel({
             </p>
             <h2 className="mt-0.5 text-base font-semibold text-ink">{task.title}</h2>
           </div>
+          {onEdit && (
+            <button
+              type="button"
+              onClick={() => onEdit(task.id)}
+              className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-semibold text-ink"
+            >
+              <Pencil aria-hidden className="size-4" />
+              Edit
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
