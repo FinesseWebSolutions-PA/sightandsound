@@ -286,8 +286,12 @@ export function DocumentBrowser({
     setMenuAction(null);
     setMenuOpen(false);
     setNote("");
+    setSignature("");
     setPane("details");
   }, [openedId]);
+  useEffect(() => {
+    setSignature("");
+  }, [menuAction]);
   useEffect(() => {
     if (!menuOpen) return;
     const onKey = (e: KeyboardEvent) => {
