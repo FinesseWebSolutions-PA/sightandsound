@@ -47,3 +47,13 @@
 ## Single-location pass (done)
 - [x] Venue filter, venue fields, and location copy removed from Portfolio, workspace header, project subtitles/summaries, and Inbox
 - [x] Verified at 375 and 1280px: no location text on any screen, no console errors
+
+## Richer scheduling model (done)
+- [x] Spare time, forecast dates and critical path computed centrally in the database (all four dependency relationships plus wait time); every view reads the same numbers
+- [x] Schedule tab now has four views: Master Timeline, Department Work Queue, Scene Readiness, Work & conversations (the old milestone list, still where comments live)
+- [x] Master Timeline: milestone diamonds, committed plan vs live forecast bars, dependency lines labelled by relationship, critical-path bars labelled in words as well as colour, collapsible milestone groups, and nudge controls that always show the knock-on effect before committing
+- [x] Impact preview names every work item and milestone that would move, by how much, and flags anything crossing a rehearsal or performance date
+- [x] Department Work Queue: per-department open work, blockers linked to the blocking item, due-soon and overdue counts
+- [x] Scene Readiness: scenes x departments, each cell derived from real work and linking to the blocking work item or document
+- [x] "Coming soon" list (Capacity Heat Map, Load-in/Load-out Gantt, Show-Day Command Dashboard, role-based presets) shown but not clickable
+- [x] Verified at 390 and 1280px: no page overflow, no console errors; closed productions show no date controls
