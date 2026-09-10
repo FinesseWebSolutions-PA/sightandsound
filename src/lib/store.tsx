@@ -762,6 +762,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [allowed, runAsync],
   );
 
+  const updateScene = useCallback<Store["updateScene"]>(
+    async (sceneId, projectId, fields) => {
+      if (!allowed(projectId, "admin")) return false;
+      return await runAsync(() =>
+        writeSceneFields(sceneId, projectId, fields, currentUserIdRef.current),
+      );
+    },
+    [allowed, runAsync],
+  );
+
+  const reorderScene = useCallback<Store["reorderScene"]>(
+    async (sceneId, neighbourId, projectId) => {
+      if (!allowed(projectId, "admin") || sceneId === neighbourId) return false;
+      return await runAsync(() =>
+        writeSceneOrder(sceneId, neighbourId, projectId, currentUserIdRef.current),
+      );
+    },
+    [allowed, runAsync],
+  );
+
   const createProduction = useCallback<Store["createProduction"]>(
     async (input) => {
       if (!adminGlobal()) return null;
