@@ -507,8 +507,31 @@ export function MasterTimeline({
     startX: number;
     days: number;
   } | null>(null);
+  const sDragRef = useRef(sDrag);
+  useEffect(() => {
+    sDragRef.current = sDrag;
+  }, [sDrag]);
+  const setDragStartRef = useRef<{
+    sceneId: string;
+    kind: "move" | "start" | "end";
+    startX: number;
+  } | null>(null);
+  const suppressSetClickRef = useRef(false);
+  const SET_DRAG_THRESHOLD = 4;
 
   const beginSetDrag = (
+    sceneId: string,
+    kind: "move" | "start" | "end",
+    e: React.PointerEvent | PointerEvent,
+  ) => {
+    if (!canDragSets) return;
+    e.preventDefault();
+    e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    setSDrag({ sceneId, kind, startX: e.clientX, days: 0 });
+  };
+
+  const handleSetPointerDown = (
     sceneId: string,
     kind: "move" | "start" | "end",
     e: React.PointerEvent,
@@ -516,8 +539,29 @@ export function MasterTimeline({
     if (!canDragSets) return;
     e.preventDefault();
     e.stopPropagation();
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-    setSDrag({ sceneId, kind, startX: e.clientX, days: 0 });
+    setDragStartRef.current = { sceneId, kind, startX: e.clientX };
+
+    const onMove = (ev: PointerEvent) => {
+      if (!setDragStartRef.current || sDragRef.current) return;
+      const dx = Math.abs(ev.clientX - setDragStartRef.current.startX);
+      if (dx > SET_DRAG_THRESHOLD) {
+        suppressSetClickRef.current = true;
+        beginSetDrag(sceneId, kind, ev);
+        cleanup();
+      }
+    };
+    const onUp = () => {
+      cleanup();
+      setDragStartRef.current = null;
+    };
+    const cleanup = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
   };
 
   /** Sets that follow the one that moved slide along with it. */
@@ -933,9 +977,13 @@ export function MasterTimeline({
                                     else barRefs.current.delete(`set-${s.id}`);
                                   }}
                                   onPointerDown={(e) => {
-                                    if (e.button === 0 && canDragSets) beginSetDrag(s.id, "move", e);
+                                    if (e.button === 0 && canDragSets) handleSetPointerDown(s.id, "move", e);
                                   }}
                                   onClick={() => {
+                                    if (suppressSetClickRef.current) {
+                                      suppressSetClickRef.current = false;
+                                      return;
+                                    }
                                     if (!sDrag) setOpenSetId(s.id);
                                   }}
                                   onMouseEnter={() => setHoveredScene(s.id)}
@@ -955,13 +1003,13 @@ export function MasterTimeline({
                                     <>
                                       <span
                                         aria-hidden
-                                        onPointerDown={(e) => beginSetDrag(s.id, "start", e)}
+                                        onPointerDown={(e) => handleSetPointerDown(s.id, "start", e)}
                                         onClick={(e) => e.stopPropagation()}
                                         className="absolute inset-y-0 left-0 w-2.5 cursor-ew-resize bg-cream/25"
                                       />
                                       <span
                                         aria-hidden
-                                        onPointerDown={(e) => beginSetDrag(s.id, "end", e)}
+                                        onPointerDown={(e) => handleSetPointerDown(s.id, "end", e)}
                                         onClick={(e) => e.stopPropagation()}
                                         className="absolute inset-y-0 right-0 w-2.5 cursor-ew-resize bg-cream/25"
                                       />
