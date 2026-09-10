@@ -930,6 +930,12 @@ export async function loadProductionData(): Promise<ProductionData> {
         : `${who} mentioned you: “${firstLine(source.body, 60)}”`;
     } else if (source) {
       summary = `${humanize(n.type)} — “${firstLine(source.body, 60)}”`;
+    } else if (n.source_entity_type === "task" && n.source_entity_id) {
+      const title = tasks.find((t) => t.id === n.source_entity_id)?.title;
+      summary = title ? `${humanize(n.type)}: ${title}` : humanize(n.type);
+    } else if (n.source_entity_type === "document" && n.source_entity_id) {
+      const title = documents.find((d) => d.id === n.source_entity_id)?.title;
+      summary = title ? `${humanize(n.type)}: ${title}` : humanize(n.type);
     } else if (n.source_entity_type) {
       summary = `${humanize(n.type)} on a ${n.source_entity_type.replace(/_/g, " ")}`;
     }
@@ -2082,7 +2088,14 @@ export async function writeTask(input: WorkItemInput): Promise<string> {
   };
 
   let taskId = input.id ?? "";
+  let previousOwnerId: string | null = null;
   if (input.id) {
+    const { data: before } = await supabase
+      .from("tasks")
+      .select("owner_id")
+      .eq("id", input.id)
+      .maybeSingle();
+    previousOwnerId = before?.owner_id ?? null;
     // A work item with sub-items summarises them, so its own dates and status are
     // never written directly — the database rolls them up from the children.
     const { data: children } = await supabase
@@ -2112,6 +2125,17 @@ export async function writeTask(input: WorkItemInput): Promise<string> {
   }
 
   await refreshSchedule([input.projectId]);
+  // Being handed work is the update people most need to hear about.
+  if (input.ownerId && input.ownerId !== previousOwnerId) {
+    await notifyPeople({
+      recipients: [input.ownerId],
+      type: "work_assigned",
+      projectId: input.projectId,
+      sourceEntityType: "task",
+      sourceEntityId: taskId,
+      actorId: input.actorId,
+    });
+  }
   await recordAudit("task", taskId, input.actorId, input.id ? "task_updated" : "task_created", {
     title: row.title,
     department_id: row.department_id,
