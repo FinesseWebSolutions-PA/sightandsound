@@ -30,7 +30,7 @@ import {
   daysBetween,
   placePx,
   slipDays,
-  spanOf,
+  spanOfDates,
   xAt,
   ZOOM_MAX,
   ZOOM_MIN,
@@ -151,7 +151,26 @@ export function MasterTimeline({
 
   const locked = readOnly || clean;
 
-  const span = useMemo(() => spanOf(projectTasks, []), [projectTasks]);
+  /** The chart window covers every set and work item on screen. */
+  const span = useMemo(
+    () =>
+      spanOfDates([
+        ...projectTasks.flatMap((t) => [
+          t.start_date,
+          t.due_date,
+          t.forecast_start,
+          t.forecast_finish,
+        ]),
+        ...projectScenes.flatMap((s) => [
+          s.start_date,
+          s.due_date,
+          s.forecast_start,
+          s.forecast_finish,
+        ]),
+      ]),
+    [projectTasks, projectScenes],
+  );
+
 
   const totalDays = Math.max(1, daysBetween(span.start, span.end));
 
@@ -173,6 +192,15 @@ export function MasterTimeline({
 
   const fitZoom = Math.max(ZOOM_MIN, viewportWidth / totalDays);
   const chartWidth = Math.round(totalDays * pxPerDay);
+
+  /** Open on the whole run so the shape of the production reads at a glance. */
+  const fitted = useRef(false);
+  useEffect(() => {
+    if (fitted.current || !wide) return;
+    fitted.current = true;
+    setPxPerDay(fitZoom);
+  }, [fitZoom, wide]);
+
 
   const setZoom = useCallback(
     (next: number, anchorX?: number) => {
@@ -665,7 +693,7 @@ export function MasterTimeline({
                 const s = group.scene;
                 const slip = slipDays(s.due_date, s.forecast_finish);
                 const setPlanned = placePx(span, s.start_date, s.due_date, pxPerDay);
-                const setLive = placePx(span, s.forecast_start, s.forecast_finish, pxPerDay);
+                
                 const setDimmed = setChain ? !setChain.has(s.id) : false;
                 const follows = projectScenes.find((o) => o.id === s.depends_on_scene_id);
                 return (
@@ -686,6 +714,8 @@ export function MasterTimeline({
                             <span className="mt-1 block text-xs text-ink-soft">
                               {s.start_date ? formatDate(s.start_date) : "No start"} –{" "}
                               {s.due_date ? formatDate(s.due_date) : "No finish"}
+                              {s.start_date && s.due_date &&
+                                ` · ${Math.max(1, daysBetween(s.start_date, s.due_date))} days`}
                               {slip > 0 && (
                                 <span className="font-semibold text-danger">
                                   {" "}
@@ -694,6 +724,7 @@ export function MasterTimeline({
                               )}
                               {follows && ` · follows ${follows.name}`}
                             </span>
+
                           </span>
                         );
                         const shellClass =
@@ -736,12 +767,27 @@ export function MasterTimeline({
                         );
                       })()}
                       {wide && (
-                        <div className="relative" style={{ width: chartWidth, minHeight: 56 }}>
-                          <span
-                            style={{ left: setPlanned.left, width: setPlanned.width }}
-                            aria-hidden
-                            className={`absolute top-3.5 h-2 rounded-full border border-border-strong bg-card ${setDimmed ? "opacity-30" : ""}`}
-                          />
+                        <div
+                          className="relative"
+                          style={{ width: chartWidth, minHeight: setsOnly ? 64 : 56 }}
+                        >
+                          {/* gridlines keep every bar readable against the axis */}
+                          {ticks.map((t) => (
+                            <span
+                              key={t.key}
+                              style={{ left: t.left }}
+                              aria-hidden
+                              className={`absolute inset-y-0 w-px ${t.major ? "bg-border-strong" : "bg-border"}`}
+                            />
+                          ))}
+                          {todayX !== null && (
+                            <span
+                              style={{ left: todayX }}
+                              aria-hidden
+                              className="absolute inset-y-0 w-0.5 bg-gold"
+                            />
+                          )}
+                          {/* committed plan: the bar people read */}
                           <span
                             ref={(el) => {
                               if (el) barRefs.current.set(`set-${s.id}`, el);
@@ -749,16 +795,28 @@ export function MasterTimeline({
                             }}
                             onMouseEnter={() => setHoveredScene(s.id)}
                             onMouseLeave={() => setHoveredScene(null)}
-                            style={{ left: setLive.left, width: setLive.width }}
-                            title={`${s.name} · ${setStatusMeta[s.status].label}`}
-                            className={`absolute top-6 flex h-6 items-center overflow-hidden rounded-md border border-ink bg-ink px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm ${
-                              setDimmed ? "opacity-40" : ""
+                            style={{ left: setPlanned.left, width: setPlanned.width }}
+                            title={`${s.name} · ${formatDate(s.start_date)} – ${formatDate(s.due_date)}`}
+                            className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-md border border-ink bg-ink px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm ${
+                              setDimmed ? "opacity-30" : ""
                             }`}
                           >
-                            {s.name}
+                            {setPlanned.width > 84 ? s.name : ""}
                           </span>
+                          {/* slip past the committed finish, drawn as an overhang */}
+                          {slip > 0 && (
+                            <span
+                              style={{
+                                left: setPlanned.left + setPlanned.width,
+                                width: Math.max(4, slip * pxPerDay),
+                              }}
+                              aria-hidden
+                              className={`absolute top-1/2 h-2.5 -translate-y-1/2 rounded-r-md bg-danger ${setDimmed ? "opacity-30" : ""}`}
+                            />
+                          )}
                         </div>
                       )}
+
                     </header>
 
                     {!setsOnly && !isCollapsed && (
