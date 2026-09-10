@@ -86,7 +86,14 @@ export function DepartmentWorkQueue({ projectId }: { projectId: string }) {
                       <li key={task.id} className="space-y-2 px-4 py-3">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold text-ink">{task.title}</p>
+                            <Link
+                              to="/projects/$projectId/timeline"
+                              params={{ projectId }}
+                              search={{ task: task.id }}
+                              className="text-sm font-semibold text-ink hover:underline"
+                            >
+                              {task.title}
+                            </Link>
                             <p className="mt-0.5 text-xs text-ink-soft">
                               {personById(task.assignee_id)?.full_name ?? "Unassigned"} ·{" "}
                               {formatFloat(task.total_float_hours)}

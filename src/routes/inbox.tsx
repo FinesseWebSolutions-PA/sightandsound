@@ -52,7 +52,8 @@ type Item = {
   label: string;
   title: string;
   detail?: string;
-  link: React.ReactNode;
+  /** The title itself, as the link into context — one obvious way in. */
+  open: React.ReactNode;
   /** Set when the item came from a message, so it can be answered right here. */
   reply?: { threadId: string; parentCommentId: string };
 };
@@ -164,37 +165,53 @@ function MyWorkPage() {
           : undefined;
       const target = doc ?? docFromEntity;
 
-      const link = task ? (
+      const author = comment ? personById(comment.author_id)?.full_name : undefined;
+      const myDept = departments.find((d) => myDepartmentIds.includes(d.id));
+      const where = task
+        ? task.title
+        : target
+          ? target.title
+          : thread?.subject || "the production updates";
+
+      // Read like a person talking, whenever the data supports it.
+      const humanTitle =
+        author && n.kind === "mention"
+          ? `${author} mentioned ${n.via_department ? (myDept?.name ?? "your department") : "you"} on ${where}`
+          : author
+            ? `${author} wrote on ${where}`
+            : n.summary
+                .replace(/^Approval /i, "")
+                .replace(/^(\w)/, (c) => c.toUpperCase());
+
+      const linkClass = "text-sm font-semibold text-ink hover:underline";
+      const open = task ? (
         <Link
           to="/projects/$projectId/timeline"
           params={{ projectId: n.project_id }}
           search={{ task: task.id, ...(comment ? { comment: comment.id } : {}) }}
-          className="inline-flex min-h-11 items-center text-sm font-semibold text-gold-deep hover:underline"
+          className={linkClass}
         >
-          Open {task.title}
+          {humanTitle}
         </Link>
       ) : target ? (
         <Link
           to="/projects/$projectId/documents"
           params={{ projectId: n.project_id }}
           search={{ document: target.id, ...(comment ? { comment: comment.id } : {}) }}
-          className="inline-flex min-h-11 items-center text-sm font-semibold text-gold-deep hover:underline"
+          className={linkClass}
         >
-          Open {target.title}
+          {humanTitle}
         </Link>
       ) : (
         <Link
           to="/projects/$projectId/discussions"
           params={{ projectId: n.project_id }}
-          className="inline-flex min-h-11 items-center text-sm font-semibold text-gold-deep hover:underline"
+          search={comment ? { comment: comment.id } : {}}
+          className={linkClass}
         >
-          Open the conversation
+          {humanTitle}
         </Link>
       );
-
-      const cleanSummary = n.summary
-        .replace(/^Approval /i, "")
-        .replace(/^(\w)/, (c) => c.toUpperCase());
 
       out.push({
         id: `n-${n.id}`,
@@ -211,15 +228,10 @@ function MyWorkPage() {
             : n.kind === "approval"
               ? "Approval"
               : n.kind.replace("_", " "),
-        // Name the actual document or work item rather than "a document".
-        title: target
-          ? cleanSummary.replace(/ (?:on|for) an? document\b/i, ` on ${target.title}`)
-          : task
-            ? cleanSummary.replace(/ (?:on|for) an? task\b/i, ` on ${task.title}`)
-            : cleanSummary,
+        title: humanTitle,
         ...(comment ? { detail: `“${snippet(comment.body, 140)}”` } : {}),
         ...(comment ? { reply: { threadId: comment.thread_id, parentCommentId: comment.id } } : {}),
-        link,
+        open,
       });
     }
 
@@ -237,14 +249,14 @@ function MyWorkPage() {
         label: blocked ? "Blocked" : late ? "Past its date" : "Assigned to you",
         title: task.title,
         detail: `Due ${formatDate(task.due_date)} · ${taskStatusMeta[task.status].label}`,
-        link: (
+        open: (
           <Link
             to="/projects/$projectId/timeline"
             params={{ projectId: task.project_id }}
             search={{ task: task.id }}
-            className="inline-flex min-h-11 items-center text-sm font-semibold text-gold-deep hover:underline"
+            className="text-sm font-semibold text-ink hover:underline"
           >
-            Open this work item
+            {task.title}
           </Link>
         ),
       });
@@ -276,14 +288,14 @@ function MyWorkPage() {
         detail: waitingOnMe
           ? `Requested ${formatDate(a.created_at)} · ${a.note}`
           : `${personById(a.decided_by_id)?.full_name ?? "A reviewer"} ${a.decision.replace("_", " ")} this — ${a.note}`,
-        link: (
+        open: (
           <Link
             to="/projects/$projectId/documents"
             params={{ projectId: doc.project_id }}
             search={{ document: doc.id }}
-            className="inline-flex min-h-11 items-center text-sm font-semibold text-gold-deep hover:underline"
+            className="text-sm font-semibold text-ink hover:underline"
           >
-            Open this document
+            {`${doc.title} — v${a.version}`}
           </Link>
         ),
       });
@@ -359,10 +371,9 @@ function MyWorkPage() {
                           {formatDateTime(item.created_at)}
                         </span>
                       </div>
-                      <p className="mt-1 text-sm font-medium text-ink">{item.title}</p>
+                      <p className="mt-1">{item.open}</p>
                       {item.detail && <p className="mt-0.5 text-sm text-ink-soft">{item.detail}</p>}
                       <div className="mt-1 flex flex-wrap items-center gap-x-4">
-                        {item.link}
                         {item.reply && <InlineReply {...item.reply} />}
                         {item.notificationId && (
                           <button

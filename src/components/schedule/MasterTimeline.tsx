@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { AlertTriangle, ChevronDown, ChevronRight, Diamond, Link2, Lock, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -291,7 +292,14 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
                       return (
                         <li key={task.id} className="lg:flex lg:items-start">
                           <div className="w-full px-4 py-3 lg:w-[22rem] lg:shrink-0">
-                            <p className="text-sm font-semibold text-ink">{task.title}</p>
+                            <Link
+                              to="/projects/$projectId/timeline"
+                              params={{ projectId }}
+                              search={{ task: task.id }}
+                              className="text-sm font-semibold text-ink hover:underline"
+                            >
+                              {task.title}
+                            </Link>
                             <p className="mt-0.5 text-xs text-ink-soft">
                               {departments.find((d) => d.id === task.department_id)?.name} ·{" "}
                               {personById(task.assignee_id)?.full_name}

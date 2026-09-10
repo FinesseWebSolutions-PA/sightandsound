@@ -1,4 +1,4 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
 import { ArrowUpRight, Clock, Link2, Lock, MessageSquare } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 
@@ -100,7 +100,7 @@ function TaskCommentsButton({ task, onOpen }: { task: Task; onOpen: () => void }
       <span className="block min-w-0 flex-1">
         <span className="block text-xs font-semibold text-ink">
           {activity.count === 0
-            ? "Open and comment"
+            ? "Comment"
             : `${activity.count} comment${activity.count === 1 ? "" : "s"}`}
         </span>
         {latest && (
@@ -169,7 +169,13 @@ function TaskCards({
         return (
           <li key={task.id} className="space-y-2 px-4 py-4">
             <div>
-              <p className="text-sm font-semibold text-ink">{task.title}</p>
+              <button
+                type="button"
+                onClick={() => onOpenTask(task.id)}
+                className="text-left text-sm font-semibold text-ink underline decoration-transparent hover:decoration-gold-deep"
+              >
+                {task.title}
+              </button>
               <p className="mt-0.5 text-xs text-ink-soft">
                 {departments.find((d) => d.id === task.department_id)?.name} ·{" "}
                 {personById(task.assignee_id)?.full_name}
@@ -232,7 +238,13 @@ function TaskTable({
               <Fragment key={task.id}>
                 <tr className="align-top">
                   <td className="px-4 py-3">
-                    <span className="text-ink">{task.title}</span>
+                    <button
+                      type="button"
+                      onClick={() => onOpenTask(task.id)}
+                      className="text-left text-ink underline decoration-transparent hover:decoration-gold-deep"
+                    >
+                      {task.title}
+                    </button>
                     <span className="code-id mt-0.5 block">{task.id}</span>
                     {blocks.length > 0 && (
                       <span className="mt-1 inline-flex items-center gap-1 text-xs text-ink-soft">
@@ -327,10 +339,28 @@ function TimelineTab() {
   const taskTitle = (id: string) => tasks.find((t) => t.id === id)?.title ?? id;
 
   // Arriving from My Work, the Dashboard or a blocker link opens that work item in place.
+  const navigate = useNavigate();
   const [openTaskId, setOpenTaskId] = useState<string | null>(search.task ?? null);
   useEffect(() => {
     if (search.task) setOpenTaskId(search.task);
   }, [search.task]);
+
+  // "Ask <Department>" is taken from the link once, then dropped from the address so
+  // it cannot keep re-prefilling the message box.
+  const [askId, setAskId] = useState<string | null>(search.ask ?? null);
+  useEffect(() => {
+    if (!search.ask) return;
+    setAskId(search.ask);
+    void navigate({
+      to: ".",
+      search: (prev: Record<string, unknown>) => {
+        const next = { ...prev };
+        delete next["ask"];
+        return next;
+      },
+      replace: true,
+    });
+  }, [search.ask, navigate]);
 
   const threadProps = {
     onOpenTask: (id: string) => setOpenTaskId(id),
@@ -500,9 +530,12 @@ function TimelineTab() {
       {openTaskId && (
         <TaskDetailPanel
           taskId={openTaskId}
-          onClose={() => setOpenTaskId(null)}
+          onClose={() => {
+            setOpenTaskId(null);
+            setAskId(null);
+          }}
           {...(search.comment ? { highlightCommentId: search.comment } : {})}
-          {...(search.ask ? { askDepartmentId: search.ask } : {})}
+          {...(askId ? { askDepartmentId: askId } : {})}
         />
       )}
     </div>
