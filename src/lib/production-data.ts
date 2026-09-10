@@ -53,6 +53,16 @@ export type ProjectDepartment = {
 
 export type MilestoneStatus = "not_started" | "in_progress" | "complete" | "at_risk";
 
+/** How much spare time an item has before it delays the production. */
+export type Criticality = "critical" | "near_critical" | "normal";
+
+export type Scene = {
+  id: string;
+  project_id: string;
+  name: string;
+  sort_order: number;
+};
+
 export type Milestone = {
   id: string;
   project_id: string;
@@ -62,6 +72,13 @@ export type Milestone = {
   owner_id: string;
   department_id: string;
   is_core: boolean;
+  /** Live best estimate from the central schedule calculation. */
+  forecast_date: string;
+  actual_date: string;
+  criticality: Criticality;
+  total_float_hours: number | null;
+  affects_rehearsal: boolean;
+  affects_performance: boolean;
 };
 
 export type TaskStatus = "not_started" | "in_progress" | "in_review" | "blocked" | "complete";
@@ -70,16 +87,52 @@ export type Task = {
   id: string;
   project_id: string;
   milestone_id: string;
+  scene_id: string;
   title: string;
   status: TaskStatus;
+  start_date: string;
   due_date: string;
   assignee_id: string;
   department_id: string;
+  /** Live best estimate from the central schedule calculation. */
+  forecast_start: string;
+  forecast_finish: string;
+  actual_start: string;
+  actual_finish: string;
+  criticality: Criticality;
+  total_float_hours: number | null;
+  affects_rehearsal: boolean;
+  affects_performance: boolean;
 };
 
+export type DependencyType =
+  | "finish_to_start"
+  | "start_to_start"
+  | "finish_to_finish"
+  | "start_to_finish";
+
 export type TaskDependency = {
+  id: string;
   task_id: string;
   depends_on_task_id: string;
+  type: DependencyType;
+  lag_hours: number;
+  hard_constraint: boolean;
+};
+
+/** One row of the reschedule preview returned by the database. */
+export type ReschedulePreviewRow = {
+  entity_type: "task" | "milestone";
+  entity_id: string;
+  name: string;
+  department_id: string | null;
+  current_finish: string;
+  new_finish: string;
+  shift_days: number;
+  affects_rehearsal: boolean;
+  affects_performance: boolean;
+  crosses_protected_date: boolean;
+  protected_label: string | null;
 };
 
 export type ApprovalState = "draft" | "in_review" | "approved" | "changes_requested" | "rejected";
