@@ -201,6 +201,25 @@ function SetDetail({
   );
   const shown = involved.length > 0 ? involved : departments;
 
+  /**
+   * A set that follows another one starts the day after that set finishes, plus
+   * whatever gap is set. Only the finish date is committed by hand.
+   */
+  const followsSet = order.find((s) => s.id === set.depends_on_scene_id);
+  const startFrom = (predecessorId: string, lag: number) => {
+    const pred = order.find((s) => s.id === predecessorId);
+    const base = pred?.due_date || pred?.forecast_finish;
+    return base ? addDays(base, 1 + lag) : "";
+  };
+  const applyChain = (predecessorId: string, lag: number) => {
+    const start = predecessorId ? startFrom(predecessorId, lag) : "";
+    void updateScene(set.id, projectId, {
+      depends_on_scene_id: predecessorId,
+      lag_days: lag,
+      ...(start ? { start_date: start } : {}),
+    });
+  };
+
   return (
     <div className="min-w-0 space-y-4">
       <section className="surface-card p-4">
