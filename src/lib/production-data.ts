@@ -368,6 +368,12 @@ function asTaskStatus(value: string): TaskStatus {
   return "not_started";
 }
 
+function asSetStatus(value: string | null): SetStatus {
+  if (value === "in_progress" || value === "blocked" || value === "complete") return value;
+  if (value === "done") return "complete";
+  return "not_started";
+}
+
 function toTaskStatusColumn(status: TaskStatus): string {
   if (status === "complete") return "done";
   if (status === "in_review") return "in_progress";
