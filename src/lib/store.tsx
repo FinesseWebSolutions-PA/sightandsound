@@ -8,7 +8,7 @@ import {
 } from "react";
 import { Loader2 } from "lucide-react";
 
-import { StoreContext, useStore } from "./store-context";
+import { StoreContext } from "./store-context";
 export { useStore } from "./store-context";
 
 import {
