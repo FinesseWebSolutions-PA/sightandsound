@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { CalendarDays, SlidersHorizontal } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 
 import { departments, projectDepartments, personById, useStore } from "@/lib/store";
 import { formatDate, projectStatusMeta, readinessMeta, type Tone } from "@/lib/status";
