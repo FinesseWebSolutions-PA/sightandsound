@@ -251,7 +251,6 @@ export function DocumentBrowser({
   /** Uploading a file straight into wherever you're standing. */
   const fileInputRef = useRef<HTMLInputElement>(null);
   const versionFileInputRef = useRef<HTMLInputElement>(null);
-  const [needsApproval, setNeedsApproval] = useState(true);
   const [versionFile, setVersionFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const addFiles = async (files: File[]) => {
@@ -264,7 +263,7 @@ export function DocumentBrowser({
           file,
           folder: place?.kind === "custom" ? place.name : null,
           sceneId: place?.kind === "set" ? place.id : null,
-          requiresApproval: needsApproval,
+          requiresApproval: true,
         });
       }
     } finally {
