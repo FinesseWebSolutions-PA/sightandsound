@@ -10,7 +10,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Discussion } from "@/components/Discussion";
 import { StatusBadge } from "@/components/StatusBadge";
