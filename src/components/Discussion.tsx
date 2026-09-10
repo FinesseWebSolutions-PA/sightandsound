@@ -522,63 +522,27 @@ export function Discussion({
           .slice()
           .sort((a, b) => a.created_at.localeCompare(b.created_at));
         return (
-          <article key={thread.id}>
-            <ChatPanel>
-            {!inline && (
-              <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-card px-3 py-3 sm:px-4">
-                <h3 className="text-sm font-semibold text-ink">
-                  {thread.subject || contextLabel(thread.task_id, thread.document_id)}
-                </h3>
-                <span className="text-xs text-ink-soft">
-                  {contextLabel(thread.task_id, thread.document_id)}
-                </span>
-              </header>
-            )}
-            <Transcript>
-              {threadComments.map((message, index) => {
-                const previous = index > 0 ? threadComments[index - 1] : undefined;
-                const newDay =
-                  !previous ||
-                  new Date(previous.created_at).toDateString() !==
-                    new Date(message.created_at).toDateString();
-                return (
-                  <div key={message.id} className="space-y-2">
-                    {newDay && <DayDivider date={message.created_at} />}
-                    <Message
-                      projectId={projectId}
-                      id={message.id}
-                      authorId={message.author_id}
-                      body={message.body}
-                      createdAt={message.created_at}
-                      mine={message.author_id === currentUserId}
-                      highlighted={highlightCommentId === message.id}
-                    />
-                  </div>
-                );
-              })}
-              <div ref={endRef} />
-            </Transcript>
-            {canPost && (
-              <ComposerBar>
-                <Composer
-                  compact
-                  projectId={projectId}
-                  threadKey={thread.id}
-                  initialDraft={initialDraft}
-                  autoFocus={autoFocusComposer}
-                  placeholder="Message…"
-                  submitLabel="Send"
-                  onSubmit={async (body, _subject, attachments) => {
-                    const ok = await addComment(thread.id, body, attachments);
-                    if (!ok) return false;
-                    onSent?.();
-                    return true;
-                  }}
-                />
-              </ComposerBar>
-            )}
-            </ChatPanel>
-          </article>
+          <ThreadPanel
+            key={thread.id}
+            projectId={projectId}
+            inline={inline}
+            title={thread.subject || contextLabel(thread.task_id, thread.document_id)}
+            contextText={contextLabel(thread.task_id, thread.document_id)}
+            threadId={thread.id}
+            threadComments={threadComments}
+            currentUserId={currentUserId}
+            highlightCommentId={highlightCommentId}
+            canPost={canPost}
+            initialDraft={initialDraft}
+            autoFocusComposer={autoFocusComposer}
+            endRef={endRef}
+            onSend={async (body, attachments) => {
+              const ok = await addComment(thread.id, body, attachments);
+              if (!ok) return false;
+              onSent?.();
+              return true;
+            }}
+          />
         );
       })}
     </section>
