@@ -61,6 +61,31 @@ export const readinessMeta: Record<ProjectDepartment["readiness"], StatusMeta> =
   complete: { label: "Complete", tone: "neutral", Icon: CheckCircle2 },
 };
 
+/** How tight an item's spare time is, straight from the shared schedule calculation. */
+export const criticalityMeta: Record<Criticality, StatusMeta> = {
+  critical: { label: "Critical path", tone: "danger", Icon: Zap },
+  near_critical: { label: "Little slack", tone: "warning", Icon: Timer },
+  normal: { label: "Has slack", tone: "neutral", Icon: CircleDashed },
+};
+
+export const dependencyTypeLabel: Record<DependencyType, string> = {
+  finish_to_start: "Finish → Start",
+  start_to_start: "Start → Start",
+  finish_to_finish: "Finish → Finish",
+  start_to_finish: "Start → Finish",
+};
+
+/** Turns hours of spare time into something a person can read. */
+export function formatFloat(hours: number | null): string {
+  if (hours === null) return "Not calculated";
+  if (hours <= 0) return "No spare time";
+  const days = Math.round(hours / 24);
+  if (days < 1) return `${Math.round(hours)} hr spare`;
+  return `${days} day${days === 1 ? "" : "s"} spare`;
+}
+
+
+
 export const toneClasses: Record<Tone, string> = {
   success: "bg-success-bg text-success border-success/25",
   warning: "bg-warning-bg text-warning border-warning/25",
