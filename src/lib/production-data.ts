@@ -858,6 +858,27 @@ export async function writeMilestoneDate(milestoneId: string, dueDate: string, a
   await recordAudit("milestone", milestoneId, actorId, "date_changed", { due_date: dueDate });
 }
 
+/** Commits a reschedule of a work item, then lets the database recompute the schedule. */
+export async function writeTaskDates(
+  taskId: string,
+  startDate: string,
+  dueDate: string,
+  actorId: string,
+) {
+  const { data, error } = await supabase
+    .from("tasks")
+    .update({ start_date: startDate, due_date: dueDate, updated_at: new Date().toISOString() })
+    .eq("id", taskId)
+    .select("project_id")
+    .single();
+  if (error) throw new Error(error.message);
+  await refreshSchedule([data.project_id]);
+  await recordAudit("task", taskId, actorId, "dates_changed", {
+    start_date: startDate,
+    due_date: dueDate,
+  });
+}
+
 export async function writePortalUrl(projectId: string, url: string, actorId: string) {
   const { error } = await supabase
     .from("projects")
