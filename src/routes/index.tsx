@@ -72,8 +72,7 @@ function PortfolioPage() {
   return (
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-10">
       <div className="max-w-3xl">
-        <p className="rule-label">Sight &amp; Sound Theatres</p>
-        <h1 className="mt-2 font-display text-3xl leading-tight text-ink sm:text-4xl lg:text-5xl">
+        <h1 className="font-display text-3xl leading-tight text-ink sm:text-4xl lg:text-5xl">
           Production Portfolio
         </h1>
       </div>
