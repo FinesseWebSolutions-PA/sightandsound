@@ -166,7 +166,7 @@ export function MentionInput({
   };
 
   return (
-    <div className="relative">
+    <div ref={wrapperRef} className="relative">
       <textarea
         ref={areaRef}
         value={value}
@@ -209,8 +209,16 @@ export function MentionInput({
         )}
       />
 
-      {open && (
-        <div className="absolute z-40 mt-1 w-full overflow-hidden rounded-lg border border-border bg-popover shadow-lg sm:w-80">
+      {open && popupPos && (
+        <div
+          className="fixed z-[100] overflow-hidden rounded-lg border border-border bg-popover shadow-xl"
+          style={{
+            top: popupPos.top,
+            left: popupPos.left,
+            width: popupPos.width,
+            maxHeight: "min(24rem, 70vh)",
+          }}
+        >
           <ul
             role="listbox"
             aria-label="Mention suggestions"
