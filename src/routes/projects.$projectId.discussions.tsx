@@ -58,7 +58,7 @@ function UpdatesTab() {
 
       <section className="space-y-3">
         <h2 className="font-display text-2xl text-ink">Said elsewhere on this production</h2>
-        <ul className="surface-card divide-y divide-border overflow-hidden">
+        <ul className="surface-card row-list overflow-hidden">
           {elsewhere.map(({ comment, thread }) => {
             const task = thread!.task_id ? tasks.find((t) => t.id === thread!.task_id) : undefined;
             const doc = thread!.document_id

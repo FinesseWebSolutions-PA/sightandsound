@@ -84,3 +84,9 @@
 - Dependencies edited in place: choose what it waits on, the relationship type, and lag in days (negative for overlap); remove one at any time. Every change re-runs the central schedule calculation.
 - Removing is guarded: work with a conversation, attached documents, or other work waiting on it must be completed instead.
 - Admin-only on open productions; contributors keep status/date updates; viewers and closed productions read-only. All changes recorded in history.
+
+## Contrast pass
+- [x] Deeper page background, white panels, stronger borders and darker secondary text
+- [x] Shared list rows with hover, tinted panel headers, banded milestone groups, status-coloured row edges
+- [x] Timeline: saturated bars, darker gridlines, today marker, legend; long explainer and manual date nudges removed
+- [x] Checked at 390 and 1280px: no overflow, no console errors

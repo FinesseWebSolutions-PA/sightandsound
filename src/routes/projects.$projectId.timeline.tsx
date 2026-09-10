@@ -163,7 +163,7 @@ function TaskCards({
     return <p className="px-4 py-3 text-sm text-ink-soft lg:hidden">{emptyLabel}</p>;
   }
   return (
-    <ul className="divide-y divide-border lg:hidden">
+    <ul className="row-list lg:hidden">
       {rows.map((task) => {
         const waitsOn = taskDependencies.filter((d) => d.task_id === task.id);
         const blocks = taskDependencies.filter((d) => d.depends_on_task_id === task.id);
@@ -231,7 +231,7 @@ function TaskTable({
             <th className="rule-label px-4 py-2">Status</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-border">
+        <tbody className="row-list">
           {rows.map((task) => {
             const waitsOn = taskDependencies.filter((d) => d.task_id === task.id);
             const blocks = taskDependencies.filter((d) => d.depends_on_task_id === task.id);

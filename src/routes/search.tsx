@@ -159,7 +159,7 @@ function SearchPage() {
                 <h2 className="text-sm font-semibold text-ink">{group.label}</h2>
                 <span className="text-xs text-ink-soft">{rows.length}</span>
               </header>
-              <ul className="divide-y divide-border">
+              <ul className="row-list">
                 {rows.map((hit) => (
                   <li key={hit.id} className="px-4 py-3">
                     <p className="rule-label">{hit.breadcrumb}</p>

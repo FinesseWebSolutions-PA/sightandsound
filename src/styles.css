@@ -38,6 +38,9 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-row-hover: var(--row-hover);
+  --color-band: var(--band);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
@@ -80,7 +83,7 @@
   --gold-500: oklch(0.664 0.116 62);
   --gold-700: oklch(0.468 0.089 60);
   --gold-100: oklch(0.936 0.036 82);
-  --warm-gray-700: oklch(0.492 0.019 55);
+  --warm-gray-700: oklch(0.446 0.021 55);
   --warm-gray-900: oklch(0.245 0.012 55);
   --cream-200: oklch(0.912 0.024 92);
   --cream-100: oklch(0.94 0.021 93);
@@ -100,7 +103,7 @@
   --info: oklch(0.402 0.088 245);
   --info-bg: oklch(0.925 0.032 240);
 
-  --background: oklch(0.956 0.013 92);
+  --background: oklch(0.928 0.018 90);
   --foreground: var(--warm-gray-900);
   --card: oklch(1 0 0);
   --card-foreground: var(--warm-gray-900);
@@ -116,10 +119,15 @@
   --accent-foreground: var(--gold-700);
   --destructive: var(--danger);
   --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.842 0.019 88);
-  --input: oklch(0.842 0.019 88);
+  --border: oklch(0.858 0.017 88);
+  --border-strong: oklch(0.742 0.024 86);
+  --row-hover: oklch(0.968 0.013 88);
+  --band: oklch(0.906 0.022 88);
+  --input: oklch(0.79 0.022 87);
   --ring: var(--gold-500);
-  --shadow-card: 0 1px 2px oklch(0.245 0.012 55 / 0.06), 0 6px 16px -12px oklch(0.245 0.012 55 / 0.18);
+  --shadow-card:
+    0 1px 0 oklch(0.245 0.012 55 / 0.04), 0 1px 3px oklch(0.245 0.012 55 / 0.1),
+    0 10px 24px -18px oklch(0.245 0.012 55 / 0.28);
 
 }
 
@@ -166,15 +174,58 @@
 
 @utility surface-card {
   background-color: var(--card);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
 }
 
 /* The tinted, ruled strip at the top of any panel, table or conversation. */
 @utility panel-header {
-  background-color: var(--cream-50);
-  border-bottom: 1px solid var(--color-border);
+  background-color: var(--band);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+/* A banded, ruled header for a collapsible group of rows. */
+@utility group-header {
+  background-color: var(--band);
+  border-top: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+/* A list or table body: hairline-separated rows that light up on hover. */
+@utility row-list {
+  & > li,
+  & > tr {
+    background-color: var(--card);
+    transition: background-color 120ms ease;
+  }
+
+  & > li:hover,
+  & > tr:hover {
+    background-color: var(--row-hover);
+  }
+
+  & > li + li,
+  & > tr + tr {
+    border-top: 1px solid var(--color-border);
+  }
+}
+
+/* One line in a list or table: hairline separated, obvious on hover. */
+@utility data-row {
+  background-color: var(--card);
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+
+  &:hover {
+    background-color: var(--row-hover);
+  }
+}
+
+/* A coloured edge that carries a row's status. Pair with a text label. */
+@utility status-edge {
+  box-shadow: inset 3px 0 0 currentColor;
 }
 
 /* A thin gold rule that marks where a section starts. */
