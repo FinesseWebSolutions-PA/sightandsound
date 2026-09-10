@@ -1830,15 +1830,34 @@ export async function writeProduction(input: NewProductionInput): Promise<string
       input.departmentIds.map((department_id) => ({
         project_id: data.id,
         department_id,
+        default_owner_id:
+          input.assignments.find((a) => a.departmentId === department_id && a.isHead)?.personId ??
+          null,
       })),
     );
     if (deptError) throw new Error(deptError.message);
+  }
+
+  const staffing = input.assignments.filter((a) => input.departmentIds.includes(a.departmentId));
+  if (staffing.length > 0) {
+    const { error: staffError } = await supabase.from("project_assignments").insert(
+      staffing.map((a) => ({
+        project_id: data.id,
+        person_id: a.personId,
+        department_id: a.departmentId,
+        job_title: a.jobTitle || "Team Member",
+        is_head: a.isHead,
+      })),
+    );
+    if (staffError) throw new Error(staffError.message);
   }
 
   await recordAudit("project", data.id, input.actorId, "created", {
     name: input.name.trim(),
     status: input.status,
     departments: input.departmentIds.length,
+    team_members: staffing.length,
   });
+
   return data.id;
 }
