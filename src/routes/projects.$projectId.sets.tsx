@@ -255,24 +255,6 @@ function SetDetail({
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={!previous || saving}
-              onClick={() => previous && void reorderScene(set.id, previous.id, projectId)}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-ink hover:bg-cream disabled:opacity-50"
-            >
-              <ArrowUp aria-hidden className="size-4" />
-              Move earlier
-            </button>
-            <button
-              type="button"
-              disabled={!next || saving}
-              onClick={() => next && void reorderScene(set.id, next.id, projectId)}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-ink hover:bg-cream disabled:opacity-50"
-            >
-              <ArrowDown aria-hidden className="size-4" />
-              Move later
-            </button>
-            <button
-              type="button"
               onClick={() => void deleteScene(set.id, projectId)}
               className="min-h-11 rounded-md border border-border px-3 text-sm font-medium text-danger hover:bg-cream"
             >
@@ -280,6 +262,7 @@ function SetDetail({
             </button>
           </div>
         )}
+
 
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
