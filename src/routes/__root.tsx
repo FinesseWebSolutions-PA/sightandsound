@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppHeader } from "@/components/AppHeader";
+import { BottomTabBar } from "@/components/BottomTabBar";
 import { StoreProvider } from "@/lib/store";
 
 function NotFoundComponent() {
@@ -122,10 +123,11 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <StoreProvider>
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-background pb-[calc(60px+env(safe-area-inset-bottom))] md:pb-0">
           <AppHeader />
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
+          <BottomTabBar />
         </div>
       </StoreProvider>
     </QueryClientProvider>

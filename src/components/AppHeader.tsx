@@ -1,8 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { Bell, Inbox, Menu, ShieldCheck } from "lucide-react";
+import { Bell, Inbox } from "lucide-react";
 
-import { people, roleDescriptions, roleLabels, useStore } from "@/lib/store";
+import { people, roleLabels, useStore } from "@/lib/store";
 import type { Role } from "@/lib/production-data";
 
 const roles: Role[] = ["admin", "contributor", "viewer"];
@@ -13,7 +12,7 @@ export function AppHeader() {
   const unread = notifications.filter((n) => !n.read).length;
   // What is unread for this person specifically, which is what the Inbox shows.
   const myUnread = notifications.filter((n) => !n.read && n.recipient_id === currentUserId).length;
-  const [menuOpen, setMenuOpen] = useState(false);
+  
 
   const roleSelect = (id: string) => (
     <select
@@ -108,56 +107,8 @@ export function AppHeader() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setMenuOpen((v) => !v)}
-            aria-expanded={menuOpen}
-            aria-controls="mobile-menu"
-            className="inline-flex size-11 items-center justify-center rounded-md border border-border bg-card text-ink md:hidden"
-          >
-            <Menu aria-hidden className="size-5" />
-            <span className="sr-only">Menu</span>
-          </button>
         </div>
       </div>
-
-      {menuOpen && (
-        <div id="mobile-menu" className="border-t border-border bg-cream-soft px-4 py-3 md:hidden">
-          <Link
-            to="/"
-            onClick={() => setMenuOpen(false)}
-            className="flex min-h-11 items-center rounded-md px-3 text-base font-medium text-ink hover:bg-cream"
-          >
-            Production Portfolio
-          </Link>
-          <Link
-            to="/inbox"
-            onClick={() => setMenuOpen(false)}
-            className="flex min-h-11 items-center gap-2 rounded-md px-3 text-base font-medium text-ink hover:bg-cream"
-          >
-            <Inbox aria-hidden className="size-4" />
-            My Inbox
-            {myUnread > 0 && (
-              <span className="rounded-full bg-gold-tint px-1.5 text-xs font-semibold text-gold-deep">
-                {myUnread}
-              </span>
-            )}
-          </Link>
-          <div className="mt-3 border-t border-border pt-3">
-            <p className="text-sm font-semibold text-ink">{person?.full_name}</p>
-            <p className="text-xs text-ink-soft">{person?.title}</p>
-            <label
-              htmlFor="role-switcher-mobile"
-              className="rule-label flex items-center gap-1.5 pt-3 pb-1.5"
-            >
-              <ShieldCheck aria-hidden className="size-3.5" />
-              Viewing as
-            </label>
-            {roleSelect("role-switcher-mobile")}
-            <p className="pt-1.5 text-xs text-ink-soft">{roleDescriptions[role]}.</p>
-          </div>
-        </div>
-      )}
     </header>
   );
 }

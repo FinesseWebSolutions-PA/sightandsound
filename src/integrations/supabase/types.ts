@@ -331,6 +331,7 @@ export type Database = {
           created_by: string | null
           id: string
           project_id: string
+          scene_id: string | null
           status: string
           task_id: string | null
           title: string
@@ -340,6 +341,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           project_id: string
+          scene_id?: string | null
           status?: string
           task_id?: string | null
           title: string
@@ -349,6 +351,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           project_id?: string
+          scene_id?: string | null
           status?: string
           task_id?: string | null
           title?: string
@@ -366,6 +369,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_scene_id_fkey"
+            columns: ["scene_id"]
+            isOneToOne: false
+            referencedRelation: "scenes"
             referencedColumns: ["id"]
           },
           {
@@ -422,7 +432,12 @@ export type Database = {
       }
       milestones: {
         Row: {
+          actual_date: string | null
+          affects_performance: boolean
+          affects_rehearsal: boolean
+          criticality: string
           due_date: string | null
+          forecast_date: string | null
           id: string
           name: string
           project_id: string
@@ -430,7 +445,12 @@ export type Database = {
           status: string
         }
         Insert: {
+          actual_date?: string | null
+          affects_performance?: boolean
+          affects_rehearsal?: boolean
+          criticality?: string
           due_date?: string | null
+          forecast_date?: string | null
           id?: string
           name: string
           project_id: string
@@ -438,7 +458,12 @@ export type Database = {
           status?: string
         }
         Update: {
+          actual_date?: string | null
+          affects_performance?: boolean
+          affects_rehearsal?: boolean
+          criticality?: string
           due_date?: string | null
+          forecast_date?: string | null
           id?: string
           name?: string
           project_id?: string
@@ -633,22 +658,57 @@ export type Database = {
           },
         ]
       }
+      scenes: {
+        Row: {
+          id: string
+          name: string
+          project_id: string
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          name: string
+          project_id: string
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          name?: string
+          project_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scenes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_dependencies: {
         Row: {
           depends_on_task_id: string
+          hard_constraint: boolean
           id: string
+          lag_hours: number
           task_id: string
           type: string
         }
         Insert: {
           depends_on_task_id: string
+          hard_constraint?: boolean
           id?: string
+          lag_hours?: number
           task_id: string
           type?: string
         }
         Update: {
           depends_on_task_id?: string
+          hard_constraint?: boolean
           id?: string
+          lag_hours?: number
           task_id?: string
           type?: string
         }
@@ -671,51 +731,78 @@ export type Database = {
       }
       tasks: {
         Row: {
+          actual_finish: string | null
+          actual_start: string | null
+          affects_performance: boolean
+          affects_rehearsal: boolean
           created_at: string
           created_by: string | null
+          criticality: string
           department_id: string | null
           description: string | null
           due_date: string | null
+          forecast_finish: string | null
+          forecast_start: string | null
           id: string
           milestone_id: string | null
           owner_id: string | null
           project_id: string
+          scene_id: string | null
           sort_order: number
           start_date: string | null
           status: string
           title: string
+          total_float_hours: number | null
           updated_at: string
         }
         Insert: {
+          actual_finish?: string | null
+          actual_start?: string | null
+          affects_performance?: boolean
+          affects_rehearsal?: boolean
           created_at?: string
           created_by?: string | null
+          criticality?: string
           department_id?: string | null
           description?: string | null
           due_date?: string | null
+          forecast_finish?: string | null
+          forecast_start?: string | null
           id?: string
           milestone_id?: string | null
           owner_id?: string | null
           project_id: string
+          scene_id?: string | null
           sort_order?: number
           start_date?: string | null
           status?: string
           title: string
+          total_float_hours?: number | null
           updated_at?: string
         }
         Update: {
+          actual_finish?: string | null
+          actual_start?: string | null
+          affects_performance?: boolean
+          affects_rehearsal?: boolean
           created_at?: string
           created_by?: string | null
+          criticality?: string
           department_id?: string | null
           description?: string | null
           due_date?: string | null
+          forecast_finish?: string | null
+          forecast_start?: string | null
           id?: string
           milestone_id?: string | null
           owner_id?: string | null
           project_id?: string
+          scene_id?: string | null
           sort_order?: number
           start_date?: string | null
           status?: string
           title?: string
+          total_float_hours?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -752,6 +839,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_scene_id_fkey"
+            columns: ["scene_id"]
+            isOneToOne: false
+            referencedRelation: "scenes"
             referencedColumns: ["id"]
           },
         ]
