@@ -455,6 +455,7 @@ export function Discussion({
   contextType,
   taskId = null,
   documentId = null,
+  sceneId = null,
   heading,
   blurb,
   inline = false,
