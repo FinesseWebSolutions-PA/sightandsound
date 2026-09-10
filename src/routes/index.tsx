@@ -1,12 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowRight, CalendarDays, SlidersHorizontal } from "lucide-react";
+import { CalendarDays, SlidersHorizontal } from "lucide-react";
 
-import { StatusBadge } from "@/components/StatusBadge";
 import { departments, projectDepartments, personById, useStore } from "@/lib/store";
-import { formatDate, projectStatusMeta, readinessMeta } from "@/lib/status";
+import { formatDate, projectStatusMeta, readinessMeta, type Tone } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import type { ProjectStatus } from "@/lib/production-data";
+
+/** Status colour as text only — quieter than a filled chip, still label + icon. */
+const toneText: Record<Tone, string> = {
+  success: "text-success",
+  warning: "text-warning",
+  danger: "text-danger",
+  info: "text-info",
+  neutral: "text-ink-soft",
+};
 
 export const Route = createFileRoute("/")({
   head: () => ({
