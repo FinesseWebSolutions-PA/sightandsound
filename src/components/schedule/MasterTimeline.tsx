@@ -731,17 +731,16 @@ export function MasterTimeline({
                           "flex shrink-0 items-start gap-2 px-4 py-2.5 text-left lg:sticky lg:left-0 lg:z-10 lg:bg-band";
                         const shellStyle = wide ? { width: NAME_COL } : undefined;
                         return setsOnly ? (
-                          <Link
-                            to="/projects/$projectId/sets"
-                            params={{ projectId }}
-                            search={{ set: s.id }}
+                          <button
+                            type="button"
+                            onClick={() => setOpenSetId(s.id)}
                             onMouseEnter={() => wide && setHoveredScene(s.id)}
                             onMouseLeave={() => wide && setHoveredScene(null)}
                             className={shellClass}
                             style={shellStyle}
                           >
                             {inner}
-                          </Link>
+                          </button>
                         ) : (
                           <button
                             type="button"
