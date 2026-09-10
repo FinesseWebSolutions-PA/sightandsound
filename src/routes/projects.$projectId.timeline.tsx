@@ -3,6 +3,8 @@ import { ArrowUpRight, Clock, Link2, Lock, MessageSquare } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 
 import { Discussion } from "@/components/Discussion";
+import { TaskDetailPanel } from "@/components/TaskDetailPanel";
+
 import { StatusBadge } from "@/components/StatusBadge";
 import { DepartmentWorkQueue } from "@/components/schedule/DepartmentWorkQueue";
 import { MasterTimeline } from "@/components/schedule/MasterTimeline";
@@ -35,11 +37,13 @@ const comingSoon = [
 export const Route = createFileRoute("/projects/$projectId/timeline")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { task?: string; comment?: string; view?: string } => ({
+  ): { task?: string; comment?: string; view?: string; ask?: string } => ({
     ...(typeof search['task'] === "string" ? { task: search['task'] } : {}),
     ...(typeof search['comment'] === "string" ? { comment: search['comment'] } : {}),
     ...(typeof search['view'] === "string" ? { view: search['view'] } : {}),
+    ...(typeof search['ask'] === "string" ? { ask: search['ask'] } : {}),
   }),
+
 
 
   head: () => ({
