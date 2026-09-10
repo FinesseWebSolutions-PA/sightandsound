@@ -290,66 +290,80 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
                       const bar = place(span, task.forecast_start, task.forecast_finish);
                       const drift = slipDays(task.due_date, task.forecast_finish);
                       return (
-                        <li key={task.id} className="lg:flex lg:items-start">
-                          <div className="w-full px-4 py-3 lg:w-[22rem] lg:shrink-0">
-                            <Link
-                              to="/projects/$projectId/timeline"
-                              params={{ projectId }}
-                              search={{ task: task.id }}
-                              className="text-sm font-semibold text-ink hover:underline"
-                            >
-                              {task.title}
-                            </Link>
-                            <p className="mt-0.5 text-xs text-ink-soft">
+                        <li
+                          key={task.id}
+                          className={`data-row status-edge lg:flex lg:items-stretch ${edgeClasses(task)}`}
+                        >
+                          <div className="w-full px-4 py-3 lg:w-[22rem] lg:shrink-0 lg:border-r lg:border-border">
+                            <div className="flex items-start justify-between gap-3">
+                              <Link
+                                to="/projects/$projectId/timeline"
+                                params={{ projectId }}
+                                search={{ task: task.id }}
+                                className="text-sm font-semibold text-ink hover:underline"
+                              >
+                                {task.title}
+                              </Link>
+                              <StatusBadge meta={taskStatusMeta[task.status]} size="sm" />
+                            </div>
+                            <p className="mt-1 text-xs font-medium text-ink-soft">
                               {departments.find((d) => d.id === task.department_id)?.name} ·{" "}
                               {personById(task.assignee_id)?.full_name}
                             </p>
-                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                              <StatusBadge meta={taskStatusMeta[task.status]} size="sm" />
+                            <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-soft">
                               <StatusBadge meta={criticalityMeta[task.criticality]} size="sm" />
-                              <span className="text-xs text-ink-soft">
-                                {formatFloat(task.total_float_hours)}
+                              <span>{formatFloat(task.total_float_hours)}</span>
+                              <span aria-hidden>·</span>
+                              <span>
+                                {formatDate(task.forecast_start)} –{" "}
+                                {formatDate(task.forecast_finish)}
                               </span>
-                            </div>
-                            <p className="mt-1 text-xs text-ink-soft">
-                              {formatDate(task.forecast_start)} – {formatDate(task.forecast_finish)}
                               {drift > 0 && (
-                                <span className="text-danger"> · {drift} days past plan</span>
+                                <span className="font-semibold text-danger">
+                                  {drift} days past plan
+                                </span>
                               )}
-                            </p>
-                            {waitsOn.map((d) => (
-                              <p
-                                key={d.id}
-                                className="mt-1 flex items-start gap-1.5 text-xs text-ink-soft"
-                              >
+                            </div>
+                            {waitsOn.length > 0 && (
+                              <p className="mt-1.5 flex items-start gap-1.5 text-xs text-ink-soft">
                                 <Link2 aria-hidden className="mt-0.5 size-3 shrink-0" />
                                 <span>
-                                  {dependencyTypeLabel[d.type]} after{" "}
-                                  {taskTitle(d.depends_on_task_id)}
-                                  {d.lag_hours ? ` (+${d.lag_hours}h wait)` : ""}
+                                  {waitsOn
+                                    .map(
+                                      (d) =>
+                                        `${dependencyTypeLabel[d.type]} after ${taskTitle(d.depends_on_task_id)}${d.lag_hours ? ` (+${d.lag_hours}h wait)` : ""}`,
+                                    )
+                                    .join(" · ")}
                                 </span>
                               </p>
-                            ))}
+                            )}
                           </div>
 
-                          <div className="relative hidden h-16 flex-1 px-3 lg:block">
+                          <div className="relative hidden h-20 flex-1 px-3 lg:block">
                             {ticks.map((t) => (
                               <span
                                 key={t.left}
                                 style={{ left: t.left }}
                                 aria-hidden
-                                className="absolute inset-y-0 w-px bg-border"
+                                className="absolute inset-y-0 w-px bg-border-strong/70"
                               />
                             ))}
+                            {todayPoint && (
+                              <span
+                                style={todayPoint}
+                                aria-hidden
+                                className="absolute inset-y-0 w-0.5 bg-gold"
+                              />
+                            )}
                             <span
                               style={place(span, task.start_date, task.due_date)}
                               aria-hidden
-                              className="absolute top-3 h-2 rounded-full border border-border bg-cream"
+                              className="absolute top-4 h-2.5 rounded-full border border-border-strong bg-band"
                             />
                             <span
                               style={bar}
                               title={`${criticalityMeta[task.criticality].label} · ${formatFloat(task.total_float_hours)}`}
-                              className={`absolute top-6 flex h-6 items-center overflow-hidden rounded-md border px-1.5 text-[10px] font-semibold whitespace-nowrap text-cream-soft ${barClasses(task)}`}
+                              className={`absolute top-8 flex h-7 items-center overflow-hidden rounded-md border px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm ${barClasses(task)}`}
                             >
                               {task.criticality === "critical"
                                 ? "Critical"
