@@ -503,7 +503,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     supabase.from("milestones").select("*").order("sort_order"),
     supabase.from("tasks").select("*").order("sort_order"),
     supabase.from("task_dependencies").select("*"),
-    supabase.from("documents").select("*").order("created_at"),
+    supabase.from("documents").select("*").is("deleted_at", null).order("created_at"),
     supabase.from("document_versions").select("*").order("version_number"),
     supabase.from("approvals").select("*").order("requested_at"),
     supabase.from("discussion_threads").select("*").order("created_at"),
