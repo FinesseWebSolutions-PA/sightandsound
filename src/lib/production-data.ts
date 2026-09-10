@@ -1301,6 +1301,7 @@ export async function writeThread(input: {
         context_type: input.contextType,
         task_id: input.taskId,
         document_id: input.documentId,
+        scene_id: input.sceneId ?? null,
         created_by: input.authorId,
       })
       .select("id")
