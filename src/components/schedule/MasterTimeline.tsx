@@ -977,9 +977,13 @@ export function MasterTimeline({
                                     else barRefs.current.delete(`set-${s.id}`);
                                   }}
                                   onPointerDown={(e) => {
-                                    if (e.button === 0 && canDragSets) beginSetDrag(s.id, "move", e);
+                                    if (e.button === 0 && canDragSets) handleSetPointerDown(s.id, "move", e);
                                   }}
                                   onClick={() => {
+                                    if (suppressSetClickRef.current) {
+                                      suppressSetClickRef.current = false;
+                                      return;
+                                    }
                                     if (!sDrag) setOpenSetId(s.id);
                                   }}
                                   onMouseEnter={() => setHoveredScene(s.id)}
