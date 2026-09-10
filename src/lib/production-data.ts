@@ -430,6 +430,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     membershipsRes,
     projectsRes,
     projectDepartmentsRes,
+    scenesRes,
     milestonesRes,
     tasksRes,
     taskDependenciesRes,
