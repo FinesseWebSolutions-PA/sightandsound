@@ -36,6 +36,12 @@ export function TaskDetailPanel({
   // An "Ask <Department>" prefill is used once: after the message is sent it is gone.
   const [askUsed, setAskUsed] = useState(false);
 
+  // A fresh work item, or a fresh department to ask, starts the prefill over so it
+  // never carries across to another work item.
+  useEffect(() => {
+    setAskUsed(false);
+  }, [taskId, askDepartmentId]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -205,6 +211,7 @@ export function TaskDetailPanel({
             )}
             <div className="mt-2">
               <Discussion
+                key={`${task.id}-${askDepartmentId ?? ""}`}
                 inline
                 projectId={task.project_id}
                 contextType="task"

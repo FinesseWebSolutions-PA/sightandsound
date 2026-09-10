@@ -52,6 +52,7 @@ export function MentionInput({
   onFocus,
   className,
   inputRef,
+  onEnterSubmit,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -61,6 +62,8 @@ export function MentionInput({
   onFocus?: () => void;
   className?: string;
   inputRef?: React.RefObject<HTMLTextAreaElement | null>;
+  /** Enter sends when the mention picker is closed; Shift+Enter adds a line. */
+  onEnterSubmit?: () => void;
 }) {
   const localRef = useRef<HTMLTextAreaElement>(null);
   const areaRef = inputRef ?? localRef;
@@ -188,7 +191,14 @@ export function MentionInput({
           }
         }}
         onKeyDown={(e) => {
-          if (!open) return;
+          if (!open) {
+            // Picker closed: Enter sends, Shift+Enter starts a new line.
+            if (e.key === "Enter" && !e.shiftKey && onEnterSubmit) {
+              e.preventDefault();
+              onEnterSubmit();
+            }
+            return;
+          }
           if (e.key === "ArrowDown") {
             e.preventDefault();
             setHighlight((i) => (i + 1) % suggestions.length);
