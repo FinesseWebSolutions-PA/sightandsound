@@ -49,6 +49,26 @@ export type ProjectDepartment = {
   department_id: string;
   readiness: "on_track" | "at_risk" | "blocked" | "complete";
   note: string;
+  /** The department head for this production; falls back to the global owner. */
+  head_id: string;
+};
+
+/** One person staffed on one production, inside one department. */
+export type ProjectAssignment = {
+  id: string;
+  project_id: string;
+  person_id: string;
+  department_id: string;
+  job_title: string;
+  is_head: boolean;
+};
+
+/** A preset job title offered when staffing a department on a production. */
+export type DepartmentJobTitle = {
+  id: string;
+  department_id: string;
+  title: string;
+  sort_order: number;
 };
 
 export type MilestoneStatus = "not_started" | "in_progress" | "complete" | "at_risk";
