@@ -53,6 +53,8 @@ import {
   type DependencyType,
   type WorkItemInput,
   type NewProductionInput,
+  type ProductionSettingsInput,
+  writeProductionSettings,
   type Approval,
   type AuditEntry,
   type Comment,
@@ -239,6 +241,8 @@ export type Store = {
   reorderScene: (sceneId: string, neighbourId: string, projectId: string) => Promise<boolean>;
   /** Starts a new production. Admin only; resolves the new production's id. */
   createProduction: (input: Omit<NewProductionInput, "actorId">) => Promise<string | null>;
+  /** Edits a production's own settings. Admin only; closed ones can be reopened. */
+  updateProduction: (projectId: string, input: ProductionSettingsInput) => Promise<boolean>;
 };
 
 /**
@@ -917,6 +921,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
 
+  const updateProduction = useCallback<Store["updateProduction"]>(
+    async (projectId, input) => {
+      if (!adminGlobal()) return false;
+      if (!input.name.trim()) return false;
+      setSaving(true);
+      try {
+        await writeProductionSettings(projectId, input, currentUserIdRef.current);
+        await refresh();
+        return true;
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Those settings could not be saved.");
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [refresh],
+  );
+
   const markNotifications = useCallback(
     (ids: string[], read: boolean) => {
       if (ids.length === 0) return;
@@ -1004,6 +1027,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             updateScene,
             reorderScene,
             createProduction,
+            updateProduction,
           }
         : {
             role,
@@ -1073,6 +1097,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             updateScene: async () => false,
             reorderScene: async () => false,
             createProduction: async () => null,
+            updateProduction: async () => false,
           },
     [
       role,
@@ -1120,6 +1145,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       updateScene,
       reorderScene,
       createProduction,
+      updateProduction,
     ],
   );
 
