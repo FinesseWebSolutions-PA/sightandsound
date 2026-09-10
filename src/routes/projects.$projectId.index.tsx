@@ -90,6 +90,11 @@ function DashboardTab() {
   const openTasks = projectTasks
     .filter((t) => t.status !== "complete")
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
+  const emptyWork =
+    projectTasks.length === 0
+      ? "No work items yet — add the first one on the Timeline."
+      : "Nothing open — this production is complete.";
+  const projectMilestones = milestones.filter((m) => m.project_id === projectId);
   const upcoming = milestones
     .filter((m) => m.project_id === projectId && m.status !== "complete")
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
@@ -299,7 +304,7 @@ function DashboardTab() {
               ))}
               {openTasks.length === 0 && (
                 <li className="py-2 text-sm text-ink-soft">
-                  Nothing open — this production is complete.
+                  {emptyWork}
                 </li>
               )}
             </ul>
@@ -345,7 +350,7 @@ function DashboardTab() {
                 {openTasks.length === 0 && (
                   <tr>
                     <td colSpan={5} className="py-3 text-ink-soft">
-                      Nothing open — this production is complete.
+                      {emptyWork}
                     </td>
                   </tr>
                 )}
@@ -433,7 +438,11 @@ function DashboardTab() {
                 </li>
               ))}
               {upcoming.length === 0 && (
-                <li className="text-sm text-ink-soft">All milestones complete.</li>
+                <li className="text-sm text-ink-soft">
+                  {projectMilestones.length === 0
+                    ? "No key dates set yet."
+                    : "All milestones complete."}
+                </li>
               )}
             </ul>
           </Panel>

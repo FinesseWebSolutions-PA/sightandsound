@@ -1768,3 +1768,69 @@ export async function removeTaskDependency(
   await refreshSchedule([projectId]);
   await recordAudit("task", taskId, actorId, "dependency_removed", { id });
 }
+
+/* -------------------------------------------------- productions: create */
+
+export type NewProductionInput = {
+  name: string;
+  status: ProjectStatus;
+  ownerId: string | null;
+  startDate: string | null;
+  targetCloseDate: string | null;
+  departmentIds: string[];
+  actorId: string;
+};
+
+/** Every production in this build is Lancaster; venue stays in the schema only. */
+const LANCASTER = "Lancaster, PA";
+
+function slugify(name: string) {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 40) || "production"
+  );
+}
+
+/** Creates a production, files it under the chosen departments, and returns its id. */
+export async function writeProduction(input: NewProductionInput): Promise<string> {
+  const base = slugify(input.name);
+  const { data: taken } = await supabase.from("projects").select("slug").like("slug", `${base}%`);
+  const used = new Set((taken ?? []).map((r) => r.slug));
+  let slug = base;
+  for (let i = 2; used.has(slug); i += 1) slug = `${base}-${i}`;
+
+  const { data, error } = await supabase
+    .from("projects")
+    .insert({
+      name: input.name.trim(),
+      slug,
+      venue: LANCASTER,
+      status: input.status,
+      owner_id: input.ownerId || null,
+      start_date: input.startDate || null,
+      target_close_date: input.targetCloseDate || null,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+
+  if (input.departmentIds.length > 0) {
+    const { error: deptError } = await supabase.from("project_departments").insert(
+      input.departmentIds.map((department_id) => ({
+        project_id: data.id,
+        department_id,
+      })),
+    );
+    if (deptError) throw new Error(deptError.message);
+  }
+
+  await recordAudit("project", data.id, input.actorId, "created", {
+    name: input.name.trim(),
+    status: input.status,
+    departments: input.departmentIds.length,
+  });
+  return data.id;
+}

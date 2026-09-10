@@ -1,6 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
+
+import { NewProductionDialog } from "@/components/NewProductionDialog";
 
 import { departments, projectDepartments, personById, useStore } from "@/lib/store";
 import { formatDate, projectStatusMeta, readinessMeta, type Tone } from "@/lib/status";
@@ -39,8 +41,10 @@ export const Route = createFileRoute("/")({
 const statusFilters: ("all" | ProjectStatus)[] = ["all", "active", "planning", "closed"];
 
 function PortfolioPage() {
-  const { projects, milestones } = useStore();
+  const { projects, milestones, can } = useStore();
   const [status, setStatus] = useState<"all" | ProjectStatus>("all");
+  const [creating, setCreating] = useState(false);
+  const navigate = useNavigate();
 
   const rows = useMemo(
     () =>
@@ -60,10 +64,20 @@ function PortfolioPage() {
 
   return (
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-10">
-      <div className="max-w-3xl">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-3xl leading-tight text-ink sm:text-4xl lg:text-5xl">
           Production List
         </h1>
+        {can.adminConfig && (
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-ink-soft"
+          >
+            <Plus aria-hidden className="size-4" />
+            New production
+          </button>
+        )}
       </div>
       <div className="gold-rule mt-4 w-24" />
 
@@ -179,6 +193,16 @@ function PortfolioPage() {
           </p>
         )}
       </div>
+
+      {creating && (
+        <NewProductionDialog
+          onClose={() => setCreating(false)}
+          onCreated={(projectId) => {
+            setCreating(false);
+            void navigate({ to: "/projects/$projectId", params: { projectId } });
+          }}
+        />
+      )}
     </main>
   );
 }

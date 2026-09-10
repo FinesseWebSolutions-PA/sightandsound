@@ -38,9 +38,11 @@ import {
   removeTask,
   writeTaskDependency,
   removeTaskDependency,
+  writeProduction,
   writeThread,
   type DependencyType,
   type WorkItemInput,
+  type NewProductionInput,
   type Approval,
   type AuditEntry,
   type Comment,
@@ -184,6 +186,8 @@ type Store = {
     projectId: string;
   }) => Promise<boolean>;
   removeDependency: (id: string, taskId: string, projectId: string) => Promise<boolean>;
+  /** Starts a new production. Admin only; resolves the new production's id. */
+  createProduction: (input: Omit<NewProductionInput, "actorId">) => Promise<string | null>;
 };
 
 const StoreContext = createContext<Store | null>(null);
@@ -697,6 +701,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [allowed, runAsync],
   );
 
+  const createProduction = useCallback<Store["createProduction"]>(
+    async (input) => {
+      if (!adminGlobal()) return null;
+      if (!input.name.trim()) return null;
+      setSaving(true);
+      try {
+        const id = await writeProduction({ ...input, actorId: currentUserIdRef.current });
+        await refresh();
+        return id;
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "That production could not be created.");
+        return null;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [refresh],
+  );
+
 
   const markNotifications = useCallback(
     (ids: string[], read: boolean) => {
@@ -774,6 +797,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             deleteWorkItem,
             addDependency,
             removeDependency,
+            createProduction,
           }
         : {
             role,
@@ -832,6 +856,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             deleteWorkItem: async () => false,
             addDependency: async () => false,
             removeDependency: async () => false,
+            createProduction: async () => null,
           },
     [
       role,
@@ -868,6 +893,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteWorkItem,
       addDependency,
       removeDependency,
+      createProduction,
     ],
   );
 
