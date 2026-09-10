@@ -1,10 +1,12 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { FileText, ListChecks, MessageSquare } from "lucide-react";
+import { useMemo, useState } from "react";
+import { createFileRoute, notFound } from "@tanstack/react-router";
+import { ArrowLeft, FileText, ListChecks, MessageSquare, MessageSquarePlus, X } from "lucide-react";
 
-import { Discussion } from "@/components/Discussion";
+import { ConversationView, NewProjectConversation } from "@/components/Discussion";
 import { personById, useStore } from "@/lib/store";
 import { formatDateTime } from "@/lib/status";
 import { snippet } from "@/lib/threads";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/projects/$projectId/discussions")({
   validateSearch: (search: Record<string, unknown>): { comment?: string } => ({
@@ -16,12 +18,12 @@ export const Route = createFileRoute("/projects/$projectId/discussions")({
       {
         name: "description",
         content:
-          "Production-wide updates plus the full history of what has been said on work items and documents.",
+          "Every conversation on this production in one place — production-wide topics, work items and documents.",
       },
       { property: "og:title", content: "Updates — Sight & Sound Show Production" },
       {
         property: "og:description",
-        content: "Production-wide updates and the full history of conversation across the build.",
+        content: "All conversation on the build, side by side with the message you opened.",
       },
     ],
   }),
@@ -31,86 +33,178 @@ export const Route = createFileRoute("/projects/$projectId/discussions")({
 function UpdatesTab() {
   const { projectId } = Route.useParams();
   const search = Route.useSearch();
-  const { projects, threads, comments, tasks, documents } = useStore();
+  const { projects, threads, comments, tasks, documents, can, isClosed } = useStore();
   const project = projects.find((p) => p.id === projectId);
   if (!project) throw notFound();
 
-  // Everything said on work items and documents, newest first, with its context.
-  const elsewhere = comments
-    .map((c) => ({ comment: c, thread: threads.find((t) => t.id === c.thread_id) }))
-    .filter(
-      (row) =>
-        row.thread &&
-        row.thread.project_id === projectId &&
-        row.thread.context_type !== "project",
-    )
-    .sort((a, b) => b.comment.created_at.localeCompare(a.comment.created_at))
-    .slice(0, 20);
+  const [showNew, setShowNew] = useState(false);
+  const [picked, setPicked] = useState<string | null>(null);
+
+  // Every conversation on this production, newest activity first.
+  const list = useMemo(() => {
+    return threads
+      .filter((t) => t.project_id === projectId)
+      .map((t) => {
+        const own = comments
+          .filter((c) => c.thread_id === t.id)
+          .slice()
+          .sort((a, b) => a.created_at.localeCompare(b.created_at));
+        const last = own.at(-1);
+        const label = t.task_id
+          ? (tasks.find((x) => x.id === t.task_id)?.title ?? "Work item")
+          : t.document_id
+            ? (documents.find((d) => d.id === t.document_id)?.title ?? "Document")
+            : "Whole production";
+        return {
+          id: t.id,
+          kind: t.task_id ? "task" : t.document_id ? "document" : "project",
+          name: t.subject || label,
+          context: label,
+          count: own.length,
+          last,
+          at: last?.created_at ?? t.created_at,
+        };
+      })
+      .sort((a, b) => b.at.localeCompare(a.at));
+  }, [threads, comments, tasks, documents, projectId]);
+
+  const fromLink = search.comment
+    ? comments.find((c) => c.id === search.comment)?.thread_id
+    : undefined;
+  const activeId = picked ?? fromLink ?? list[0]?.id ?? null;
+  const active = list.find((t) => t.id === activeId);
+  const locked = isClosed(projectId);
+  const canStart = can.comment && !locked;
+
+  const groups = [
+    { key: "project", title: "Production-wide", icon: MessageSquare },
+    { key: "task", title: "Work items", icon: ListChecks },
+    { key: "document", title: "Documents", icon: FileText },
+  ] as const;
 
   return (
-    <div className="space-y-8">
-      <Discussion
-        projectId={projectId}
-        contextType="project"
-        heading="Production updates"
-        {...(search.comment ? { highlightCommentId: search.comment } : {})}
-      />
+    <div className="space-y-3">
+      {locked && (
+        <p className="surface-card p-3 text-sm text-ink-soft">
+          This production is closed and archived — conversation stays readable, but nothing new can
+          be posted.
+        </p>
+      )}
 
-      <section className="space-y-3">
-        <h2 className="font-display text-2xl text-ink">Said elsewhere on this production</h2>
-        <ul className="surface-card row-list overflow-hidden">
-          {elsewhere.map(({ comment, thread }) => {
-            const task = thread!.task_id ? tasks.find((t) => t.id === thread!.task_id) : undefined;
-            const doc = thread!.document_id
-              ? documents.find((d) => d.id === thread!.document_id)
-              : undefined;
-            return (
-              <li key={comment.id} className="px-4 py-3">
-                <p className="rule-label flex items-center gap-1.5">
-                  {task ? (
-                    <ListChecks aria-hidden className="size-3.5" />
-                  ) : (
-                    <FileText aria-hidden className="size-3.5" />
-                  )}
-                  {task ? "Work item" : "Document"} · {formatDateTime(comment.created_at)}
-                </p>
-                {task ? (
-                  <Link
-                    to="/projects/$projectId/timeline"
-                    params={{ projectId }}
-                    search={{ task: task.id, comment: comment.id }}
-                    className="mt-0.5 block text-sm font-semibold text-ink hover:underline"
-                  >
-                    {personById(comment.author_id)?.full_name ?? "A team member"} on {task.title}
-                  </Link>
-                ) : doc ? (
-                  <Link
-                    to="/projects/$projectId/documents"
-                    params={{ projectId }}
-                    search={{ document: doc.id, comment: comment.id }}
-                    className="mt-0.5 block text-sm font-semibold text-ink hover:underline"
-                  >
-                    {personById(comment.author_id)?.full_name ?? "A team member"} on {doc.title}
-                  </Link>
-                ) : (
-                  <p className="mt-0.5 text-sm font-semibold text-ink">
-                    {personById(comment.author_id)?.full_name ?? "A team member"}
-                  </p>
-                )}
-                <p className="mt-0.5 text-sm text-ink-soft italic">
-                  “{snippet(comment.body, 140)}”
-                </p>
-              </li>
-            );
-          })}
-          {elsewhere.length === 0 && (
-            <li className="flex items-center gap-2 px-4 py-4 text-sm text-ink-soft">
-              <MessageSquare aria-hidden className="size-4" />
-              Nothing has been said on a work item or document yet.
-            </li>
+      {showNew && canStart && (
+        <div className="space-y-2">
+          <NewProjectConversation projectId={projectId} onCreated={() => setShowNew(false)} />
+        </div>
+      )}
+
+      <div className="grid gap-3 lg:grid-cols-[19rem_minmax(0,1fr)]">
+        {/* Conversation list — the left rail, like a chat app's channel list. */}
+        <aside
+          className={cn(
+            "surface-card flex flex-col overflow-hidden",
+            active && picked ? "hidden lg:flex" : "flex",
           )}
-        </ul>
-      </section>
+        >
+          <header className="panel-header flex items-center justify-between gap-2 px-3 py-2">
+            <h2 className="text-sm font-semibold text-ink">Conversations</h2>
+            {canStart && (
+              <button
+                type="button"
+                onClick={() => setShowNew((v) => !v)}
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-sm font-medium text-ink transition-colors hover:bg-cream"
+              >
+                {showNew ? (
+                  <X aria-hidden className="size-4" />
+                ) : (
+                  <MessageSquarePlus aria-hidden className="size-4" />
+                )}
+                {showNew ? "Cancel" : "New"}
+              </button>
+            )}
+          </header>
+
+          <div className="max-h-[32rem] overflow-y-auto">
+            {list.length === 0 && (
+              <p className="px-3 py-4 text-sm text-ink-soft">
+                No conversations on this production yet.
+              </p>
+            )}
+            {groups.map((group) => {
+              const rows = list.filter((t) => t.kind === group.key);
+              if (rows.length === 0) return null;
+              const Icon = group.icon;
+              return (
+                <section key={group.key}>
+                  <p className="group-header flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-ink-soft">
+                    <Icon aria-hidden className="size-3.5" />
+                    {group.title} ({rows.length})
+                  </p>
+                  <ul className="row-list">
+                    {rows.map((row) => (
+                      <li key={row.id}>
+                        <button
+                          type="button"
+                          onClick={() => setPicked(row.id)}
+                          aria-current={row.id === activeId ? "true" : undefined}
+                          className={cn(
+                            "block w-full px-3 py-2.5 text-left transition-colors",
+                            row.id === activeId ? "bg-cream" : "hover:bg-cream/70",
+                          )}
+                        >
+                          <span className="flex items-baseline justify-between gap-2">
+                            <span className="truncate text-sm font-semibold text-ink">
+                              {row.name}
+                            </span>
+                            <span className="shrink-0 text-[0.6875rem] text-ink-soft">
+                              {row.count} msg
+                            </span>
+                          </span>
+                          <span className="mt-0.5 block truncate text-xs text-ink-soft">
+                            {row.last
+                              ? `${personById(row.last.author_id)?.full_name ?? "A team member"}: ${snippet(row.last.body, 60)}`
+                              : "No messages yet"}
+                          </span>
+                          <span className="mt-0.5 block text-[0.6875rem] text-ink-soft">
+                            {formatDateTime(row.at)}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              );
+            })}
+          </div>
+        </aside>
+
+        {/* The open conversation. */}
+        <div className={cn("space-y-2", active && picked ? "block" : "hidden lg:block")}>
+          {picked && (
+            <button
+              type="button"
+              onClick={() => setPicked(null)}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-sm font-medium text-ink transition-colors hover:bg-cream lg:hidden"
+            >
+              <ArrowLeft aria-hidden className="size-4" />
+              All conversations
+            </button>
+          )}
+          {activeId ? (
+            <ConversationView
+              projectId={projectId}
+              threadId={activeId}
+              {...(search.comment && (picked ?? fromLink) === fromLink
+                ? { highlightCommentId: search.comment }
+                : {})}
+            />
+          ) : (
+            <p className="surface-card p-4 text-sm text-ink-soft">
+              Nothing here yet.
+              {canStart ? " Start a conversation to bring the right departments in." : ""}
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
