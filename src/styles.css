@@ -168,7 +168,33 @@
   background-color: var(--card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
 }
+
+/* The tinted, ruled strip at the top of any panel, table or conversation. */
+@utility panel-header {
+  background-color: var(--cream-50);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* A thin gold rule that marks where a section starts. */
+@utility section-rule {
+  padding-left: 0.625rem;
+  border-left: 3px solid var(--gold-500);
+}
+
+@utility chip-selected {
+  background-color: var(--warm-gray-900);
+  color: var(--cream-50);
+  border: 1px solid var(--warm-gray-900);
+}
+
+@utility chip-quiet {
+  background-color: var(--card);
+  color: var(--warm-gray-700);
+  border: 1px solid var(--color-border);
+}
+
 
 @utility gold-rule {
   border-top: 2px solid var(--gold-500);
