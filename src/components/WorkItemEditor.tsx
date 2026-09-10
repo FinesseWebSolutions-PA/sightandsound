@@ -94,9 +94,16 @@ export function WorkItemEditor({
   const staffed = projectAssignments.filter(
     (a) => a.project_id === projectId && a.department_id === departmentId,
   );
-  const ownerOptions = staffed
-    .map((a) => ({ id: a.person_id, label: `${personById(a.person_id)?.full_name ?? "—"} — ${a.job_title}` }))
-    .filter((o, i, all) => all.findIndex((x) => x.id === o.id) === i);
+  const ownerOptions = [
+    // Whoever already has it stays selectable, even if staffing has moved on.
+    ...(ownerId
+      ? [{ id: ownerId, label: personById(ownerId)?.full_name ?? "Currently assigned" }]
+      : []),
+    ...staffed.map((a) => ({
+      id: a.person_id,
+      label: `${personById(a.person_id)?.full_name ?? "—"} — ${a.job_title}`,
+    })),
+  ].filter((o, i, all) => all.findIndex((x) => x.id === o.id) === i);
 
   const otherTasks = tasks.filter((t) => t.project_id === projectId && t.id !== existing?.id);
   const waitsOn = existing ? taskDependencies.filter((d) => d.task_id === existing.id) : [];
