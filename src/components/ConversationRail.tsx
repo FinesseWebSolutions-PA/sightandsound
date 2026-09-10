@@ -89,7 +89,11 @@ export function ConversationRail({
           <NewProjectConversation
             projectId={projectId}
             {...(sceneId ? { sceneId } : {})}
-            onCreated={() => setShowNew(false)}
+            onCreated={() => {
+              setShowNew(false);
+              // The fresh conversation is the newest one, so let the list land on it.
+              setPicked(null);
+            }}
           />
         </div>
       )}
