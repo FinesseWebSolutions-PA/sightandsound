@@ -552,10 +552,8 @@ export function MasterTimeline({
         >
           <Crosshair aria-hidden className="size-4" /> Today
         </button>
-
       </div>
 
-      </div>
 
       {/* legend */}
       {!clean && (
