@@ -1255,6 +1255,7 @@ export async function writeThread(input: {
   contextType: ThreadContext;
   taskId: string | null;
   documentId: string | null;
+  sceneId?: string | null;
   subject: string;
   body: string;
   authorId: string;
