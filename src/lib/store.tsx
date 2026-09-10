@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -9,6 +7,9 @@ import {
   type ReactNode,
 } from "react";
 import { Loader2 } from "lucide-react";
+
+import { StoreContext } from "./store-context";
+export { useStore } from "./store-context";
 
 import {
   loadProductionData,
@@ -82,7 +83,7 @@ export const roleDescriptions: Record<Role, string> = {
   viewer: "Read-only across every department",
 };
 
-type Store = {
+export type Store = {
   role: Role;
   setRole: (role: Role) => void;
   currentUserId: string;
@@ -189,8 +190,6 @@ type Store = {
   /** Starts a new production. Admin only; resolves the new production's id. */
   createProduction: (input: Omit<NewProductionInput, "actorId">) => Promise<string | null>;
 };
-
-const StoreContext = createContext<Store | null>(null);
 
 /**
  * Reference data the screens import directly. These are live bindings kept in
@@ -933,8 +932,3 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useStore(): Store {
-  const store = useContext(StoreContext);
-  if (!store) throw new Error("useStore must be used inside StoreProvider");
-  return store;
-}
