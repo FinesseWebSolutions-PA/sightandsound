@@ -550,7 +550,7 @@ export function Discussion({
       )}
 
 
-      {visible.length === 0 && !inline && !showNew && (
+      {visible.length === 0 && !inline && (
         <p className="surface-card p-4 text-sm text-ink-soft">
           Nothing here yet.
           {canPost ? " Start a conversation to bring the right departments in." : ""}
