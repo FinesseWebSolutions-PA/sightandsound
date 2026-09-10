@@ -814,18 +814,6 @@ export function MasterTimeline({
                               className={`absolute top-1/2 h-2.5 -translate-y-1/2 rounded-r-md bg-danger ${setDimmed ? "opacity-30" : ""}`}
                             />
                           )}
-                          <span
-                            style={{
-                              left:
-                                setPlanned.left +
-                                setPlanned.width +
-                                (slip > 0 ? Math.max(4, slip * pxPerDay) : 0) +
-                                8,
-                            }}
-                            className={`absolute top-1/2 -translate-y-1/2 text-[11px] whitespace-nowrap text-ink-soft ${setDimmed ? "opacity-30" : ""}`}
-                          >
-                            {Math.max(1, daysBetween(s.start_date, s.due_date))} days
-                          </span>
                         </div>
                       )}
 
