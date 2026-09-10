@@ -1,76 +1,38 @@
-# Sight & Sound — Production Portfolio (leadership demo)
+# Attach files in chat, then save them to project docs
 
-## One thing needed from you first
+## What you'll be able to do
 
-I can't link your existing "Sight and Sound" database (ref `zqrotlehxgeztrukddck`) from
-this chat — that connection has to be authorized by you. In Lovable, open
-**Project Settings → Connectors → Supabase** and connect that project. Once it's
-connected I'll read your existing tables and seed data directly, with no new
-database created and no changes to your schema.
+1. In any conversation (production update, work item, or drawing), tap a paperclip to attach files or photos — including straight from a phone camera roll.
+2. Attachments appear inside the message: images show as thumbnails you can tap to view full size, other files show as a named file row you can open or download.
+3. Anyone with edit rights who can see the message gets a **Save to project docs** action on the attachment.
+4. Saving opens a small picker: choose an existing folder for that production, or type a name to create a new one. Confirm, and the file becomes a real project document (revision 1) inside that folder, with the sender credited as the uploader and a note saying it came from the conversation.
+5. The Documents page groups documents by folder, with an "Unfiled" group for everything that has no folder yet. Folder editing is available on a document itself, so anything can be moved later.
 
-If you'd rather I start on the interface immediately, I can build every screen
-against your exact table shapes and switch it to live data the moment the
-connection lands. Tell me which you prefer.
+Viewers can see and open attachments but cannot attach or save. Closed productions stay read-only: no attaching, no saving.
 
-## What gets built
+## Behavior details
 
-**Production Portfolio (home)** — the list of show-build projects: name, venue
-(Lancaster / Branson), status (active / planning / closed), owner, departments
-involved, next key date. Filter by status, venue, department. Each row opens a
-project workspace.
+- Multiple files per message; per-file size limit enforced with a clear message if a file is too big.
+- If a file is already saved to docs, the attachment shows "Saved to <folder>" with a link to the document instead of offering to save it again.
+- Saving is one shared action, not per-person: once someone saves it, everyone sees it as saved.
+- Upload progress and failures are surfaced in the composer; a failed upload never posts a half-broken message.
 
-**Project workspace tabs**
+## Technical outline
 
-1. **Dashboard** — status, owner, departments, key dates, recent activity,
-   open tasks, upcoming milestones, notification summary, quick links to
-   Documents, Approvals, and the Portal link.
-2. **Timeline** — milestones and tasks with due dates, owners, status, and
-   dependency links shown as "waits on / blocks". Only Admins can edit the core
-   dates.
-3. **Documents** — files with version history and an approval flow:
-   request review → approve / reject / request changes, with who and when.
-4. **Discussions** — threaded conversation at project level, on any task, and on
-   any document. Comments support @mentions of a person or a department;
-   mentioning a department notifies its owner and leads.
-5. **Team & Departments** — the seven departments (Art, Engineering, Costumes,
-   Lighting, Animals, Shop, Electronics & Effects), their owner, leads, and
-   members on this project.
-6. **Portal (set simulation)** — a single labeled external link field. No 3D
-   work of any kind.
+Backend (Supabase, additive only — no existing table or column changes):
+- New private storage bucket `chat-attachments`, ~25MB per file, plus policies on `storage.objects` allowing read/insert for the app's roles. Files keyed `<project_id>/<thread_id>/<uuid>-<filename>`; the UI reads them via signed URLs.
+- New table `comment_attachments`: `id`, `comment_id` (FK comments, cascade), `storage_key`, `file_name`, `mime_type`, `byte_size`, `uploaded_by`, `created_at`, `saved_document_id` (nullable FK documents). Includes the required `GRANT`s, RLS enabled, and open read/write policies matching the current prototype phase.
+- New nullable `folder` text column on `documents`, plus an index on `(project_id, folder)`. Distinct existing values become the folder list per production — no separate folders table, so folders stay flat and self-cleaning.
 
-**Roles** — a role switcher in the header for Admin / Contributor / Viewer, no
-login. Admin edits everything including core timeline dates and configuration;
-Contributor updates assigned work, comments, uploads documents; Viewer reads
-only. Everything else stays open across departments.
+Frontend:
+- `src/lib/production-data.ts`: attachment type on comments; `uploadChatAttachment`, `fetchAttachmentUrls`, `saveAttachmentToDocs` (creates `documents` row + `document_versions` rev 1 pointing at the same storage key, sets `saved_document_id`, writes an audit row), `listProjectFolders`, `setDocumentFolder`. Attachments load with the existing comments read.
+- `src/lib/store.tsx`: expose the new mutations through the existing snapshot-refresh pattern and the `can` permission map (attach/save gated on `can.upload`, blocked when `isClosed`).
+- `src/components/Discussion.tsx`: paperclip + hidden file input in the composer, staged-file chips with remove, upload before the comment insert, and an attachment block inside each message bubble. Tap targets stay 44px+.
+- New `src/components/AttachmentList.tsx` (render + save action) and `src/components/SaveToDocsDialog.tsx` (folder combobox with "Create new folder", as a centered dialog on desktop and a bottom sheet on mobile).
+- `src/routes/projects.$projectId.documents.tsx`: folder grouping in the document list, folder shown and editable on the selected document.
 
-## Look and feel
+Existing brand tokens, terminology, permissions, mobile patterns, and sample data stay as they are. No ERP, no AI, no new schedule views.
 
-Warm, calm, disciplined. Cream backgrounds (#FAF9F5, #E9E6D5), white surfaces
-for dense tables, warm grays (#776B62, #302B27) for text and structure, gold
-(#CF9C51) used sparingly as an accent and never for status. Inter for all
-interface text and tables, Cormorant Garamond for large display headings only,
-IBM Plex Mono for IDs and codes. Every status shows a color **plus** a word and
-an icon, so nothing depends on color alone. Desktop-first, comfortable on
-tablet.
+## Verification
 
-Language stays yours: "Production Portfolio", departments, team members — no
-sprints, tickets, epics, backlogs, or "resources".
-
-## Out of scope
-
-No purchase orders, inventory, or ERP; no mobile app; no push notifications; no
-3D or simulation build.
-
-## Technical notes
-
-- Read/write through server functions using the connected Supabase project;
-  existing tables (`people`, `departments`, `projects`, `project_departments`,
-  `milestones`, `tasks`, `task_dependencies`, `documents`, `document_versions`,
-  `approvals`, `discussion_threads`, `comments`, `mentions`, `notifications`,
-  `audit_log`) are used as-is. No migrations, no seeding.
-- Design tokens defined once in `src/styles.css`; no hardcoded colors in
-  components.
-- Routes: `/` portfolio, `/projects/$projectId/{dashboard,timeline,documents,discussions,team}`,
-  each with its own page metadata.
-- Since auth is skipped, role is client state; mentions/notifications are
-  written to your existing tables so the demo shows real records.
+Typecheck, then browser checks at 1280px and 390px: attach an image and a PDF to a work-item conversation, confirm they render and open; save one into a new folder and one into an existing folder; confirm the Documents page shows both under the right folders with revision 1; confirm a viewer and a closed production offer no attach/save controls; check for console errors and horizontal overflow. Test files created during the check get removed afterward.
