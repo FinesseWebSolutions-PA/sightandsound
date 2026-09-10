@@ -368,7 +368,11 @@ export function DocumentBrowser({
                     v{doc.current_version} · updated {formatDate(doc.updated_at)}
                   </p>
                   <div className="mt-2">
-                    <StatusBadge meta={approvalStateMeta[doc.approval_state]} size="sm" />
+                    {doc.requires_approval ? (
+                      <StatusBadge meta={approvalStateMeta[doc.approval_state]} size="sm" />
+                    ) : (
+                      <span className="text-xs text-ink-soft">No approval needed</span>
+                    )}
                   </div>
                 </button>
               ))}
@@ -407,7 +411,11 @@ export function DocumentBrowser({
                         </span>
                         <span className="mt-2 flex flex-wrap items-center gap-2">
                           <span className="code-id">v{doc.current_version}</span>
-                          <StatusBadge meta={approvalStateMeta[doc.approval_state]} size="sm" />
+                          {doc.requires_approval ? (
+                      <StatusBadge meta={approvalStateMeta[doc.approval_state]} size="sm" />
+                    ) : (
+                      <span className="text-xs text-ink-soft">No approval needed</span>
+                    )}
                           <span className="inline-flex items-center gap-1 text-xs text-ink-soft">
                             <MessageSquare aria-hidden className="size-3.5" />
                             {activityFor(threads, comments, { projectId, documentId: doc.id }).count}
@@ -489,7 +497,11 @@ export function DocumentBrowser({
                           <span className="code-id">v{doc.current_version}</span>
                         </td>
                         <td className="px-4 py-3">
-                          <StatusBadge meta={approvalStateMeta[doc.approval_state]} size="sm" />
+                          {doc.requires_approval ? (
+                      <StatusBadge meta={approvalStateMeta[doc.approval_state]} size="sm" />
+                    ) : (
+                      <span className="text-xs text-ink-soft">No approval needed</span>
+                    )}
                         </td>
                         <td className="px-4 py-3 text-ink-soft">
                           <span className="inline-flex items-center gap-1 text-xs">
@@ -629,7 +641,7 @@ export function DocumentBrowser({
                 );
               })()}
 
-              {canReview ? (
+              {canReview && selected.requires_approval ? (
                 <div className="mt-4 space-y-2 border-t border-border pt-3">
                   <label htmlFor="review-note" className="rule-label">
                     Review note
