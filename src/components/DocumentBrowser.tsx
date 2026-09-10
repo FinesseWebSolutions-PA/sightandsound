@@ -1034,10 +1034,33 @@ export function DocumentBrowser({
                             ariaLabel="Review note"
                             placeholder="What did you check, or what needs to change? Type @ to bring someone in"
                           />
+                          {needsSignature(decision) && (
+                            <div>
+                              <label
+                                htmlFor="review-signature"
+                                className="text-xs font-medium text-ink-soft"
+                              >
+                                Sign this decision — type your full name
+                              </label>
+                              <input
+                                id="review-signature"
+                                value={signature}
+                                onChange={(e) => setSignature(e.target.value)}
+                                autoComplete="off"
+                                placeholder={signerName}
+                                className="mt-1 min-h-11 w-full rounded-md border border-border bg-card px-3 font-display text-lg text-ink"
+                              />
+                              <p className="mt-1 text-xs text-ink-soft">
+                                {signatureOk
+                                  ? `Signing as ${signerName} · ${formatDate(new Date().toISOString())}`
+                                  : `Type “${signerName}” exactly to sign. This name is recorded with the decision.`}
+                              </p>
+                            </div>
+                          )}
                           <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
-                              disabled={sending}
+                              disabled={sending || (needsSignature(decision) && !signatureOk)}
                               onClick={() => {
                                 void act(decision);
                                 setMenuAction(null);
