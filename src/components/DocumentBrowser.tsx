@@ -244,6 +244,28 @@ export function DocumentBrowser({
   /** The file open in the Drive-style viewer. */
   const opened = documents.find((d) => d.id === openedId && d.project_id === projectId);
 
+  /** Uploading a file straight into wherever you're standing. */
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [needsApproval, setNeedsApproval] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const addFiles = async (files: File[]) => {
+    if (files.length === 0 || uploading) return;
+    setUploading(true);
+    try {
+      for (const file of files) {
+        await uploadDocument({
+          projectId,
+          file,
+          folder: place?.kind === "custom" ? place.name : null,
+          sceneId: place?.kind === "set" ? place.id : null,
+          requiresApproval: needsApproval,
+        });
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const [sending, setSending] = useState(false);
   /** Which action row in the viewer menu is open; only one at a time. */
   type MenuAction =
