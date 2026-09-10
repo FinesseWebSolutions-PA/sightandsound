@@ -42,7 +42,7 @@ export function SetTasksPanel({
       sceneId,
       milestoneId: null,
       parentTaskId: quickParent,
-      ownerId: parent?.owner_id ?? null,
+      ownerId: parent?.assignee_id || null,
       startDate: null,
       dueDate: null,
       status: "not_started",
