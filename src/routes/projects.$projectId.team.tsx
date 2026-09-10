@@ -1,11 +1,19 @@
 import { useState } from "react";
-import { createFileRoute, notFound } from "@tanstack/react-router";
-import { Crown, ExternalLink, Users } from "lucide-react";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { Crown, ExternalLink, Users, X } from "lucide-react";
 
 import { StatusBadge } from "@/components/StatusBadge";
-import { departments, people, personById, projectDepartments, useStore } from "@/lib/store";
+import {
+  departmentJobTitles,
+  departments,
+  people,
+  personById,
+  projectAssignments,
+  projectDepartments,
+  roleLabels,
+  useStore,
+} from "@/lib/store";
 import { readinessMeta } from "@/lib/status";
-import { roleLabels } from "@/lib/store";
 
 export const Route = createFileRoute("/projects/$projectId/team")({
   head: () => ({
@@ -14,12 +22,12 @@ export const Route = createFileRoute("/projects/$projectId/team")({
       {
         name: "description",
         content:
-          "Department owners, leads, and team members working on the build — Art, Engineering, Costumes, Lighting, Animals, Shop, and Electronics & Effects.",
+          "Staff each department on this production: name the department head and assign team members to the jobs they hold on this show.",
       },
       { property: "og:title", content: "Team & Departments — Sight & Sound Show Production" },
       {
         property: "og:description",
-        content: "Department owners, leads, and team members working on a show build.",
+        content: "Name department heads and assign team members to jobs on a show build.",
       },
     ],
   }),
@@ -28,12 +36,23 @@ export const Route = createFileRoute("/projects/$projectId/team")({
 
 function TeamTab() {
   const { projectId } = Route.useParams();
-  const { projects, can, setPortalUrl, isClosed } = useStore();
+  const {
+    projects,
+    can,
+    setPortalUrl,
+    isClosed,
+    setDepartmentOnProject,
+    assignPerson,
+    setAssignmentJobTitle,
+    unassignPerson,
+    setDepartmentHead,
+  } = useStore();
   const project = projects.find((p) => p.id === projectId);
   if (!project) throw notFound();
 
   const [portalDraft, setPortalDraft] = useState(project.portal_url);
-  const canEditPortal = can.adminConfig && !isClosed(projectId);
+  const closed = isClosed(projectId);
+  const canEdit = can.adminConfig && !closed;
 
   const involvement = (departmentId: string) =>
     projectDepartments.find(
@@ -45,8 +64,13 @@ function TeamTab() {
       <div>
         <h2 className="font-display text-2xl text-ink sm:text-3xl">Team &amp; Departments</h2>
         <p className="mt-1 max-w-2xl text-sm text-ink-soft">
-          Who owns what on this production. Mentioning a department in a discussion notifies its
-          owner and leads — not the whole roster.
+          Who is staffed on this production, and the job each person holds on this show. Mentioning
+          a department notifies its head and leads — not the whole roster.{" "}
+          {can.adminConfig && (
+            <Link to="/team" className="font-medium text-gold-deep underline">
+              Set company-wide defaults
+            </Link>
+          )}
         </p>
       </div>
 
@@ -60,12 +84,12 @@ function TeamTab() {
             id="team-portal-url"
             value={portalDraft}
             onChange={(e) => setPortalDraft(e.target.value)}
-            disabled={!canEditPortal}
+            disabled={!canEdit}
             type="url"
             inputMode="url"
             className="min-h-11 w-full min-w-0 rounded-md border border-border bg-card px-2.5 text-base text-ink disabled:bg-muted disabled:text-ink-soft sm:flex-1 sm:text-sm"
           />
-          {canEditPortal && (
+          {canEdit && (
             <button
               type="button"
               onClick={() => setPortalUrl(projectId, portalDraft)}
@@ -76,23 +100,23 @@ function TeamTab() {
           )}
         </div>
         <p className="mt-1.5 text-xs text-ink-soft">
-          {canEditPortal
+          {canEdit
             ? "Opens the external set-simulation Portal in a new tab."
-            : isClosed(projectId)
+            : closed
               ? "This production is closed and archived — the link can no longer be changed."
               : "Admins can change this link."}
         </p>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-2">
         {departments.map((dept) => {
           const pd = involvement(dept.id);
-          const members = people.filter(
-            (p) =>
-              p.primary_department_id === dept.id &&
-              p.id !== dept.owner_id &&
-              !dept.lead_ids.includes(p.id),
+          const assigned = projectAssignments.filter(
+            (a) => a.project_id === projectId && a.department_id === dept.id,
           );
+          const presets = departmentJobTitles.filter((t) => t.department_id === dept.id);
+          const candidates = people.filter((p) => !assigned.some((a) => a.person_id === p.id));
+
           return (
             <section key={dept.id} className="surface-card overflow-hidden">
               <header className="flex flex-wrap items-center gap-2 border-b border-border bg-cream-soft px-4 py-3">
@@ -109,46 +133,128 @@ function TeamTab() {
                   )}
                 </span>
               </header>
-              <div className="space-y-3 p-4 text-sm">
-                <p className="text-ink-soft">
-                  {pd?.note ?? "This department has no work assigned on this production yet."}
-                </p>
-                <div>
-                  <p className="rule-label">Department owner</p>
-                  <p className="mt-0.5 flex items-center gap-1.5 text-ink">
-                    <Crown aria-hidden className="size-3.5 text-gold" />
-                    {personById(dept.owner_id)?.full_name ?? "No owner named"}
-                    <span className="text-xs text-ink-soft">
-                      {personById(dept.owner_id)?.title}
-                    </span>
+
+              <div className="space-y-4 p-4 text-sm">
+                {canEdit && (
+                  <label className="flex min-h-11 items-center gap-2 text-sm text-ink">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(pd)}
+                      onChange={(e) => setDepartmentOnProject(projectId, dept.id, e.target.checked)}
+                      className="size-4"
+                    />
+                    This department is working on this production
+                  </label>
+                )}
+
+                {pd ? (
+                  <>
+                    <p className="text-ink-soft">{pd.note}</p>
+
+                    <div>
+                      <p className="rule-label flex items-center gap-1.5">
+                        <Crown aria-hidden className="size-3.5 text-gold" />
+                        Department head on this production
+                      </p>
+                      {canEdit ? (
+                        <select
+                          aria-label={`${dept.name} head on this production`}
+                          value={pd.head_id}
+                          onChange={(e) => setDepartmentHead(projectId, dept.id, e.target.value)}
+                          className="mt-1 min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
+                        >
+                          <option value="">No head named</option>
+                          {people.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.full_name} — {p.title}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <p className="mt-0.5 text-ink">
+                          {personById(pd.head_id)?.full_name ?? "No head named"}{" "}
+                          <span className="text-xs text-ink-soft">
+                            {personById(pd.head_id)?.title}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="rule-label">Staffed on this production</p>
+                      {assigned.length === 0 ? (
+                        <p className="mt-0.5 text-ink-soft">Nobody assigned yet</p>
+                      ) : (
+                        <ul className="mt-1 space-y-2">
+                          {assigned.map((a) => (
+                            <li
+                              key={a.id}
+                              className="flex flex-col gap-2 rounded-md border border-border p-2 sm:flex-row sm:items-center"
+                            >
+                              <span className="min-w-0 flex-1 text-ink">
+                                {a.is_head && (
+                                  <Crown
+                                    aria-label="Department head"
+                                    className="mr-1 inline size-3.5 text-gold"
+                                  />
+                                )}
+                                {personById(a.person_id)?.full_name ?? "Unknown team member"}
+                              </span>
+                              {canEdit ? (
+                                <JobTitleField
+                                  value={a.job_title}
+                                  presets={presets.map((t) => t.title)}
+                                  onChange={(title) =>
+                                    setAssignmentJobTitle(a.id, projectId, title)
+                                  }
+                                />
+                              ) : (
+                                <span className="text-xs text-ink-soft sm:w-52">
+                                  {a.job_title || "No job named"}
+                                </span>
+                              )}
+                              {canEdit && (
+                                <button
+                                  type="button"
+                                  onClick={() => unassignPerson(a.id, projectId)}
+                                  aria-label={`Remove ${personById(a.person_id)?.full_name ?? "team member"} from ${dept.name}`}
+                                  className="flex size-11 shrink-0 items-center justify-center rounded-md text-ink-soft hover:bg-muted hover:text-ink"
+                                >
+                                  <X aria-hidden className="size-4" />
+                                </button>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    {canEdit && (
+                      <AddAssignment
+                        departmentName={dept.name}
+                        candidates={candidates.map((p) => ({
+                          id: p.id,
+                          label: `${p.full_name} — ${p.title}`,
+                          inDepartment: p.primary_department_id === dept.id,
+                        }))}
+                        presets={presets.map((t) => t.title)}
+                        onAdd={(personId, jobTitle) =>
+                          assignPerson({
+                            projectId,
+                            personId,
+                            departmentId: dept.id,
+                            jobTitle,
+                          })
+                        }
+                      />
+                    )}
+                  </>
+                ) : (
+                  <p className="text-ink-soft">
+                    {canEdit
+                      ? "Turn this department on to start staffing it."
+                      : "This department is not working on this production."}
                   </p>
-                </div>
-                <div>
-                  <p className="rule-label">Leads</p>
-                  {dept.lead_ids.length === 0 ? (
-                    <p className="mt-0.5 text-ink-soft">No additional lead named</p>
-                  ) : (
-                    <ul className="mt-0.5 space-y-0.5">
-                      {dept.lead_ids.map((id) => (
-                        <li key={id} className="text-ink">
-                          {personById(id)?.full_name}{" "}
-                          <span className="text-xs text-ink-soft">{personById(id)?.title}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                {members.length > 0 && (
-                  <div>
-                    <p className="rule-label">Team members</p>
-                    <ul className="mt-0.5 space-y-0.5">
-                      {members.map((m) => (
-                        <li key={m.id} className="text-ink">
-                          {m.full_name} <span className="text-xs text-ink-soft">{m.title}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
                 )}
               </div>
             </section>
@@ -195,6 +301,150 @@ function TeamTab() {
           </tbody>
         </table>
       </section>
+    </div>
+  );
+}
+
+const CUSTOM = "__custom__";
+
+/** Job on this production: pick a usual one, or type one just for this show. */
+function JobTitleField({
+  value,
+  presets,
+  onChange,
+}: {
+  value: string;
+  presets: string[];
+  onChange: (title: string) => void;
+}) {
+  const known = value === "" || presets.includes(value);
+  const [custom, setCustom] = useState(known ? "" : value);
+  const [typing, setTyping] = useState(!known);
+
+  if (typing) {
+    return (
+      <span className="flex gap-2 sm:w-52">
+        <input
+          aria-label="Job on this production"
+          value={custom}
+          onChange={(e) => setCustom(e.target.value)}
+          onBlur={() => custom.trim() && custom.trim() !== value && onChange(custom.trim())}
+          placeholder="Job on this show"
+          className="min-h-11 w-full min-w-0 rounded-md border border-border bg-card px-2 text-base text-ink sm:text-sm"
+        />
+      </span>
+    );
+  }
+
+  return (
+    <select
+      aria-label="Job on this production"
+      value={value}
+      onChange={(e) => {
+        if (e.target.value === CUSTOM) {
+          setTyping(true);
+          return;
+        }
+        onChange(e.target.value);
+      }}
+      className="min-h-11 rounded-md border border-border bg-card px-2 text-base text-ink sm:w-52 sm:text-sm"
+    >
+      <option value="">No job named</option>
+      {presets.map((t) => (
+        <option key={t} value={t}>
+          {t}
+        </option>
+      ))}
+      <option value={CUSTOM}>Other job…</option>
+    </select>
+  );
+}
+
+function AddAssignment({
+  departmentName,
+  candidates,
+  presets,
+  onAdd,
+}: {
+  departmentName: string;
+  candidates: { id: string; label: string; inDepartment: boolean }[];
+  presets: string[];
+  onAdd: (personId: string, jobTitle: string) => void;
+}) {
+  const [personId, setPersonId] = useState("");
+  const [job, setJob] = useState(presets[0] ?? "");
+  const [customJob, setCustomJob] = useState("");
+  const inDept = candidates.filter((c) => c.inDepartment);
+  const others = candidates.filter((c) => !c.inDepartment);
+
+  const finalJob = job === CUSTOM ? customJob.trim() : job;
+
+  return (
+    <div className="rounded-md border border-dashed border-border p-3">
+      <p className="rule-label">Add someone to {departmentName}</p>
+      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+        <select
+          aria-label={`Team member to add to ${departmentName}`}
+          value={personId}
+          onChange={(e) => setPersonId(e.target.value)}
+          className="min-h-11 w-full min-w-0 rounded-md border border-border bg-card px-2 text-base text-ink sm:flex-1 sm:text-sm"
+        >
+          <option value="">Choose a team member…</option>
+          {inDept.length > 0 && (
+            <optgroup label={departmentName}>
+              {inDept.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {others.length > 0 && (
+            <optgroup label="Everyone else">
+              {others.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label}
+                </option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+        <select
+          aria-label={`Job for the new ${departmentName} team member`}
+          value={job}
+          onChange={(e) => setJob(e.target.value)}
+          className="min-h-11 rounded-md border border-border bg-card px-2 text-base text-ink sm:w-48 sm:text-sm"
+        >
+          <option value="">No job named</option>
+          {presets.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+          <option value={CUSTOM}>Other job…</option>
+        </select>
+      </div>
+      {job === CUSTOM && (
+        <input
+          aria-label="Custom job for this production"
+          value={customJob}
+          onChange={(e) => setCustomJob(e.target.value)}
+          placeholder="Job just for this production"
+          className="mt-2 min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
+        />
+      )}
+      <button
+        type="button"
+        disabled={!personId}
+        onClick={() => {
+          onAdd(personId, finalJob);
+          setPersonId("");
+          setCustomJob("");
+        }}
+        className="mt-2 min-h-11 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-ink-soft disabled:opacity-50"
+      >
+        Add to production
+      </button>
     </div>
   );
 }

@@ -22,6 +22,16 @@ import {
   writeMilestoneDate,
   writeNotificationRead,
   writePortalUrl,
+  writeAssignment,
+  writeAssignmentJobTitle,
+  removeAssignment,
+  writeDepartmentOnProject,
+  writeProjectDepartmentHead,
+  writePersonRole,
+  writePersonDepartment,
+  writeDepartmentOwner,
+  writeJobTitlePreset,
+  removeJobTitlePreset,
   writeTaskDates,
   writeTaskStatus,
   writeThread,
@@ -30,6 +40,8 @@ import {
   type Comment,
   type CommentAttachment,
   type Department,
+  type DepartmentJobTitle,
+  type ProjectAssignment,
   type DiscussionThread,
   type Document,
   type DocumentVersion,
@@ -135,6 +147,25 @@ type Store = {
   }) => Promise<boolean>;
   /** Personal Inbox read state; works on any production, closed ones included. */
   markNotifications: (ids: string[], read: boolean) => void;
+  projectAssignments: ProjectAssignment[];
+  departmentJobTitles: DepartmentJobTitle[];
+  /** Staffing: put a department on a production, or take it off. */
+  setDepartmentOnProject: (projectId: string, departmentId: string, on: boolean) => void;
+  assignPerson: (input: {
+    projectId: string;
+    personId: string;
+    departmentId: string;
+    jobTitle: string;
+  }) => void;
+  setAssignmentJobTitle: (assignmentId: string, projectId: string, jobTitle: string) => void;
+  unassignPerson: (assignmentId: string, projectId: string) => void;
+  setDepartmentHead: (projectId: string, departmentId: string, personId: string) => void;
+  /** Global defaults, admin only. */
+  setPersonRole: (personId: string, role: Role) => void;
+  setPersonDepartment: (personId: string, departmentId: string, isLead: boolean) => void;
+  setDepartmentOwner: (departmentId: string, personId: string) => void;
+  addJobTitlePreset: (departmentId: string, title: string) => void;
+  deleteJobTitlePreset: (id: string, departmentId: string) => void;
 };
 
 const StoreContext = createContext<Store | null>(null);
@@ -148,6 +179,8 @@ export let people: Person[] = [];
 export let projectDepartments: ProjectDepartment[] = [];
 export let taskDependencies: TaskDependency[] = [];
 export let auditLog: AuditEntry[] = [];
+export let projectAssignments: ProjectAssignment[] = [];
+export let departmentJobTitles: DepartmentJobTitle[] = [];
 
 export const personById = (id: string) => people.find((p) => p.id === id);
 export const departmentById = (id: string) => departments.find((d) => d.id === id);
@@ -158,6 +191,8 @@ function applyReferenceData(data: ProductionData) {
   projectDepartments = data.projectDepartments;
   taskDependencies = data.taskDependencies;
   auditLog = data.auditLog;
+  projectAssignments = data.projectAssignments;
+  departmentJobTitles = data.departmentJobTitles;
 }
 
 function personForRole(roster: Person[], role: Role): string {
@@ -504,6 +539,107 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [allowed, run],
   );
 
+  /* ------------------------------------------------------------- staffing */
+
+  const adminGlobal = () => roleRef.current === "admin";
+
+  const setDepartmentOnProject = useCallback(
+    (projectId: string, departmentId: string, on: boolean) => {
+      if (!allowed(projectId, "admin")) return;
+      run(() =>
+        writeDepartmentOnProject(projectId, departmentId, on, currentUserIdRef.current),
+      );
+    },
+    [allowed, run],
+  );
+
+  const assignPerson = useCallback<Store["assignPerson"]>(
+    ({ projectId, personId, departmentId, jobTitle }) => {
+      if (!allowed(projectId, "admin") || !personId || !departmentId) return;
+      run(() =>
+        writeAssignment({
+          projectId,
+          personId,
+          departmentId,
+          jobTitle,
+          actorId: currentUserIdRef.current,
+        }),
+      );
+    },
+    [allowed, run],
+  );
+
+  const setAssignmentJobTitle = useCallback(
+    (assignmentId: string, projectId: string, jobTitle: string) => {
+      if (!allowed(projectId, "admin")) return;
+      run(() =>
+        writeAssignmentJobTitle(assignmentId, projectId, jobTitle, currentUserIdRef.current),
+      );
+    },
+    [allowed, run],
+  );
+
+  const unassignPerson = useCallback(
+    (assignmentId: string, projectId: string) => {
+      if (!allowed(projectId, "admin")) return;
+      run(() => removeAssignment(assignmentId, projectId, currentUserIdRef.current));
+    },
+    [allowed, run],
+  );
+
+  const setDepartmentHead = useCallback(
+    (projectId: string, departmentId: string, personId: string) => {
+      if (!allowed(projectId, "admin")) return;
+      run(() =>
+        writeProjectDepartmentHead(projectId, departmentId, personId, currentUserIdRef.current),
+      );
+    },
+    [allowed, run],
+  );
+
+  const setPersonRole = useCallback(
+    (personId: string, role: Role) => {
+      if (!adminGlobal()) return;
+      run(() => writePersonRole(personId, role, currentUserIdRef.current));
+    },
+    [run],
+  );
+
+  const setPersonDepartment = useCallback(
+    (personId: string, departmentId: string, isLead: boolean) => {
+      if (!adminGlobal()) return;
+      run(() => writePersonDepartment(personId, departmentId, isLead, currentUserIdRef.current));
+    },
+    [run],
+  );
+
+  const setDepartmentOwner = useCallback(
+    (departmentId: string, personId: string) => {
+      if (!adminGlobal()) return;
+      run(() => writeDepartmentOwner(departmentId, personId, currentUserIdRef.current));
+    },
+    [run],
+  );
+
+  const addJobTitlePreset = useCallback(
+    (departmentId: string, title: string) => {
+      if (!adminGlobal() || !title.trim()) return;
+      const next =
+        (dataRef.current?.departmentJobTitles.filter((t) => t.department_id === departmentId)
+          .length ?? 0) + 1;
+      run(() => writeJobTitlePreset(departmentId, title.trim(), next, currentUserIdRef.current));
+    },
+    [run],
+  );
+
+  const deleteJobTitlePreset = useCallback(
+    (id: string, departmentId: string) => {
+      if (!adminGlobal()) return;
+      run(() => removeJobTitlePreset(id, departmentId, currentUserIdRef.current));
+    },
+    [run],
+  );
+
   const markNotifications = useCallback(
     (ids: string[], read: boolean) => {
       if (ids.length === 0) return;
@@ -564,6 +700,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             saveAttachmentToDocuments,
             setDocumentFolder,
             markNotifications,
+            projectAssignments: data.projectAssignments,
+            departmentJobTitles: data.departmentJobTitles,
+            setDepartmentOnProject,
+            assignPerson,
+            setAssignmentJobTitle,
+            unassignPerson,
+            setDepartmentHead,
+            setPersonRole,
+            setPersonDepartment,
+            setDepartmentOwner,
+            addJobTitlePreset,
+            deleteJobTitlePreset,
           }
         : null,
     [
@@ -587,6 +735,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       saveAttachmentToDocuments,
       setDocumentFolder,
       markNotifications,
+      setDepartmentOnProject,
+      assignPerson,
+      setAssignmentJobTitle,
+      unassignPerson,
+      setDepartmentHead,
+      setPersonRole,
+      setPersonDepartment,
+      setDepartmentOwner,
+      addJobTitlePreset,
+      deleteJobTitlePreset,
     ],
   );
 

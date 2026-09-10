@@ -49,6 +49,26 @@ export type ProjectDepartment = {
   department_id: string;
   readiness: "on_track" | "at_risk" | "blocked" | "complete";
   note: string;
+  /** The department head for this production; falls back to the global owner. */
+  head_id: string;
+};
+
+/** One person staffed on one production, inside one department. */
+export type ProjectAssignment = {
+  id: string;
+  project_id: string;
+  person_id: string;
+  department_id: string;
+  job_title: string;
+  is_head: boolean;
+};
+
+/** A preset job title offered when staffing a department on a production. */
+export type DepartmentJobTitle = {
+  id: string;
+  department_id: string;
+  title: string;
+  sort_order: number;
 };
 
 export type MilestoneStatus = "not_started" | "in_progress" | "complete" | "at_risk";
@@ -252,6 +272,8 @@ export type ProductionData = {
   people: Person[];
   projects: Project[];
   projectDepartments: ProjectDepartment[];
+  projectAssignments: ProjectAssignment[];
+  departmentJobTitles: DepartmentJobTitle[];
   scenes: Scene[];
   milestones: Milestone[];
   tasks: Task[];
@@ -422,6 +444,8 @@ export async function loadProductionData(): Promise<ProductionData> {
     membershipsRes,
     projectsRes,
     projectDepartmentsRes,
+    assignmentsRes,
+    jobTitlesRes,
     scenesRes,
     milestonesRes,
     tasksRes,
@@ -441,6 +465,8 @@ export async function loadProductionData(): Promise<ProductionData> {
     supabase.from("department_memberships").select("*"),
     supabase.from("projects").select("*").order("created_at"),
     supabase.from("project_departments").select("*"),
+    supabase.from("project_assignments").select("*").order("created_at"),
+    supabase.from("department_job_titles").select("*").order("sort_order"),
     supabase.from("scenes").select("*").order("sort_order"),
     supabase.from("milestones").select("*").order("sort_order"),
     supabase.from("tasks").select("*").order("sort_order"),
@@ -462,6 +488,8 @@ export async function loadProductionData(): Promise<ProductionData> {
     membershipsRes,
     projectsRes,
     projectDepartmentsRes,
+    assignmentsRes,
+    jobTitlesRes,
     scenesRes,
     milestonesRes,
     tasksRes,
@@ -480,6 +508,22 @@ export async function loadProductionData(): Promise<ProductionData> {
   }
 
   const memberships = membershipsRes.data ?? [];
+
+  const projectAssignments: ProjectAssignment[] = (assignmentsRes.data ?? []).map((a) => ({
+    id: a.id,
+    project_id: a.project_id,
+    person_id: a.person_id,
+    department_id: a.department_id,
+    job_title: a.job_title ?? "",
+    is_head: a.is_head ?? false,
+  }));
+
+  const departmentJobTitles: DepartmentJobTitle[] = (jobTitlesRes.data ?? []).map((t) => ({
+    id: t.id,
+    department_id: t.department_id,
+    title: t.title,
+    sort_order: t.sort_order ?? 0,
+  }));
 
   const departments: Department[] = (departmentsRes.data ?? []).map((d) => ({
     id: d.id,
@@ -615,6 +659,10 @@ export async function loadProductionData(): Promise<ProductionData> {
     } else if (scoped.some((t) => t.status !== "complete" && t.due_date && t.due_date < today)) {
       readiness = "at_risk";
     }
+    const headAssignment = projectAssignments.find(
+      (a) => a.project_id === pd.project_id && a.department_id === pd.department_id && a.is_head,
+    );
+    const globalOwner = departments.find((d) => d.id === pd.department_id)?.owner_id ?? "";
     return {
       project_id: pd.project_id,
       department_id: pd.department_id,
@@ -622,6 +670,7 @@ export async function loadProductionData(): Promise<ProductionData> {
       note: scoped.length
         ? `${done} of ${scoped.length} work item${scoped.length === 1 ? "" : "s"} complete`
         : "No work items assigned yet",
+      head_id: headAssignment?.person_id ?? pd.default_owner_id ?? globalOwner,
     };
   });
 
@@ -843,6 +892,8 @@ export async function loadProductionData(): Promise<ProductionData> {
     people,
     projects,
     projectDepartments,
+    projectAssignments,
+    departmentJobTitles,
     scenes,
     milestones,
     tasks,
@@ -1332,4 +1383,205 @@ export async function writeDocumentFolder(documentId: string, folder: string, ac
     .eq("id", documentId);
   if (error) throw new Error(error.message);
   await recordAudit("document", documentId, actorId, "folder_changed", { folder: folder || null });
+}
+
+/* --------------------------------------------------------------- staffing */
+
+/** Puts a department on a production, or takes it off. */
+export async function writeDepartmentOnProject(
+  projectId: string,
+  departmentId: string,
+  onProduction: boolean,
+  actorId: string,
+) {
+  if (onProduction) {
+    const { error } = await supabase
+      .from("project_departments")
+      .upsert({ project_id: projectId, department_id: departmentId }, {
+        onConflict: "project_id,department_id",
+      });
+    if (error) throw new Error(error.message);
+  } else {
+    const removals = await Promise.all([
+      supabase
+        .from("project_assignments")
+        .delete()
+        .eq("project_id", projectId)
+        .eq("department_id", departmentId),
+      supabase
+        .from("project_departments")
+        .delete()
+        .eq("project_id", projectId)
+        .eq("department_id", departmentId),
+    ]);
+    for (const r of removals) if (r.error) throw new Error(r.error.message);
+  }
+  await recordAudit("project", projectId, actorId, "department_involvement_changed", {
+    department_id: departmentId,
+    on_production: onProduction,
+  });
+}
+
+/** Assigns someone to a department on a production, with their job for that show. */
+export async function writeAssignment(input: {
+  projectId: string;
+  personId: string;
+  departmentId: string;
+  jobTitle: string;
+  actorId: string;
+}) {
+  const { error } = await supabase.from("project_assignments").upsert(
+    {
+      project_id: input.projectId,
+      person_id: input.personId,
+      department_id: input.departmentId,
+      job_title: input.jobTitle,
+    },
+    { onConflict: "project_id,person_id,department_id" },
+  );
+  if (error) throw new Error(error.message);
+  await recordAudit("project", input.projectId, input.actorId, "person_assigned", {
+    person_id: input.personId,
+    department_id: input.departmentId,
+    job_title: input.jobTitle,
+  });
+}
+
+export async function writeAssignmentJobTitle(
+  assignmentId: string,
+  projectId: string,
+  jobTitle: string,
+  actorId: string,
+) {
+  const { error } = await supabase
+    .from("project_assignments")
+    .update({ job_title: jobTitle })
+    .eq("id", assignmentId);
+  if (error) throw new Error(error.message);
+  await recordAudit("project", projectId, actorId, "assignment_job_changed", { job_title: jobTitle });
+}
+
+export async function removeAssignment(
+  assignmentId: string,
+  projectId: string,
+  actorId: string,
+) {
+  const { error } = await supabase.from("project_assignments").delete().eq("id", assignmentId);
+  if (error) throw new Error(error.message);
+  await recordAudit("project", projectId, actorId, "person_unassigned", {
+    assignment_id: assignmentId,
+  });
+}
+
+/** Names the department head for one production. */
+export async function writeProjectDepartmentHead(
+  projectId: string,
+  departmentId: string,
+  personId: string,
+  actorId: string,
+) {
+  const clear = await supabase
+    .from("project_assignments")
+    .update({ is_head: false })
+    .eq("project_id", projectId)
+    .eq("department_id", departmentId);
+  if (clear.error) throw new Error(clear.error.message);
+
+  if (personId) {
+    const upsert = await supabase.from("project_assignments").upsert(
+      {
+        project_id: projectId,
+        person_id: personId,
+        department_id: departmentId,
+        is_head: true,
+      },
+      { onConflict: "project_id,person_id,department_id" },
+    );
+    if (upsert.error) throw new Error(upsert.error.message);
+  }
+
+  const pd = await supabase
+    .from("project_departments")
+    .upsert(
+      {
+        project_id: projectId,
+        department_id: departmentId,
+        default_owner_id: personId || null,
+      },
+      { onConflict: "project_id,department_id" },
+    );
+  if (pd.error) throw new Error(pd.error.message);
+
+  await recordAudit("project", projectId, actorId, "department_head_changed", {
+    department_id: departmentId,
+    person_id: personId || null,
+  });
+}
+
+/* ------------------------------------------------------- global defaults */
+
+export async function writePersonRole(personId: string, role: Role, actorId: string) {
+  const { error } = await supabase.from("people").update({ role }).eq("id", personId);
+  if (error) throw new Error(error.message);
+  await recordAudit("person", personId, actorId, "access_level_changed", { role });
+}
+
+/** Moves someone to a department globally, keeping their lead flag. */
+export async function writePersonDepartment(
+  personId: string,
+  departmentId: string,
+  isLead: boolean,
+  actorId: string,
+) {
+  const clear = await supabase
+    .from("department_memberships")
+    .delete()
+    .eq("person_id", personId);
+  if (clear.error) throw new Error(clear.error.message);
+  if (departmentId) {
+    const { error } = await supabase
+      .from("department_memberships")
+      .insert({ person_id: personId, department_id: departmentId, is_lead: isLead });
+    if (error) throw new Error(error.message);
+  }
+  await recordAudit("person", personId, actorId, "department_changed", {
+    department_id: departmentId || null,
+    is_lead: isLead,
+  });
+}
+
+export async function writeDepartmentOwner(
+  departmentId: string,
+  personId: string,
+  actorId: string,
+) {
+  const { error } = await supabase
+    .from("departments")
+    .update({ default_owner_id: personId || null })
+    .eq("id", departmentId);
+  if (error) throw new Error(error.message);
+  await recordAudit("department", departmentId, actorId, "default_owner_changed", {
+    person_id: personId || null,
+  });
+}
+
+export async function writeJobTitlePreset(
+  departmentId: string,
+  title: string,
+  sortOrder: number,
+  actorId: string,
+) {
+  const { error } = await supabase
+    .from("department_job_titles")
+    .upsert({ department_id: departmentId, title, sort_order: sortOrder }, {
+      onConflict: "department_id,title",
+    });
+  if (error) throw new Error(error.message);
+  await recordAudit("department", departmentId, actorId, "job_title_added", { title });
+}
+
+export async function removeJobTitlePreset(id: string, departmentId: string, actorId: string) {
+  const { error } = await supabase.from("department_job_titles").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  await recordAudit("department", departmentId, actorId, "job_title_removed", { id });
 }
