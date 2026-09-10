@@ -46,7 +46,7 @@ export function DepartmentWorkQueue({ projectId }: { projectId: string }) {
             aria-pressed={active === d.id}
             className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold ${
               active === d.id
-                ? "border-gold-deep bg-gold-pale text-ink"
+                ? "chip-selected"
                 : "border-border bg-card text-ink-soft"
             }`}
           >
