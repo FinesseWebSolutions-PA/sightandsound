@@ -184,6 +184,8 @@ export type Document = {
   department_id: string;
   owner_id: string;
   approval_state: ApprovalState;
+  /** False when the document was filed as reference material needing no sign-off. */
+  requires_approval: boolean;
   current_version: number;
   /** Optional grouping label inside the production's documents. */
   folder: string;
@@ -791,6 +793,7 @@ export async function loadProductionData(): Promise<ProductionData> {
       department_id: task?.department_id ?? "",
       owner_id: d.created_by ?? "",
       approval_state: documentApprovalState(d.status, d.id),
+      requires_approval: d.requires_approval ?? true,
       current_version: latest || 1,
       folder: d.folder ?? "",
       updated_at: mine.length > 0 ? mine[mine.length - 1]!.uploaded_at : dateOnly(d.created_at),
@@ -1414,6 +1417,7 @@ export async function saveAttachmentToDocs(input: {
   taskId: string | null;
   folder: string;
   title: string;
+  requiresApproval: boolean;
   actorId: string;
 }) {
   const { data: doc, error } = await supabase
@@ -1423,6 +1427,7 @@ export async function saveAttachmentToDocs(input: {
       task_id: input.taskId,
       title: input.title || input.fileName,
       folder: input.folder || null,
+      requires_approval: input.requiresApproval,
       status: "draft",
       created_by: input.actorId,
     })
@@ -1450,6 +1455,22 @@ export async function saveAttachmentToDocs(input: {
     file_name: input.fileName,
   });
   return doc.id;
+}
+
+/** Turns the approval requirement for one document on or off. */
+export async function writeDocumentApprovalRequirement(
+  documentId: string,
+  requiresApproval: boolean,
+  actorId: string,
+) {
+  const { error } = await supabase
+    .from("documents")
+    .update({ requires_approval: requiresApproval })
+    .eq("id", documentId);
+  if (error) throw new Error(error.message);
+  await recordAudit("document", documentId, actorId, "approval_requirement_changed", {
+    requires_approval: requiresApproval,
+  });
 }
 
 /** Moves a document into a folder (or clears it with an empty string). */

@@ -432,6 +432,7 @@ export type Database = {
           folder: string | null
           id: string
           project_id: string
+          requires_approval: boolean
           scene_id: string | null
           status: string
           task_id: string | null
@@ -443,6 +444,7 @@ export type Database = {
           folder?: string | null
           id?: string
           project_id: string
+          requires_approval?: boolean
           scene_id?: string | null
           status?: string
           task_id?: string | null
@@ -454,6 +456,7 @@ export type Database = {
           folder?: string | null
           id?: string
           project_id?: string
+          requires_approval?: boolean
           scene_id?: string | null
           status?: string
           task_id?: string | null
