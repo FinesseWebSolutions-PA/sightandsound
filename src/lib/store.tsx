@@ -73,6 +73,7 @@ type Store = {
   /** A closed production is an archive: browsable by everyone, editable by no one. */
   isClosed: (projectId: string) => boolean;
   projects: Project[];
+  scenes: Scene[];
   tasks: Task[];
   milestones: Milestone[];
   documents: Document[];
@@ -84,6 +85,14 @@ type Store = {
   notifications: Notification[];
   saving: boolean;
   setTaskStatus: (taskId: string, status: TaskStatus) => void;
+  /** Moves a work item's planned dates; the database recomputes the rest. */
+  setTaskDates: (taskId: string, startDate: string, dueDate: string) => void;
+  /** Read-only "what would this do?" check, straight from the database. */
+  previewReschedule: (
+    taskId: string,
+    startDate: string,
+    dueDate: string,
+  ) => Promise<ReschedulePreviewRow[]>;
   setMilestoneDate: (milestoneId: string, dueDate: string) => void;
   setPortalUrl: (projectId: string, url: string) => void;
   addDocumentVersion: (documentId: string, note: string) => void;
