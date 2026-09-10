@@ -42,6 +42,9 @@ export type Project = {
   design_lock_date: string;
   portal_url: string;
   summary: string;
+  /** The committed build window, straight off the production record. */
+  start_date: string;
+  target_close_date: string;
 };
 
 export type ProjectDepartment = {
@@ -658,6 +661,8 @@ export async function loadProductionData(): Promise<ProductionData> {
       first_rehearsal_date: dateOnly(byName(/rehearsal/i) ?? p.start_date),
       design_lock_date: dateOnly(byName(/design|freeze/i) ?? p.start_date),
       portal_url: p.portal_link_url ?? "",
+      start_date: dateOnly(p.start_date),
+      target_close_date: dateOnly(p.target_close_date),
       summary: `${mine.length} key milestone${mine.length === 1 ? "" : "s"} and ${workCount} work item${
         workCount === 1 ? "" : "s"
       } across ${deptCount} department${deptCount === 1 ? "" : "s"}. Build window ${
@@ -1058,6 +1063,36 @@ export async function writePortalUrl(projectId: string, url: string, actorId: st
   if (error) throw new Error(error.message);
   await recordAudit("project", projectId, actorId, "portal_link_updated", { portal_link_url: url });
 }
+
+export type ProductionSettingsInput = {
+  name: string;
+  status: ProjectStatus;
+  ownerId: string | null;
+  startDate: string | null;
+  targetCloseDate: string | null;
+  portalUrl: string;
+};
+
+/** Saves the production's own settings: name, state, lead, window, portal link. */
+export async function writeProductionSettings(
+  projectId: string,
+  input: ProductionSettingsInput,
+  actorId: string,
+) {
+  const changes = {
+    name: input.name.trim(),
+    status: input.status,
+    owner_id: input.ownerId || null,
+    start_date: input.startDate || null,
+    target_close_date: input.targetCloseDate || null,
+    portal_link_url: input.portalUrl.trim() || null,
+    closed_at: input.status === "closed" ? new Date().toISOString() : null,
+  };
+  const { error } = await supabase.from("projects").update(changes).eq("id", projectId);
+  if (error) throw new Error(error.message);
+  await recordAudit("project", projectId, actorId, "production_updated", changes);
+}
+
 
 export async function writeDocumentVersion(
   documentId: string,
