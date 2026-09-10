@@ -400,11 +400,7 @@ function SetDetail({
                   <select
                     aria-label="Set this one follows"
                     value={set.depends_on_scene_id}
-                    onChange={(e) =>
-                      void updateScene(set.id, projectId, {
-                        depends_on_scene_id: e.target.value,
-                      })
-                    }
+                    onChange={(e) => applyChain(e.target.value, set.lag_days)}
                     className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
                   >
                     <option value="">Starts on its own</option>
