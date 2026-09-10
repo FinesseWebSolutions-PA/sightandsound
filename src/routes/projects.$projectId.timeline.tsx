@@ -327,8 +327,8 @@ function TaskList(props: TaskViewProps) {
 function TimelineTab() {
   const { projectId } = Route.useParams();
   const search = Route.useSearch();
-  const { projects, milestones, tasks, can, setTaskStatus, setMilestoneDate, isClosed } =
-    useStore();
+  const { projects, tasks, can, setTaskStatus, isClosed } = useStore();
+
   const project = projects.find((p) => p.id === projectId);
   if (!project) throw notFound();
 
