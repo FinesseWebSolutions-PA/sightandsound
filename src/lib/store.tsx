@@ -361,9 +361,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [runAsync],
   );
 
+  /**
+   * A work item cannot be finished while paperwork attached to it is still
+   * waiting on a decision. Kept here so every screen agrees on the rule.
+   */
+  const unapprovedDocuments = useCallback(
+    (taskId: string) =>
+      (dataRef.current?.documents ?? []).filter(
+        (d) => d.task_id === taskId && d.approval_state !== "approved",
+      ),
+    [],
+  );
+
   const setTaskStatus = useCallback(
     (taskId: string, status: TaskStatus) => {
       if (!allowed(projectOfTask(taskId), "contribute")) return;
+      if (status === "complete") {
+        const pending = unapprovedDocuments(taskId);
+        if (pending.length > 0) {
+          setError(
+            `This work item still has ${pending.length} document${
+              pending.length === 1 ? "" : "s"
+            } waiting on approval, so it cannot be marked complete yet: ${pending
+              .map((d) => d.title)
+              .join(", ")}.`,
+          );
+          return;
+        }
+      }
       setData((prev) =>
         prev
           ? { ...prev, tasks: prev.tasks.map((t) => (t.id === taskId ? { ...t, status } : t)) }
