@@ -493,6 +493,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       contextType,
       taskId = null,
       documentId = null,
+      sceneId = null,
       subject,
       body,
       attachments,
@@ -501,6 +502,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // The table requires the id that matches the context, so refuse an unanchored thread.
       if (contextType === "task" && !taskId) return false;
       if (contextType === "document" && !documentId) return false;
+      if (contextType === "scene" && !sceneId) return false;
       if (!body.trim() && !(attachments && attachments.length > 0)) return false;
       // One conversation per work item / document: if one exists already, this
       // message joins it instead of starting a second one.
