@@ -830,35 +830,6 @@ export function DocumentBrowser({
             </details>
 
 
-            <div className="surface-card overflow-hidden">
-              <header className="panel-header px-4 py-2.5">
-                <h4 className="text-sm font-semibold text-ink">Review record</h4>
-              </header>
-              <ul className="row-list">
-                {approvals
-                  .filter((a) => a.document_id === selected.id)
-                  .sort((a, b) => b.created_at.localeCompare(a.created_at))
-                  .map((a) => (
-                    <li key={a.id} className="px-4 py-3 text-sm">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium text-ink">
-                          {personById(a.actor_id)?.full_name}
-                        </span>
-                        <span className="rule-label">
-                          {a.decision.replace("_", " ")} · v{a.version}
-                        </span>
-                        <span className="ml-auto text-xs text-ink-soft">
-                          {formatDate(a.created_at)}
-                        </span>
-                      </div>
-                      <p className="mt-0.5 text-ink-soft">{a.note}</p>
-                    </li>
-                  ))}
-                {approvals.filter((a) => a.document_id === selected.id).length === 0 && (
-                  <li className="px-4 py-3 text-sm text-ink-soft">No review activity yet.</li>
-                )}
-              </ul>
-            </div>
           </section>
         )}
       </div>
