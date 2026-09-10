@@ -87,7 +87,7 @@ function DocumentsTab() {
 
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
+      <div className="grid items-start gap-6 lg:grid-cols-[1.3fr_1fr]">
         <section className="surface-card overflow-hidden">
           {/* Phones get full-width tappable rows instead of a table. */}
           <ul className="divide-y divide-border lg:hidden">
