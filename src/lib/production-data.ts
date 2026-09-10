@@ -106,6 +106,8 @@ export type TaskStatus = "not_started" | "in_progress" | "in_review" | "blocked"
 export type Task = {
   id: string;
   project_id: string;
+  /** Empty unless this work item is a sub-item of another. */
+  parent_task_id: string;
   milestone_id: string;
   scene_id: string;
   title: string;
@@ -575,6 +577,7 @@ export async function loadProductionData(): Promise<ProductionData> {
   const tasks: Task[] = taskRows.map((t) => ({
     id: t.id,
     project_id: t.project_id,
+    parent_task_id: t.parent_task_id ?? "",
     milestone_id: t.milestone_id ?? "",
     scene_id: t.scene_id ?? "",
     title: t.title,
@@ -1621,6 +1624,8 @@ export type WorkItemInput = {
   departmentId: string;
   sceneId: string | null;
   milestoneId: string | null;
+  /** The work item this one is part of; null keeps it top level. Omit to leave unchanged. */
+  parentTaskId?: string | null;
   ownerId: string | null;
   startDate: string | null;
   dueDate: string | null;
@@ -1646,11 +1651,24 @@ export async function writeTask(input: WorkItemInput): Promise<string> {
     affects_rehearsal: input.affectsRehearsal,
     affects_performance: input.affectsPerformance,
     updated_at: new Date().toISOString(),
+    ...(input.parentTaskId === undefined ? {} : { parent_task_id: input.parentTaskId || null }),
   };
 
   let taskId = input.id ?? "";
   if (input.id) {
-    const { error } = await supabase.from("tasks").update(row).eq("id", input.id);
+    // A work item with sub-items summarises them, so its own dates and status are
+    // never written directly — the database rolls them up from the children.
+    const { data: children } = await supabase
+      .from("tasks")
+      .select("id")
+      .eq("parent_task_id", input.id)
+      .limit(1);
+    const hasChildren = (children?.length ?? 0) > 0;
+    const { start_date, due_date, status, ...rest } = row;
+    const { error } = await supabase
+      .from("tasks")
+      .update(hasChildren ? rest : { ...rest, start_date, due_date, status })
+      .eq("id", input.id);
     if (error) throw new Error(error.message);
   } else {
     const { count } = await supabase
@@ -1681,12 +1699,14 @@ export async function writeTask(input: WorkItemInput): Promise<string> {
 
 /** Tells the caller whether a work item can be removed outright, and why not. */
 export async function taskRemovalBlockers(taskId: string): Promise<string[]> {
-  const [deps, threads, docs] = await Promise.all([
+  const [deps, threads, docs, children] = await Promise.all([
     supabase.from("task_dependencies").select("id").eq("depends_on_task_id", taskId),
     supabase.from("discussion_threads").select("id").eq("task_id", taskId),
     supabase.from("documents").select("id").eq("task_id", taskId),
+    supabase.from("tasks").select("id").eq("parent_task_id", taskId),
   ]);
   const blockers: string[] = [];
+  if ((children.data?.length ?? 0) > 0) blockers.push("it has sub-items");
   if ((deps.data?.length ?? 0) > 0) blockers.push("other work waits on it");
   if ((threads.data?.length ?? 0) > 0) blockers.push("it has a conversation");
   if ((docs.data?.length ?? 0) > 0) blockers.push("documents are attached to it");

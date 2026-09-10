@@ -1,5 +1,12 @@
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, CalendarClock, Link2, MessageSquare, Plus } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarClock,
+  CornerDownRight,
+  Link2,
+  MessageSquare,
+  Plus,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { StatusBadge } from "@/components/StatusBadge";
@@ -67,7 +74,14 @@ export function DepartmentWorkQueue({
           const rows = projectTasks
             .filter((t) => t.department_id === dept.id)
             .sort((a, b) => a.forecast_finish.localeCompare(b.forecast_finish));
-          const open = rows.filter((t) => t.status !== "complete");
+          const openRaw = rows.filter((t) => t.status !== "complete");
+          // Sub-items are listed straight under the work item they belong to.
+          const open: Task[] = [];
+          for (const t of openRaw) {
+            if (t.parent_task_id && openRaw.some((p) => p.id === t.parent_task_id)) continue;
+            open.push(t);
+            for (const c of openRaw.filter((c) => c.parent_task_id === t.id)) open.push(c);
+          }
           const blocked = open.filter((t) => t.status === "blocked" || blockers(t).length > 0);
           const dueSoon = open.filter((t) => {
             const days = daysBetween(today, t.forecast_finish);
@@ -102,18 +116,30 @@ export function DepartmentWorkQueue({
                     const blocks = blockers(task);
                     const days = daysBetween(today, task.forecast_finish);
                     return (
-                      <li key={task.id} className="space-y-2 px-4 py-3">
+                      <li
+                        key={task.id}
+                        className={`space-y-2 py-3 pr-4 ${task.parent_task_id ? "pl-9" : "pl-4"}`}
+                      >
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="min-w-0">
                             <Link
                               to="/projects/$projectId/timeline"
                               params={{ projectId }}
                               search={{ task: task.id }}
-                              className="text-sm font-semibold text-ink hover:underline"
+                              className={`flex items-start gap-1.5 hover:underline ${task.parent_task_id ? "text-sm font-medium text-ink" : "text-sm font-semibold text-ink"}`}
                             >
+                              {task.parent_task_id && (
+                                <CornerDownRight
+                                  aria-hidden
+                                  className="mt-0.5 size-3.5 shrink-0 text-ink-soft"
+                                />
+                              )}
                               {task.title}
                             </Link>
                             <p className="mt-0.5 text-xs text-ink-soft">
+                              {task.parent_task_id
+                                ? `Part of ${taskById(task.parent_task_id)?.title ?? "another work item"} · `
+                                : ""}
                               {personById(task.assignee_id)?.full_name ?? "Unassigned"} ·{" "}
                               {formatFloat(task.total_float_hours)}
                             </p>

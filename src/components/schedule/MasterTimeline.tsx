@@ -1,5 +1,12 @@
 import { Link } from "@tanstack/react-router";
-import { ChevronDown, ChevronRight, Diamond, Link2, Lock } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  CornerDownRight,
+  Diamond,
+  Link2,
+  Lock,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { StatusBadge } from "@/components/StatusBadge";
@@ -61,18 +68,37 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
   const taskTitle = (id: string) => tasks.find((t) => t.id === id)?.title ?? id;
 
 
-  const groups: { milestone: Milestone | null; rows: Task[] }[] = [
+  const childrenOf = (id: string) =>
+    projectTasks
+      .filter((t) => t.parent_task_id === id)
+      .sort((a, b) => a.start_date.localeCompare(b.start_date));
+
+  /** Lays a group out so each sub-item sits directly under the work item it belongs to. */
+  function nest(rows: Task[]): { task: Task; isChild: boolean }[] {
+    const byDate = [...rows].sort((a, b) => a.start_date.localeCompare(b.start_date));
+    const out: { task: Task; isChild: boolean }[] = [];
+    for (const t of byDate) {
+      if (t.parent_task_id && byDate.some((p) => p.id === t.parent_task_id)) continue;
+      out.push({ task: t, isChild: Boolean(t.parent_task_id) });
+      for (const c of childrenOf(t.id)) {
+        if (byDate.some((r) => r.id === c.id)) out.push({ task: c, isChild: true });
+      }
+    }
+    return out;
+  }
+
+  const groups: { milestone: Milestone | null; rows: { task: Task; isChild: boolean }[] }[] = [
     ...projectMilestones.map((m) => ({
       milestone: m,
-      rows: projectTasks
-        .filter((t) => t.milestone_id === m.id)
-        .sort((a, b) => a.start_date.localeCompare(b.start_date)),
+      rows: nest(projectTasks.filter((t) => t.milestone_id === m.id)),
     })),
     {
       milestone: null,
-      rows: projectTasks
-        .filter((t) => !t.milestone_id || !projectMilestones.some((m) => m.id === t.milestone_id))
-        .sort((a, b) => a.start_date.localeCompare(b.start_date)),
+      rows: nest(
+        projectTasks.filter(
+          (t) => !t.milestone_id || !projectMilestones.some((m) => m.id === t.milestone_id),
+        ),
+      ),
     },
   ].filter((g) => g.rows.length > 0 || g.milestone);
 
@@ -174,7 +200,7 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
 
                 {!isCollapsed && (
                   <ul className="row-list">
-                    {group.rows.map((task) => {
+                    {group.rows.map(({ task, isChild }) => {
                       const waitsOn = taskDependencies.filter((d) => d.task_id === task.id);
                       const bar = place(span, task.forecast_start, task.forecast_finish);
                       const drift = slipDays(task.due_date, task.forecast_finish);
@@ -183,14 +209,22 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
                           key={task.id}
                           className={`data-row status-edge lg:flex lg:items-stretch ${edgeClasses(task)}`}
                         >
-                          <div className="w-full px-4 py-3 lg:w-[22rem] lg:shrink-0 lg:border-r lg:border-border">
+                          <div
+                            className={`w-full py-3 pr-4 lg:w-[22rem] lg:shrink-0 lg:border-r lg:border-border ${isChild ? "pl-9" : "pl-4"}`}
+                          >
                             <div className="flex items-start justify-between gap-3">
                               <Link
                                 to="/projects/$projectId/timeline"
                                 params={{ projectId }}
                                 search={{ task: task.id }}
-                                className="text-sm font-semibold text-ink hover:underline"
+                                className={`flex items-start gap-1.5 hover:underline ${isChild ? "text-sm font-medium text-ink" : "text-sm font-semibold text-ink"}`}
                               >
+                                {isChild && (
+                                  <CornerDownRight
+                                    aria-hidden
+                                    className="mt-0.5 size-3.5 shrink-0 text-ink-soft"
+                                  />
+                                )}
                                 {task.title}
                               </Link>
                               <StatusBadge meta={taskStatusMeta[task.status]} size="sm" />

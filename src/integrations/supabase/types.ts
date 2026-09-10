@@ -894,6 +894,7 @@ export type Database = {
           id: string
           milestone_id: string | null
           owner_id: string | null
+          parent_task_id: string | null
           project_id: string
           scene_id: string | null
           sort_order: number
@@ -919,6 +920,7 @@ export type Database = {
           id?: string
           milestone_id?: string | null
           owner_id?: string | null
+          parent_task_id?: string | null
           project_id: string
           scene_id?: string | null
           sort_order?: number
@@ -944,6 +946,7 @@ export type Database = {
           id?: string
           milestone_id?: string | null
           owner_id?: string | null
+          parent_task_id?: string | null
           project_id?: string
           scene_id?: string | null
           sort_order?: number
@@ -980,6 +983,13 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
           {
@@ -1053,6 +1063,7 @@ export type Database = {
         Args: { p_milestone_id: string }
         Returns: undefined
       }
+      recompute_parent_task: { Args: { p_task_id: string }; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

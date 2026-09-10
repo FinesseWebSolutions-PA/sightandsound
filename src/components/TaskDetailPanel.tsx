@@ -1,5 +1,15 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, FileText, Link2, MessageSquare, Pencil, Users, X } from "lucide-react";
+import {
+  ArrowUpRight,
+  CornerDownRight,
+  FileText,
+  Link2,
+  MessageSquare,
+  Pencil,
+  Plus,
+  Users,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Discussion } from "@/components/Discussion";
@@ -34,10 +44,12 @@ export function TaskDetailPanel({
   /** Present only when the viewer may restructure this work item. */
   onEdit?: (taskId: string) => void;
 }) {
-  const { tasks, documents, milestones, scenes, can, setTaskStatus, isClosed } = useStore();
+  const { tasks, documents, milestones, scenes, can, setTaskStatus, isClosed, saveWorkItem, saving } =
+    useStore();
   const task = tasks.find((t) => t.id === taskId);
   // An "Ask <Department>" prefill is used once: after the message is sent it is gone.
   const [askUsed, setAskUsed] = useState(false);
+  const [subTitle, setSubTitle] = useState("");
 
   // A fresh work item, or a fresh department to ask, starts the prefill over so it
   // never carries across to another work item.
@@ -65,6 +77,32 @@ export function TaskDetailPanel({
   const attached = documents.filter((d) => d.task_id === task.id);
   const taskTitle = (id: string) => tasks.find((t) => t.id === id)?.title ?? id;
 
+  const subItems = tasks.filter((t) => t.parent_task_id === task.id);
+  const parent = task.parent_task_id ? tasks.find((t) => t.id === task.parent_task_id) : undefined;
+  const canAddSub = can.editCoreTimeline && !locked && !task.parent_task_id;
+  const subDone = subItems.filter((t) => t.status === "complete").length;
+
+  async function addSubItem() {
+    const title = subTitle.trim();
+    if (!title || saving) return;
+    const ok = await saveWorkItem({
+      projectId: task!.project_id,
+      title,
+      description: "",
+      departmentId: task!.department_id,
+      sceneId: task!.scene_id || null,
+      milestoneId: task!.milestone_id || null,
+      parentTaskId: task!.id,
+      ownerId: task!.assignee_id || null,
+      startDate: task!.start_date || null,
+      dueDate: task!.due_date || null,
+      status: "not_started",
+      affectsRehearsal: task!.affects_rehearsal,
+      affectsPerformance: task!.affects_performance,
+    });
+    if (ok) setSubTitle("");
+  }
+
   const askDept =
     askDepartmentId && !askUsed ? departments.find((d) => d.id === askDepartmentId) : undefined;
   const draft = askDept ? `@${askDept.name} ` : "";
@@ -89,6 +127,12 @@ export function TaskDetailPanel({
               {milestone ? ` · ${milestone.name}` : ""}
             </p>
             <h2 className="mt-0.5 text-base font-semibold text-ink">{task.title}</h2>
+            {parent && (
+              <p className="mt-0.5 flex items-center gap-1 text-xs text-ink-soft">
+                <CornerDownRight aria-hidden className="size-3.5" />
+                Part of {parent.title}
+              </p>
+            )}
           </div>
           {onEdit && (
             <button
@@ -117,7 +161,7 @@ export function TaskDetailPanel({
             <span className="text-xs text-ink-soft">{formatFloat(task.total_float_hours)}</span>
           </div>
 
-          {canUpdate && (
+          {canUpdate && subItems.length === 0 && (
             <label className="block">
               <span className="rule-label">Update status</span>
               <select
@@ -157,6 +201,66 @@ export function TaskDetailPanel({
               </div>
             )}
           </dl>
+
+          {(subItems.length > 0 || canAddSub) && (
+            <section className="rounded-md border border-border bg-card">
+              <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                <p className="text-xs font-semibold text-ink">Sub-items</p>
+                {subItems.length > 0 && (
+                  <p className="text-xs text-ink-soft">
+                    {subDone} of {subItems.length} complete
+                  </p>
+                )}
+              </div>
+              {subItems.length > 0 && (
+                <ul className="row-list">
+                  {subItems.map((s) => (
+                    <li key={s.id} className="data-row flex items-center gap-2 px-3 py-2">
+                      <CornerDownRight aria-hidden className="size-3.5 shrink-0 text-ink-soft" />
+                      <span className="min-w-0 flex-1 truncate text-sm text-ink">{s.title}</span>
+                      <StatusBadge meta={taskStatusMeta[s.status]} size="sm" />
+                      {onEdit && (
+                        <button
+                          type="button"
+                          onClick={() => onEdit(s.id)}
+                          className="shrink-0 rounded-md p-1.5 text-ink-soft hover:bg-cream hover:text-ink"
+                          aria-label={`Edit ${s.title}`}
+                        >
+                          <Pencil aria-hidden className="size-4" />
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {canAddSub && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void addSubItem();
+                  }}
+                  className="flex items-center gap-2 border-t border-border px-3 py-2"
+                >
+                  <input
+                    value={subTitle}
+                    onChange={(e) => setSubTitle(e.target.value)}
+                    placeholder="Add a sub-item"
+                    aria-label={`Add a sub-item to ${task.title}`}
+                    className="min-h-11 min-w-0 flex-1 rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!subTitle.trim() || saving}
+                    className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md bg-ink px-3 text-sm font-semibold text-cream disabled:opacity-50"
+                  >
+                    <Plus aria-hidden className="size-4" />
+                    Add
+                  </button>
+                </form>
+              )}
+            </section>
+          )}
+
 
           {(waitsOn.length > 0 || blocks.length > 0) && (
             <div className="space-y-2 rounded-md border border-border bg-cream-soft px-3 py-2.5">
