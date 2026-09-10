@@ -116,7 +116,7 @@ export function TaskDetailPanel({
           folder: null,
           sceneId: task.scene_id,
           taskId: task.id,
-          requiresApproval: needsApproval,
+          requiresApproval,
         });
       }
     } finally {
