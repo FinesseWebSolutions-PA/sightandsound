@@ -417,9 +417,7 @@ function SetDetail({
                         type="number"
                         value={set.lag_days}
                         onChange={(e) =>
-                          void updateScene(set.id, projectId, {
-                            lag_days: Number(e.target.value) || 0,
-                          })
+                          applyChain(set.depends_on_scene_id, Number(e.target.value) || 0)
                         }
                         className="mt-1 min-h-11 w-24 rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
                       />
