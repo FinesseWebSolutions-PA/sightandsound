@@ -73,10 +73,9 @@ function SetsTab() {
     if (id) {
       setNewName("");
       setSelectedId(id);
+      setAdding(false);
     }
   };
-
-  const [adding, setAdding] = useState(false);
 
   return (
     <div className="space-y-6">
