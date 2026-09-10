@@ -248,6 +248,86 @@ export function NewProductionDialog({
           </div>
         </fieldset>
 
+        {departmentIds.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-sm font-medium text-ink">Team on this production</h3>
+            <p className="mt-1 text-xs text-ink-soft">
+              Pick who is staffed in each department and set their job. The first person picked is
+              the department head; change it with the head option.
+            </p>
+            <div className="mt-3 space-y-3">
+              {departmentIds.map((deptId) => {
+                const dept = departments.find((d) => d.id === deptId);
+                if (!dept) return null;
+                const rows = staff[deptId] ?? [];
+                const members = people.filter((p) => p.primary_department_id === deptId);
+                const others = people.filter((p) => p.primary_department_id !== deptId);
+                const roster = [...members, ...others];
+                const titles = titlesFor(deptId);
+                return (
+                  <div key={deptId} className="rounded-lg border border-border bg-cream-50 p-3">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-sm font-semibold text-ink">{dept.name}</span>
+                      <span className="text-xs text-ink-soft">
+                        {rows.length === 0 ? "No one yet" : `${rows.length} staffed`}
+                      </span>
+                    </div>
+                    <ul className="mt-2 space-y-1.5">
+                      {roster.map((person) => {
+                        const row = rows.find((r) => r.personId === person.id);
+                        return (
+                          <li
+                            key={person.id}
+                            className="flex flex-wrap items-center gap-2 rounded-md px-1 py-1"
+                          >
+                            <label className="flex min-w-0 flex-1 items-center gap-2 text-sm text-ink">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(row)}
+                                onChange={() => togglePerson(deptId, person.id)}
+                                className="size-4 shrink-0"
+                              />
+                              <span className="truncate">{person.full_name}</span>
+                            </label>
+                            {row && (
+                              <>
+                                <select
+                                  aria-label={`Job for ${person.full_name}`}
+                                  value={row.jobTitle}
+                                  onChange={(e) => setJobTitle(deptId, person.id, e.target.value)}
+                                  className="min-h-9 rounded-md border border-border bg-card px-2 text-xs text-ink focus:ring-2 focus:ring-ring focus:outline-none"
+                                >
+                                  {titles.map((title) => (
+                                    <option key={title} value={title}>
+                                      {title}
+                                    </option>
+                                  ))}
+                                </select>
+                                <label className="flex items-center gap-1 text-xs text-ink-soft">
+                                  <input
+                                    type="radio"
+                                    name={`head-${deptId}`}
+                                    checked={row.isHead}
+                                    onChange={() => setHead(deptId, person.id)}
+                                    className="size-4"
+                                  />
+                                  Head
+                                </label>
+                              </>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+
+
         {error && <p className="mt-3 text-sm text-danger">{error}</p>}
 
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
