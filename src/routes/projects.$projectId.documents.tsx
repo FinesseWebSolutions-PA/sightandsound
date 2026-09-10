@@ -41,6 +41,73 @@ export const Route = createFileRoute("/projects/$projectId/documents")({
   component: DocumentsTab,
 });
 
+/** Lets someone file a document into an existing folder or a new one. */
+function FolderControl({
+  projectId,
+  documentId,
+  current,
+}: {
+  projectId: string;
+  documentId: string;
+  current: string;
+}) {
+  const { documents, setDocumentFolder } = useStore();
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState("");
+  const folders = Array.from(
+    new Set(documents.filter((d) => d.project_id === projectId && d.folder).map((d) => d.folder)),
+  ).sort((a, b) => a.localeCompare(b));
+
+  if (creating) {
+    return (
+      <span className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+        <input
+          value={name}
+          autoFocus
+          onChange={(e) => setName(e.target.value)}
+          aria-label="New folder name"
+          placeholder="Folder name"
+          className="min-h-11 w-full rounded-md border border-border bg-card px-3 text-base text-ink sm:w-48 sm:text-sm"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            if (name.trim()) setDocumentFolder(documentId, name.trim());
+            setCreating(false);
+            setName("");
+          }}
+          className="min-h-11 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream"
+        >
+          Save
+        </button>
+      </span>
+    );
+  }
+
+  return (
+    <select
+      aria-label="Document folder"
+      value={current}
+      onChange={(e) => {
+        if (e.target.value === "__new") {
+          setCreating(true);
+          return;
+        }
+        setDocumentFolder(documentId, e.target.value);
+      }}
+      className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:w-56 sm:text-sm"
+    >
+      <option value="">Not filed</option>
+      {folders.map((f) => (
+        <option key={f} value={f}>
+          {f}
+        </option>
+      ))}
+      <option value="__new">New folder…</option>
+    </select>
+  );
+}
+
 function DocumentsTab() {
   const { projectId } = Route.useParams();
   const search = Route.useSearch();
@@ -144,6 +211,7 @@ function DocumentsTab() {
                         {doc.title}
                       </button>
                       <span className="block text-xs text-ink-soft">
+                        {doc.folder ? `${doc.folder} · ` : ""}
                         {doc.kind} · updated {formatDate(doc.updated_at)}
                       </span>
                     </td>
@@ -179,6 +247,18 @@ function DocumentsTab() {
               </p>
               <div className="mt-3">
                 <StatusBadge meta={approvalStateMeta[selected.approval_state]} />
+              </div>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <span className="rule-label">Folder</span>
+                {canUpload ? (
+                  <FolderControl
+                    projectId={projectId}
+                    documentId={selected.id}
+                    current={selected.folder}
+                  />
+                ) : (
+                  <span className="text-sm text-ink">{selected.folder || "Not filed"}</span>
+                )}
               </div>
               {(() => {
                 const approvedVersions = approvals

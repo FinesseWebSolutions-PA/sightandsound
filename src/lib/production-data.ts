@@ -145,6 +145,8 @@ export type Document = {
   owner_id: string;
   approval_state: ApprovalState;
   current_version: number;
+  /** Optional grouping label inside the production's documents. */
+  folder: string;
   updated_at: string;
 };
 
@@ -192,6 +194,28 @@ export type Comment = {
   created_at: string;
 };
 
+/** A file or photo shared inside a conversation. */
+export type CommentAttachment = {
+  id: string;
+  comment_id: string;
+  storage_key: string;
+  file_name: string;
+  mime_type: string;
+  byte_size: number;
+  uploaded_by_id: string;
+  /** Set once someone files it into the production's documents. */
+  saved_document_id: string | null;
+  created_at: string;
+};
+
+/** A file already uploaded to storage but not yet attached to a message. */
+export type StagedAttachment = {
+  storage_key: string;
+  file_name: string;
+  mime_type: string;
+  byte_size: number;
+};
+
 export type Mention = {
   id: string;
   comment_id: string;
@@ -237,6 +261,7 @@ export type ProductionData = {
   approvals: Approval[];
   discussionThreads: DiscussionThread[];
   comments: Comment[];
+  commentAttachments: CommentAttachment[];
   mentions: Mention[];
   notifications: Notification[];
   auditLog: AuditEntry[];
@@ -406,6 +431,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     approvalsRes,
     threadsRes,
     commentsRes,
+    attachmentsRes,
     mentionsRes,
     notificationsRes,
     auditRes,
@@ -424,6 +450,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     supabase.from("approvals").select("*").order("requested_at"),
     supabase.from("discussion_threads").select("*").order("created_at"),
     supabase.from("comments").select("*").order("created_at"),
+    supabase.from("comment_attachments").select("*").order("created_at"),
     supabase.from("mentions").select("*"),
     supabase.from("notifications").select("*").order("created_at", { ascending: false }),
     supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(200),
@@ -444,6 +471,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     approvalsRes,
     threadsRes,
     commentsRes,
+    attachmentsRes,
     mentionsRes,
     notificationsRes,
     auditRes,
@@ -655,6 +683,7 @@ export async function loadProductionData(): Promise<ProductionData> {
       owner_id: d.created_by ?? "",
       approval_state: documentApprovalState(d.status, d.id),
       current_version: latest || 1,
+      folder: d.folder ?? "",
       updated_at: mine.length > 0 ? mine[mine.length - 1]!.uploaded_at : dateOnly(d.created_at),
     };
   });
@@ -692,6 +721,19 @@ export async function loadProductionData(): Promise<ProductionData> {
       body: c.body,
       created_at: c.created_at,
     }));
+
+  const commentAttachments: CommentAttachment[] = (attachmentsRes.data ?? []).map((a) => ({
+    id: a.id,
+    comment_id: a.comment_id,
+    storage_key: a.storage_key,
+    file_name: a.file_name,
+    mime_type: a.mime_type ?? "",
+    byte_size: Number(a.byte_size ?? 0),
+    uploaded_by_id: a.uploaded_by ?? "",
+    saved_document_id: a.saved_document_id ?? null,
+    created_at: a.created_at,
+  }));
+
 
   const discussionThreads: DiscussionThread[] = (threadsRes.data ?? []).map((t) => {
     const opener = comments.find((c) => c.thread_id === t.id);
@@ -817,6 +859,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     approvals,
     discussionThreads,
     comments,
+    commentAttachments,
     mentions,
     notifications,
     auditLog,
@@ -1077,6 +1120,7 @@ export async function writeComment(input: {
   sourceEntityId: string | null;
   departments: Department[];
   people: Person[];
+  attachments?: StagedAttachment[];
 }) {
   const { data, error } = await supabase
     .from("comments")
@@ -1084,6 +1128,7 @@ export async function writeComment(input: {
     .select("id")
     .single();
   if (error) throw new Error(error.message);
+  await writeAttachmentRows(data.id, input.attachments ?? [], input.authorId);
   await writeMentions(
     input.body,
     data.id,
@@ -1109,6 +1154,7 @@ export async function writeThread(input: {
   authorId: string;
   departments: Department[];
   people: Person[];
+  attachments?: StagedAttachment[];
 }) {
   const { data, error } = await supabase
     .from("discussion_threads")
@@ -1135,6 +1181,7 @@ export async function writeThread(input: {
     sourceEntityId: input.taskId ?? input.documentId ?? input.projectId,
     departments: input.departments,
     people: input.people,
+    ...(input.attachments ? { attachments: input.attachments } : {}),
   });
   await recordAudit("discussion_thread", data.id, input.authorId, "thread_started", {
     context_type: input.contextType,
@@ -1146,4 +1193,129 @@ export async function writeNotificationRead(ids: string[], read: boolean) {
   if (ids.length === 0) return;
   const { error } = await supabase.from("notifications").update({ is_read: read }).in("id", ids);
   if (error) throw new Error(error.message);
+}
+
+const CHAT_BUCKET = "chat-attachments";
+
+/** Largest file a conversation accepts, matching the storage limit. */
+export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+
+function safeFileName(name: string) {
+  return name.replace(/[^\w.\-]+/g, "-").slice(-80) || "file";
+}
+
+/** Uploads one file for a conversation and returns what the message should carry. */
+export async function uploadChatAttachment(
+  file: File,
+  projectId: string,
+  threadKey: string,
+): Promise<StagedAttachment> {
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    throw new Error(`${file.name} is larger than 25 MB.`);
+  }
+  const key = `${projectId}/${threadKey}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+  const { error } = await supabase.storage.from(CHAT_BUCKET).upload(key, file, {
+    contentType: file.type || "application/octet-stream",
+    upsert: false,
+  });
+  if (error) throw new Error(error.message);
+  return {
+    storage_key: key,
+    file_name: file.name,
+    mime_type: file.type || "application/octet-stream",
+    byte_size: file.size,
+  };
+}
+
+/** Signed links so a private file can be shown or downloaded in the browser. */
+export async function attachmentUrls(keys: string[]): Promise<Record<string, string>> {
+  if (keys.length === 0) return {};
+  const { data, error } = await supabase.storage
+    .from(CHAT_BUCKET)
+    .createSignedUrls(keys, 60 * 60);
+  if (error) throw new Error(error.message);
+  const out: Record<string, string> = {};
+  for (const row of data ?? []) {
+    if (row.path && row.signedUrl) out[row.path] = row.signedUrl;
+  }
+  return out;
+}
+
+async function writeAttachmentRows(
+  commentId: string,
+  attachments: StagedAttachment[],
+  actorId: string,
+) {
+  if (attachments.length === 0) return;
+  const { error } = await supabase.from("comment_attachments").insert(
+    attachments.map((a) => ({
+      comment_id: commentId,
+      storage_key: a.storage_key,
+      file_name: a.file_name,
+      mime_type: a.mime_type,
+      byte_size: a.byte_size,
+      uploaded_by: actorId,
+    })),
+  );
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Files a conversation attachment into the production's documents as revision 1,
+ * pointing at the same stored file, and marks the attachment as saved.
+ */
+export async function saveAttachmentToDocs(input: {
+  attachmentId: string;
+  storageKey: string;
+  fileName: string;
+  projectId: string;
+  taskId: string | null;
+  folder: string;
+  title: string;
+  actorId: string;
+}) {
+  const { data: doc, error } = await supabase
+    .from("documents")
+    .insert({
+      project_id: input.projectId,
+      task_id: input.taskId,
+      title: input.title || input.fileName,
+      folder: input.folder || null,
+      status: "draft",
+      created_by: input.actorId,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+
+  const { error: versionError } = await supabase.from("document_versions").insert({
+    document_id: doc.id,
+    version_number: 1,
+    storage_key: input.storageKey,
+    uploaded_by: input.actorId,
+    change_note: "Saved from a conversation",
+  });
+  if (versionError) throw new Error(versionError.message);
+
+  const { error: linkError } = await supabase
+    .from("comment_attachments")
+    .update({ saved_document_id: doc.id })
+    .eq("id", input.attachmentId);
+  if (linkError) throw new Error(linkError.message);
+
+  await recordAudit("document", doc.id, input.actorId, "saved_from_conversation", {
+    folder: input.folder || null,
+    file_name: input.fileName,
+  });
+  return doc.id;
+}
+
+/** Moves a document into a folder (or clears it with an empty string). */
+export async function writeDocumentFolder(documentId: string, folder: string, actorId: string) {
+  const { error } = await supabase
+    .from("documents")
+    .update({ folder: folder || null })
+    .eq("id", documentId);
+  if (error) throw new Error(error.message);
+  await recordAudit("document", documentId, actorId, "folder_changed", { folder: folder || null });
 }

@@ -66,3 +66,9 @@
 - Task titles open the work item everywhere they are listed.
 - Ask Department prefills once, then clears from the address.
 - Documents show the current revision beside the conversation.
+
+## Files in conversations (done)
+- Attach files and photos to any message (production, work item, or document conversation); private `chat-attachments` storage, 25 MB per file, multiple files per message.
+- Images show as previews; every file has Open (signed link) and, for contributors/admins on open productions, "Save to project docs".
+- Saving asks for a name and a folder (existing folder or a new one), creates the document at revision 1 pointing at the same file, and the message then shows "Saved to <folder>" linking to it.
+- Documents list shows folders, and a document can be moved into an existing or new folder.
