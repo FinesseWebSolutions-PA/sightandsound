@@ -5,7 +5,7 @@ import { AttachmentList } from "@/components/AttachmentList";
 import { MentionInput } from "@/components/MentionInput";
 import { MentionText } from "@/components/MentionText";
 import { personById, useStore } from "@/lib/store";
-import type { StagedAttachment, ThreadContext } from "@/lib/production-data";
+import type { Comment, StagedAttachment, ThreadContext } from "@/lib/production-data";
 import { formatDateTime } from "@/lib/status";
 import { initials } from "@/lib/threads";
 import { cn } from "@/lib/utils";
@@ -295,6 +295,160 @@ function Message({
   );
 }
 
+/**
+ * One conversation, with a Messages view and a Files view listing everything ever
+ * shared here — whether or not it was filed into the production's documents.
+ */
+function ThreadPanel({
+  projectId,
+  inline,
+  title,
+  contextText,
+  threadId,
+  threadComments,
+  currentUserId,
+  highlightCommentId,
+  canPost,
+  initialDraft,
+  autoFocusComposer,
+  endRef,
+  onSend,
+}: {
+  projectId: string;
+  inline: boolean;
+  title: string;
+  contextText: string;
+  threadId: string;
+  threadComments: Comment[];
+  currentUserId: string;
+  highlightCommentId?: string | undefined;
+  canPost: boolean;
+  initialDraft: string;
+  autoFocusComposer: boolean;
+  endRef: React.RefObject<HTMLDivElement | null>;
+  onSend: (body: string, attachments: StagedAttachment[]) => Promise<boolean>;
+}) {
+  const { commentAttachments } = useStore();
+  const [tab, setTab] = useState<"messages" | "files">("messages");
+
+  const ids = new Set(threadComments.map((c) => c.id));
+  const files = commentAttachments
+    .filter((a) => ids.has(a.comment_id))
+    .slice()
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const unsavedCount = files.filter((a) => !a.saved_document_id).length;
+
+  return (
+    <article>
+      <ChatPanel>
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-card px-3 py-2 sm:px-4">
+          {!inline && (
+            <div className="min-w-0">
+              <h3 className="truncate text-sm font-semibold text-ink">{title}</h3>
+              <span className="text-xs text-ink-soft">{contextText}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-1" role="tablist" aria-label="Conversation views">
+            {(["messages", "files"] as const).map((key) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={tab === key}
+                onClick={() => setTab(key)}
+                className={cn(
+                  "inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors",
+                  tab === key ? "bg-ink text-cream-soft" : "text-ink-soft hover:bg-cream",
+                )}
+              >
+                {key === "messages" ? (
+                  <MessageSquarePlus aria-hidden className="size-4" />
+                ) : (
+                  <Paperclip aria-hidden className="size-4" />
+                )}
+                {key === "messages" ? "Messages" : `Files${files.length ? ` (${files.length})` : ""}`}
+              </button>
+            ))}
+          </div>
+        </header>
+
+        {tab === "messages" ? (
+          <Transcript>
+            {threadComments.map((message, index) => {
+              const previous = index > 0 ? threadComments[index - 1] : undefined;
+              const newDay =
+                !previous ||
+                new Date(previous.created_at).toDateString() !==
+                  new Date(message.created_at).toDateString();
+              return (
+                <div key={message.id} className="space-y-2">
+                  {newDay && <DayDivider date={message.created_at} />}
+                  <Message
+                    projectId={projectId}
+                    id={message.id}
+                    authorId={message.author_id}
+                    body={message.body}
+                    createdAt={message.created_at}
+                    mine={message.author_id === currentUserId}
+                    highlighted={highlightCommentId === message.id}
+                  />
+                </div>
+              );
+            })}
+            <div ref={endRef} />
+          </Transcript>
+        ) : (
+          <Transcript>
+            {files.length === 0 ? (
+              <p className="py-4 text-center text-sm text-ink-soft">
+                No files or images have been shared in this conversation yet.
+              </p>
+            ) : (
+              <>
+                <p className="text-xs text-ink-soft">
+                  {files.length} shared here
+                  {unsavedCount > 0 ? ` · ${unsavedCount} not yet in the production's documents` : ""}
+                </p>
+                {files.map((file) => {
+                  const author = personById(
+                    threadComments.find((c) => c.id === file.comment_id)?.author_id ?? "",
+                  );
+                  return (
+                    <div key={file.id}>
+                      <p className="text-xs text-ink-soft">
+                        <span className="font-semibold text-ink">
+                          {author?.full_name ?? "Someone"}
+                        </span>{" "}
+                        · {formatDateTime(file.created_at)}
+                      </p>
+                      <AttachmentList attachments={[file]} projectId={projectId} />
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </Transcript>
+        )}
+
+        {canPost && tab === "messages" && (
+          <ComposerBar>
+            <Composer
+              compact
+              projectId={projectId}
+              threadKey={threadId}
+              initialDraft={initialDraft}
+              autoFocus={autoFocusComposer}
+              placeholder="Message…"
+              submitLabel="Send"
+              onSubmit={async (body, _subject, attachments) => onSend(body, attachments)}
+            />
+          </ComposerBar>
+        )}
+      </ChatPanel>
+    </article>
+  );
+}
+
 export function Discussion({
   projectId,
   contextType,
@@ -522,63 +676,27 @@ export function Discussion({
           .slice()
           .sort((a, b) => a.created_at.localeCompare(b.created_at));
         return (
-          <article key={thread.id}>
-            <ChatPanel>
-            {!inline && (
-              <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-card px-3 py-3 sm:px-4">
-                <h3 className="text-sm font-semibold text-ink">
-                  {thread.subject || contextLabel(thread.task_id, thread.document_id)}
-                </h3>
-                <span className="text-xs text-ink-soft">
-                  {contextLabel(thread.task_id, thread.document_id)}
-                </span>
-              </header>
-            )}
-            <Transcript>
-              {threadComments.map((message, index) => {
-                const previous = index > 0 ? threadComments[index - 1] : undefined;
-                const newDay =
-                  !previous ||
-                  new Date(previous.created_at).toDateString() !==
-                    new Date(message.created_at).toDateString();
-                return (
-                  <div key={message.id} className="space-y-2">
-                    {newDay && <DayDivider date={message.created_at} />}
-                    <Message
-                      projectId={projectId}
-                      id={message.id}
-                      authorId={message.author_id}
-                      body={message.body}
-                      createdAt={message.created_at}
-                      mine={message.author_id === currentUserId}
-                      highlighted={highlightCommentId === message.id}
-                    />
-                  </div>
-                );
-              })}
-              <div ref={endRef} />
-            </Transcript>
-            {canPost && (
-              <ComposerBar>
-                <Composer
-                  compact
-                  projectId={projectId}
-                  threadKey={thread.id}
-                  initialDraft={initialDraft}
-                  autoFocus={autoFocusComposer}
-                  placeholder="Message…"
-                  submitLabel="Send"
-                  onSubmit={async (body, _subject, attachments) => {
-                    const ok = await addComment(thread.id, body, attachments);
-                    if (!ok) return false;
-                    onSent?.();
-                    return true;
-                  }}
-                />
-              </ComposerBar>
-            )}
-            </ChatPanel>
-          </article>
+          <ThreadPanel
+            key={thread.id}
+            projectId={projectId}
+            inline={inline}
+            title={thread.subject || contextLabel(thread.task_id, thread.document_id)}
+            contextText={contextLabel(thread.task_id, thread.document_id)}
+            threadId={thread.id}
+            threadComments={threadComments}
+            currentUserId={currentUserId}
+            highlightCommentId={highlightCommentId}
+            canPost={canPost}
+            initialDraft={initialDraft}
+            autoFocusComposer={autoFocusComposer}
+            endRef={endRef}
+            onSend={async (body, attachments) => {
+              const ok = await addComment(thread.id, body, attachments);
+              if (!ok) return false;
+              onSent?.();
+              return true;
+            }}
+          />
         );
       })}
     </section>
