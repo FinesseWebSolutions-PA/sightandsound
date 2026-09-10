@@ -118,6 +118,8 @@ export type Store = {
   notifications: Notification[];
   saving: boolean;
   setTaskStatus: (taskId: string, status: TaskStatus) => void;
+  /** Documents attached to a work item that are still waiting on approval. */
+  unapprovedDocuments: (taskId: string) => Document[];
   /** Moves a work item's planned dates; the database recomputes the rest. */
   setTaskDates: (taskId: string, startDate: string, dueDate: string) => void;
   /** Read-only "what would this do?" check, straight from the database. */
