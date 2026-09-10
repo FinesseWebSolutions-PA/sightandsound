@@ -369,27 +369,96 @@ function TimelineTab() {
     ...(search.comment ? { highlightCommentId: search.comment } : {}),
   };
 
+  // A deep link to one work item's conversation lands on the list view.
+  const initialView: ViewId = search.task
+    ? "list"
+    : views.some((v) => v.id === search.view)
+      ? (search.view as ViewId)
+      : "master";
+  const [view, setView] = useState<ViewId>(initialView);
+  useEffect(() => {
+    if (search.task) setView("list");
+  }, [search.task]);
+
+  const activeView = views.find((v) => v.id === view) ?? views[0];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-4">
         <div className="min-w-0">
-          <h2 className="font-display text-2xl text-ink sm:text-3xl">Timeline</h2>
+          <h2 className="font-display text-2xl text-ink sm:text-3xl">Schedule</h2>
           <p className="mt-1 max-w-2xl text-sm text-ink-soft">
-            Milestones in date order, with the work items under each one. Core milestone dates are
-            edited by Admins; anyone assigned can move their own work forward.
+            One schedule, several ways to read it. Spare time and the critical path are calculated
+            once, centrally, so every view here agrees.
           </p>
         </div>
         {!canEditDates && (
           <p className="flex items-start gap-1.5 rounded-md border border-border bg-cream px-3 py-2 text-xs text-ink-soft">
             <Lock aria-hidden className="mt-0.5 size-3.5 shrink-0" />
             {locked
-              ? "This production is closed — the timeline is read-only for everyone"
-              : "Core milestone dates are read-only in your role"}
+              ? "This production is closed — the schedule is read-only for everyone"
+              : "Core dates are read-only in your role"}
           </p>
         )}
       </div>
 
-      <div className="space-y-5">
+      <div className="space-y-2">
+        <div
+          role="tablist"
+          aria-label="Schedule views"
+          className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0"
+        >
+          {views.map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              role="tab"
+              aria-selected={view === v.id}
+              onClick={() => setView(v.id)}
+              className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold ${
+                view === v.id
+                  ? "border-gold-deep bg-gold-pale text-ink"
+                  : "border-border bg-card text-ink-soft"
+              }`}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-ink-soft">{activeView.blurb}</p>
+      </div>
+
+      {view === "master" && <MasterTimeline projectId={projectId} />}
+      {view === "queue" && <DepartmentWorkQueue projectId={projectId} />}
+      {view === "scenes" && <SceneReadinessMatrix projectId={projectId} />}
+
+      {view !== "list" && (
+        <section className="surface-card p-4">
+          <h3 className="text-sm font-semibold text-ink">Coming soon</h3>
+          <p className="mt-0.5 text-xs text-ink-soft">
+            Planned views that need data the system does not collect yet.
+          </p>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            {comingSoon.map((item) => (
+              <li
+                key={item.label}
+                aria-disabled="true"
+                className="rounded-md border border-dashed border-border bg-cream-soft px-3 py-2.5"
+              >
+                <p className="flex items-center gap-1.5 text-sm font-semibold text-ink-soft">
+                  <Clock aria-hidden className="size-3.5" />
+                  {item.label}
+                  <span className="rule-label ml-1">Coming soon</span>
+                </p>
+                <p className="mt-0.5 text-xs text-ink-soft">{item.blurb}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <div className={view === "list" ? "space-y-5" : "hidden"}>
+
         {projectMilestones.map((milestone) => {
           const milestoneTasks = projectTasks
             .filter((t) => t.milestone_id === milestone.id)
