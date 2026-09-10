@@ -457,7 +457,7 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
           }}
           title={`${task.title} · ${criticalityMeta[task.criticality].label} · ${formatFloat(task.total_float_hours)}`}
           className={`absolute top-8 flex h-7 items-center overflow-hidden rounded-md border px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring ${barClasses(task)} ${
-            dimmed ? "opacity-25" : ""
+            dimmed ? "opacity-40" : ""
           } ${openTask === task.id ? "ring-2 ring-ink" : ""} ${locked ? "cursor-pointer" : "cursor-grab"}`}
         >
           {shortCriticality(task)}
