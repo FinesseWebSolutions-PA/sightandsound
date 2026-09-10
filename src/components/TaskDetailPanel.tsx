@@ -352,26 +352,76 @@ export function TaskDetailPanel({
             </div>
           )}
 
-          {attached.length > 0 && (
-            <div>
-              <p className="rule-label">Drawings and documents</p>
-              <ul className="mt-1 space-y-1">
+          <section className="rounded-md border border-border bg-card">
+            <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-ink">
+                <FileText aria-hidden className="size-3.5 text-gold-deep" /> Documents
+              </p>
+              {canUpdate && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="inline-flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-border bg-card px-2.5 text-xs font-semibold text-ink disabled:opacity-50"
+                >
+                  <Plus aria-hidden className="size-3.5" />
+                  {uploading ? "Adding…" : "Add document"}
+                </button>
+              )}
+            </div>
+            {attached.length > 0 ? (
+              <ul className="row-list">
                 {attached.map((doc) => (
-                  <li key={doc.id}>
+                  <li key={doc.id} className="data-row flex items-center gap-2 px-3 py-2">
                     <Link
                       to="/projects/$projectId/documents"
                       params={{ projectId: task.project_id }}
                       search={{ document: doc.id }}
-                      className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-gold-deep hover:underline"
+                      className="min-w-0 flex-1 truncate text-sm font-medium text-ink hover:underline"
                     >
-                      <FileText aria-hidden className="size-3.5" />
                       {doc.title} — v{doc.current_version}
                     </Link>
+                    <StatusBadge
+                      meta={
+                        doc.requires_approval
+                          ? approvalStateMeta[doc.approval_state]
+                          : { label: "No approval needed", tone: "neutral" }
+                      }
+                      size="sm"
+                    />
                   </li>
                 ))}
               </ul>
-            </div>
-          )}
+            ) : (
+              <p className="px-3 py-2.5 text-xs text-ink-soft">
+                Nothing attached to this task yet.
+              </p>
+            )}
+            {canUpdate && (
+              <div className="flex items-center gap-2 border-t border-border px-3 py-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    e.target.value = "";
+                    void addFiles(files);
+                  }}
+                />
+                <label className="flex items-center gap-1.5 text-xs text-ink-soft">
+                  <input
+                    type="checkbox"
+                    checked={needsApproval}
+                    onChange={(e) => setNeedsApproval(e.target.checked)}
+                    className="size-4"
+                  />
+                  Needs approval
+                </label>
+              </div>
+            )}
+          </section>
 
           <div>
             <p className="flex items-center gap-1.5 text-sm font-semibold text-ink">
