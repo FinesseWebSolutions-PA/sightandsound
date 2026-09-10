@@ -635,6 +635,10 @@ export async function loadProductionData(): Promise<ProductionData> {
     } else if (scoped.some((t) => t.status !== "complete" && t.due_date && t.due_date < today)) {
       readiness = "at_risk";
     }
+    const headAssignment = (assignmentRows ?? []).find(
+      (a) => a.project_id === pd.project_id && a.department_id === pd.department_id && a.is_head,
+    );
+    const globalOwner = departments.find((d) => d.id === pd.department_id)?.owner_id ?? "";
     return {
       project_id: pd.project_id,
       department_id: pd.department_id,
@@ -642,6 +646,7 @@ export async function loadProductionData(): Promise<ProductionData> {
       note: scoped.length
         ? `${done} of ${scoped.length} work item${scoped.length === 1 ? "" : "s"} complete`
         : "No work items assigned yet",
+      head_id: headAssignment?.person_id ?? pd.default_owner_id ?? globalOwner,
     };
   });
 
