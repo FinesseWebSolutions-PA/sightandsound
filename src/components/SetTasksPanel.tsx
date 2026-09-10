@@ -26,6 +26,7 @@ export function SetTasksPanel({
   const [editorOpen, setEditorOpen] = useState(false);
   /** Quick add: a title is enough. "" means top level, otherwise a parent id. */
   const [quickParent, setQuickParent] = useState<string | null>(null);
+  const [quickOpen, setQuickOpen] = useState(false);
   const [quickTitle, setQuickTitle] = useState("");
 
   const setTasks = tasks.filter((t) => t.scene_id === sceneId);
