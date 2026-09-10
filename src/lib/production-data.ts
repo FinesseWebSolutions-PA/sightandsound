@@ -272,6 +272,8 @@ export type ProductionData = {
   people: Person[];
   projects: Project[];
   projectDepartments: ProjectDepartment[];
+  projectAssignments: ProjectAssignment[];
+  departmentJobTitles: DepartmentJobTitle[];
   scenes: Scene[];
   milestones: Milestone[];
   tasks: Task[];
