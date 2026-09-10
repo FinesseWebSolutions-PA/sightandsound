@@ -471,6 +471,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     approvalsRes,
     threadsRes,
     commentsRes,
+    attachmentsRes,
     mentionsRes,
     notificationsRes,
     auditRes,
