@@ -1190,3 +1190,128 @@ export async function writeNotificationRead(ids: string[], read: boolean) {
   const { error } = await supabase.from("notifications").update({ is_read: read }).in("id", ids);
   if (error) throw new Error(error.message);
 }
+
+const CHAT_BUCKET = "chat-attachments";
+
+/** Largest file a conversation accepts, matching the storage limit. */
+export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+
+function safeFileName(name: string) {
+  return name.replace(/[^\w.\-]+/g, "-").slice(-80) || "file";
+}
+
+/** Uploads one file for a conversation and returns what the message should carry. */
+export async function uploadChatAttachment(
+  file: File,
+  projectId: string,
+  threadKey: string,
+): Promise<StagedAttachment> {
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    throw new Error(`${file.name} is larger than 25 MB.`);
+  }
+  const key = `${projectId}/${threadKey}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+  const { error } = await supabase.storage.from(CHAT_BUCKET).upload(key, file, {
+    contentType: file.type || "application/octet-stream",
+    upsert: false,
+  });
+  if (error) throw new Error(error.message);
+  return {
+    storage_key: key,
+    file_name: file.name,
+    mime_type: file.type || "application/octet-stream",
+    byte_size: file.size,
+  };
+}
+
+/** Signed links so a private file can be shown or downloaded in the browser. */
+export async function attachmentUrls(keys: string[]): Promise<Record<string, string>> {
+  if (keys.length === 0) return {};
+  const { data, error } = await supabase.storage
+    .from(CHAT_BUCKET)
+    .createSignedUrls(keys, 60 * 60);
+  if (error) throw new Error(error.message);
+  const out: Record<string, string> = {};
+  for (const row of data ?? []) {
+    if (row.path && row.signedUrl) out[row.path] = row.signedUrl;
+  }
+  return out;
+}
+
+async function writeAttachmentRows(
+  commentId: string,
+  attachments: StagedAttachment[],
+  actorId: string,
+) {
+  if (attachments.length === 0) return;
+  const { error } = await supabase.from("comment_attachments").insert(
+    attachments.map((a) => ({
+      comment_id: commentId,
+      storage_key: a.storage_key,
+      file_name: a.file_name,
+      mime_type: a.mime_type,
+      byte_size: a.byte_size,
+      uploaded_by: actorId,
+    })),
+  );
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Files a conversation attachment into the production's documents as revision 1,
+ * pointing at the same stored file, and marks the attachment as saved.
+ */
+export async function saveAttachmentToDocs(input: {
+  attachmentId: string;
+  storageKey: string;
+  fileName: string;
+  projectId: string;
+  taskId: string | null;
+  folder: string;
+  title: string;
+  actorId: string;
+}) {
+  const { data: doc, error } = await supabase
+    .from("documents")
+    .insert({
+      project_id: input.projectId,
+      task_id: input.taskId,
+      title: input.title || input.fileName,
+      folder: input.folder || null,
+      status: "draft",
+      created_by: input.actorId,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+
+  const { error: versionError } = await supabase.from("document_versions").insert({
+    document_id: doc.id,
+    version_number: 1,
+    storage_key: input.storageKey,
+    uploaded_by: input.actorId,
+    change_note: "Saved from a conversation",
+  });
+  if (versionError) throw new Error(versionError.message);
+
+  const { error: linkError } = await supabase
+    .from("comment_attachments")
+    .update({ saved_document_id: doc.id })
+    .eq("id", input.attachmentId);
+  if (linkError) throw new Error(linkError.message);
+
+  await recordAudit("document", doc.id, input.actorId, "saved_from_conversation", {
+    folder: input.folder || null,
+    file_name: input.fileName,
+  });
+  return doc.id;
+}
+
+/** Moves a document into a folder (or clears it with an empty string). */
+export async function writeDocumentFolder(documentId: string, folder: string, actorId: string) {
+  const { error } = await supabase
+    .from("documents")
+    .update({ folder: folder || null })
+    .eq("id", documentId);
+  if (error) throw new Error(error.message);
+  await recordAudit("document", documentId, actorId, "folder_changed", { folder: folder || null });
+}
