@@ -44,8 +44,18 @@ export function TaskDetailPanel({
   /** Present only when the viewer may restructure this work item. */
   onEdit?: (taskId: string) => void;
 }) {
-  const { tasks, documents, milestones, scenes, can, setTaskStatus, isClosed, saveWorkItem, saving } =
-    useStore();
+  const {
+    tasks,
+    documents,
+    milestones,
+    scenes,
+    can,
+    setTaskStatus,
+    unapprovedDocuments,
+    isClosed,
+    saveWorkItem,
+    saving,
+  } = useStore();
   const task = tasks.find((t) => t.id === taskId);
   // An "Ask <Department>" prefill is used once: after the message is sent it is gone.
   const [askUsed, setAskUsed] = useState(false);
@@ -68,6 +78,7 @@ export function TaskDetailPanel({
   if (!task) return null;
 
   const locked = isClosed(task.project_id);
+  const pendingDocs = unapprovedDocuments(task.id);
   const canUpdate = can.updateWork && !locked;
   const dept = departments.find((d) => d.id === task.department_id);
   const milestone = milestones.find((m) => m.id === task.milestone_id);
