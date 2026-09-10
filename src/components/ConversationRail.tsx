@@ -181,13 +181,14 @@ export function ConversationRail({
           </div>
         </aside>
 
-        <div className={cn("min-w-0 space-y-2", activeId && picked ? "block" : "hidden lg:block")}>
+        <div className={cn("min-w-0 space-y-2", activeId && picked ? "block" : "hidden md:block")}>
           {picked && (
             <button
               type="button"
               onClick={() => setPicked(null)}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-sm font-medium text-ink transition-colors hover:bg-cream lg:hidden"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-sm font-medium text-ink transition-colors hover:bg-cream md:hidden"
             >
+
               <ArrowLeft aria-hidden className="size-4" />
               All conversations
             </button>
