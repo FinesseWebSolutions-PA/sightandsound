@@ -231,6 +231,7 @@ export type ProductionData = {
   people: Person[];
   projects: Project[];
   projectDepartments: ProjectDepartment[];
+  scenes: Scene[];
   milestones: Milestone[];
   tasks: Task[];
   taskDependencies: TaskDependency[];
@@ -243,6 +244,18 @@ export type ProductionData = {
   notifications: Notification[];
   auditLog: AuditEntry[];
 };
+
+/**
+ * The database owns the schedule maths, so the client only ever calls it.
+ * The generated types do not describe these functions yet, hence the cast.
+ */
+type RpcCaller = (
+  name: string,
+  args: Record<string, unknown>,
+) => Promise<{ data: unknown; error: { message: string } | null }>;
+
+const callRpc = (name: string, args: Record<string, unknown>) =>
+  (supabase.rpc as unknown as RpcCaller)(name, args);
 
 /* ----------------------------------------------------------------- helpers */
 
