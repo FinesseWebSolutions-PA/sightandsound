@@ -353,9 +353,14 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
                             />
                             <span
                               style={bar}
-                              className={`absolute top-6 flex h-6 items-center overflow-hidden rounded-md border px-2 text-xs font-semibold text-cream-soft ${barClasses(task)}`}
+                              title={`${criticalityMeta[task.criticality].label} · ${formatFloat(task.total_float_hours)}`}
+                              className={`absolute top-6 flex h-6 items-center overflow-hidden rounded-md border px-1.5 text-[10px] font-semibold whitespace-nowrap text-cream-soft ${barClasses(task)}`}
                             >
-                              {criticalityMeta[task.criticality].label}
+                              {task.criticality === "critical"
+                                ? "Critical"
+                                : task.criticality === "near_critical"
+                                  ? "Tight"
+                                  : "Slack"}
                             </span>
                           </div>
                         </li>
