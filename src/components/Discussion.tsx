@@ -328,7 +328,7 @@ function ThreadPanel({
   endRef: React.RefObject<HTMLDivElement | null>;
   onSend: (body: string, attachments: StagedAttachment[]) => Promise<boolean>;
 }) {
-  const { commentAttachments, documents } = useStore();
+  const { commentAttachments } = useStore();
   const [tab, setTab] = useState<"messages" | "files">("messages");
 
   const ids = new Set(threadComments.map((c) => c.id));
@@ -408,7 +408,6 @@ function ThreadPanel({
                 <p className="text-xs text-ink-soft">
                   {files.length} shared here
                   {unsavedCount > 0 ? ` · ${unsavedCount} not yet in the production's documents` : ""}
-                  {documents.length === 0 ? "" : ""}
                 </p>
                 {files.map((file) => {
                   const author = personById(
