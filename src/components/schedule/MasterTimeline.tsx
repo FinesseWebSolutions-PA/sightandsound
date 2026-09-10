@@ -1050,6 +1050,14 @@ export function MasterTimeline({
           {formatDate(span.start)} – {formatDate(span.end)} · {totalDays} days
         </p>
       )}
+
+      {openSetId && (
+        <SetDialog
+          setId={openSetId}
+          projectId={projectId}
+          onClose={() => setOpenSetId(null)}
+        />
+      )}
     </div>
   );
 }
