@@ -100,7 +100,7 @@ function PortfolioPage() {
       <div className="mt-6 space-y-4">
         {rows.map((project) => {
           const involved = projectDepartments.filter((pd) => pd.project_id === project.id);
-          const next = nextKeyDate(project.id);
+          
           const status = projectStatusMeta[project.status];
           const owner = personById(project.owner_id);
           const initials = (owner?.full_name ?? "")
