@@ -20,12 +20,78 @@ export function SetTasksPanel({
   sceneId: string;
   canEdit: boolean;
 }) {
-  const { tasks } = useStore();
+  const { tasks, saveWorkItem, saving } = useStore();
   const [openTaskId, setOpenTaskId] = useState("");
   const [editorTaskId, setEditorTaskId] = useState<string | undefined>(undefined);
   const [editorOpen, setEditorOpen] = useState(false);
+  /** Quick add: a title is enough. "" means top level, otherwise a parent id. */
+  const [quickParent, setQuickParent] = useState<string | null>(null);
+  const [quickTitle, setQuickTitle] = useState("");
 
   const setTasks = tasks.filter((t) => t.scene_id === sceneId);
+
+  const quickAdd = async () => {
+    const title = quickTitle.trim();
+    if (!title || saving) return;
+    const parent = setTasks.find((t) => t.id === quickParent);
+    const ok = await saveWorkItem({
+      projectId,
+      title,
+      description: "",
+      departmentId: parent?.department_id ?? "",
+      sceneId,
+      milestoneId: null,
+      parentTaskId: quickParent,
+      ownerId: parent?.owner_id ?? null,
+      startDate: null,
+      dueDate: null,
+      status: "not_started",
+      affectsRehearsal: false,
+      affectsPerformance: false,
+    });
+    if (ok) setQuickTitle("");
+  };
+
+  const quickAddRow = (parentId: string | null) => (
+    <div className="flex flex-wrap items-center gap-2 px-4 py-3">
+      <input
+        autoFocus
+        value={quickTitle}
+        onChange={(e) => setQuickTitle(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            void quickAdd();
+          }
+          if (e.key === "Escape") {
+            setQuickParent(null);
+            setQuickTitle("");
+          }
+        }}
+        placeholder={parentId ? "Sub-task name, then press Enter" : "Task name, then press Enter"}
+        className="min-h-11 min-w-0 flex-1 rounded-md border border-border bg-white px-3 text-sm text-ink"
+      />
+      <button
+        type="button"
+        disabled={!quickTitle.trim() || saving}
+        onClick={() => void quickAdd()}
+        className="min-h-11 rounded-md bg-ink px-3 text-sm font-medium text-cream-soft hover:opacity-90 disabled:opacity-50"
+      >
+        Add
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setQuickParent(null);
+          setQuickTitle("");
+        }}
+        className="min-h-11 rounded-md border border-border px-3 text-sm text-ink-soft hover:bg-cream"
+      >
+        Cancel
+      </button>
+      <span className="text-xs text-ink-soft">Dates and details can be added after.</span>
+    </div>
+  );
 
   return (
     <>
