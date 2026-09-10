@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -8,6 +8,7 @@ import {
   Folder,
   LayoutGrid,
   List,
+  MoreVertical,
   Search,
   History,
   MessageSquare,
@@ -15,6 +16,7 @@ import {
   ThumbsDown,
   XCircle,
 } from "lucide-react";
+
 
 import { Discussion } from "@/components/Discussion";
 import { DocumentPreview } from "@/components/DocumentPreview";
@@ -242,10 +244,29 @@ export function DocumentBrowser({
     | "rejected"
     | "version";
   const [menuAction, setMenuAction] = useState<MenuAction>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     setMenuAction(null);
+    setMenuOpen(false);
     setNote("");
   }, [selectedId]);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onClick);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onClick);
+    };
+  }, [menuOpen]);
+
 
   /**
    * A review note behaves like a chat message: it lands in this document's
@@ -561,7 +582,124 @@ export function DocumentBrowser({
                     No approval needed
                   </span>
                 )}
+                <div ref={menuRef} className="relative">
+                  <button
+                    type="button"
+                    aria-label="Document actions"
+                    aria-haspopup="menu"
+                    aria-expanded={menuOpen}
+                    disabled={locked}
+                    onClick={() => setMenuOpen((v) => !v)}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-soft hover:bg-cream disabled:opacity-40"
+                  >
+                    <MoreVertical aria-hidden className="size-5" />
+                  </button>
+
+                  {menuOpen && (
+                    <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-lg border border-border bg-white shadow-lg">
+                      <ul role="menu" className="py-1">
+                        {(() => {
+                          const a = activityFor(threads, comments, {
+                            projectId,
+                            documentId: selected.id,
+                          });
+                          return (
+                            <li role="none">
+                              <a
+                                role="menuitem"
+                                href="#document-discussion"
+                                onClick={() => setMenuOpen(false)}
+                                className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-cream"
+                              >
+                                <MessageSquare aria-hidden className="size-4 text-ink-soft" />
+                                <span className="flex-1">Open conversation</span>
+                                <span className="text-xs text-ink-soft">
+                                  {a.count === 0 ? "None" : a.count}
+                                </span>
+                              </a>
+                            </li>
+                          );
+                        })()}
+                        {canUpload && (
+                          <li role="none">
+                            <button
+                              role="menuitem"
+                              type="button"
+                              onClick={() => {
+                                setMenuAction("folder");
+                                setMenuOpen(false);
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-cream"
+                            >
+                              <Folder aria-hidden className="size-4 text-ink-soft" />
+                              <span className="flex-1">Move to folder</span>
+                            </button>
+                          </li>
+                        )}
+                        {canReview &&
+                          selected.requires_approval &&
+                          (
+                            [
+                              { key: "requested", label: "Request review", Icon: Send },
+                              { key: "approved", label: "Approve", Icon: CheckCircle2 },
+                              { key: "changes_requested", label: "Request changes", Icon: ThumbsDown },
+                              { key: "rejected", label: "Reject", Icon: XCircle },
+                            ] as const
+                          ).map(({ key, label, Icon }) => (
+                            <li key={key} role="none">
+                              <button
+                                role="menuitem"
+                                type="button"
+                                onClick={() => {
+                                  setMenuAction(key);
+                                  setMenuOpen(false);
+                                }}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-cream"
+                              >
+                                <Icon aria-hidden className="size-4 text-ink-soft" />
+                                <span className="flex-1">{label}</span>
+                              </button>
+                            </li>
+                          ))}
+                        {canUpload && (
+                          <li role="none">
+                            <button
+                              role="menuitem"
+                              type="button"
+                              onClick={() => {
+                                setMenuAction("version");
+                                setMenuOpen(false);
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-cream"
+                            >
+                              <FileUp aria-hidden className="size-4 text-ink-soft" />
+                              <span className="flex-1">Upload new version</span>
+                              <span className="text-xs text-ink-soft">v{selected.current_version}</span>
+                            </button>
+                          </li>
+                        )}
+                        {canUpload && (
+                          <li role="none">
+                            <label className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-cream">
+                              <input
+                                type="checkbox"
+                                checked={!selected.requires_approval}
+                                onChange={(e) => {
+                                  setDocumentApprovalRequirement(selected.id, !e.target.checked);
+                                  setMenuOpen(false);
+                                }}
+                                className="size-4 rounded border-border"
+                              />
+                              <span className="flex-1">No approval needed</span>
+                            </label>
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </header>
+
 
               {(() => {
                 const current = documentVersions
@@ -577,185 +715,121 @@ export function DocumentBrowser({
 
 
 
-              <ul className="row-list">
-                {/* Conversation */}
-                {(() => {
-                  const a = activityFor(threads, comments, {
-                    projectId,
-                    documentId: selected.id,
-                  });
-                  return (
-                    <li>
-                      <a
-                        href="#document-discussion"
-                        className="flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-ink hover:bg-cream"
-                      >
-                        <MessageSquare aria-hidden className="size-4 shrink-0 text-ink-soft" />
-                        <span className="min-w-0 flex-1 font-medium">Open conversation</span>
-                        <span className="text-xs text-ink-soft">
-                          {a.count === 0 ? "No comments yet" : `${a.count}`}
-                        </span>
-                      </a>
-                    </li>
-                  );
-                })()}
+              {/* Expanded action panel chosen from the ellipsis menu */}
+              {menuAction === "folder" && canUpload && (
+                <div className="border-t border-border bg-cream-soft px-4 py-3">
+                  <p className="mb-2 text-xs font-medium text-ink-soft">Move to folder</p>
+                  <FilingControl
+                    projectId={projectId}
+                    documentId={selected.id}
+                    currentFolder={selected.folder}
+                    currentSceneId={selected.scene_id}
+                  />
+                </div>
+              )}
 
-                {/* Folder */}
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => setMenuAction(menuAction === "folder" ? null : "folder")}
-                    className="flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-ink hover:bg-cream"
-                  >
-                    <Folder aria-hidden className="size-4 shrink-0 text-ink-soft" />
-                    <span className="min-w-0 flex-1 font-medium">
-                      {canUpload ? "Move to folder" : "Folder"}
-                    </span>
-                    <span className="max-w-[45%] truncate text-xs text-ink-soft">
-                      {projectScenes.find((sc) => sc.id === selected.scene_id)?.name ||
-                        selected.folder ||
-                        "Not filed"}
-                    </span>
-                  </button>
-                  {menuAction === "folder" && canUpload && (
-                    <div className="border-t border-border bg-cream-soft px-4 py-3">
-                      <FilingControl
-                        projectId={projectId}
-                        documentId={selected.id}
-                        currentFolder={selected.folder}
-                        currentSceneId={selected.scene_id}
-                      />
-                    </div>
-                  )}
-                </li>
-
-                {/* Review actions */}
-                {canReview &&
-                  selected.requires_approval &&
-                  (
-                    [
-                      { key: "requested", label: "Request review", Icon: Send },
-                      { key: "approved", label: "Approve", Icon: CheckCircle2 },
-                      { key: "changes_requested", label: "Request changes", Icon: ThumbsDown },
-                      { key: "rejected", label: "Reject", Icon: XCircle },
-                    ] as const
-                  ).map(({ key, label, Icon }) => (
-                    <li key={key}>
+              {(() => {
+                if (!menuAction || !canReview || !selected.requires_approval) return null;
+                let decision: "requested" | "approved" | "changes_requested" | "rejected" | null = null;
+                let label = "";
+                let Icon = Send;
+                if (menuAction === "requested") {
+                  decision = "requested";
+                  label = "Request review";
+                  Icon = Send;
+                } else if (menuAction === "approved") {
+                  decision = "approved";
+                  label = "Approve";
+                  Icon = CheckCircle2;
+                } else if (menuAction === "changes_requested") {
+                  decision = "changes_requested";
+                  label = "Request changes";
+                  Icon = ThumbsDown;
+                } else if (menuAction === "rejected") {
+                  decision = "rejected";
+                  label = "Reject";
+                  Icon = XCircle;
+                }
+                if (!decision) return null;
+                return (
+                  <div className="space-y-2 border-t border-border bg-cream-soft px-4 py-3">
+                    <p className="text-xs font-medium text-ink-soft">{label}</p>
+                    <MentionInput
+                      value={note}
+                      onChange={setNote}
+                      rows={2}
+                      ariaLabel="Review note"
+                      placeholder="What did you check, or what needs to change? Type @ to bring someone in"
+                    />
+                    <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => setMenuAction(menuAction === key ? null : key)}
-                        className="flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-ink hover:bg-cream"
+                        disabled={sending}
+                        onClick={() => {
+                          void act(decision);
+                          setMenuAction(null);
+                        }}
+                        className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-ink-soft disabled:opacity-60"
                       >
-                        <Icon aria-hidden className="size-4 shrink-0 text-ink-soft" />
-                        <span className="min-w-0 flex-1 font-medium">{label}</span>
+                        <Icon aria-hidden className="size-4" /> {label}
                       </button>
-                      {menuAction === key && (
-                        <div className="space-y-2 border-t border-border bg-cream-soft px-4 py-3">
-                          <MentionInput
-                            value={note}
-                            onChange={setNote}
-                            rows={2}
-                            ariaLabel="Review note"
-                            placeholder="What did you check, or what needs to change? Type @ to bring someone in"
-                          />
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              disabled={sending}
-                              onClick={() => {
-                                void act(key);
-                                setMenuAction(null);
-                              }}
-                              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-ink-soft disabled:opacity-60"
-                            >
-                              <Icon aria-hidden className="size-4" /> {label}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setMenuAction(null)}
-                              className="inline-flex min-h-11 items-center rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </li>
-                  ))}
+                      <button
+                        type="button"
+                        onClick={() => setMenuAction(null)}
+                        className="inline-flex min-h-11 items-center rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
 
-                {/* New version */}
-                {canUpload && (
-                  <li>
+
+
+              {menuAction === "version" && canUpload && (
+                <div className="space-y-2 border-t border-border bg-cream-soft px-4 py-3">
+                  <p className="text-xs font-medium text-ink-soft">Upload new version</p>
+                  <MentionInput
+                    value={note}
+                    onChange={setNote}
+                    rows={2}
+                    ariaLabel="What changed in this version"
+                    placeholder="What changed in this version? Type @ to bring someone in"
+                  />
+                  <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => setMenuAction(menuAction === "version" ? null : "version")}
-                      className="flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-ink hover:bg-cream"
+                      disabled={sending}
+                      onClick={() => {
+                        addDocumentVersion(selected.id, note);
+                        void postNoteToConversation("New version uploaded —");
+                        setNote("");
+                        setMenuAction(null);
+                      }}
+                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-ink-soft disabled:opacity-60"
                     >
-                      <FileUp aria-hidden className="size-4 shrink-0 text-ink-soft" />
-                      <span className="min-w-0 flex-1 font-medium">Upload new version</span>
-                      <span className="text-xs text-ink-soft">v{selected.current_version}</span>
+                      <FileUp aria-hidden className="size-4" /> Upload version
                     </button>
-                    {menuAction === "version" && (
-                      <div className="space-y-2 border-t border-border bg-cream-soft px-4 py-3">
-                        <MentionInput
-                          value={note}
-                          onChange={setNote}
-                          rows={2}
-                          ariaLabel="What changed in this version"
-                          placeholder="What changed in this version? Type @ to bring someone in"
-                        />
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            disabled={sending}
-                            onClick={() => {
-                              addDocumentVersion(selected.id, note);
-                              void postNoteToConversation("New version uploaded —");
-                              setNote("");
-                              setMenuAction(null);
-                            }}
-                            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-ink-soft disabled:opacity-60"
-                          >
-                            <FileUp aria-hidden className="size-4" /> Upload version
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setMenuAction(null)}
-                            className="inline-flex min-h-11 items-center rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </li>
-                )}
+                    <button
+                      type="button"
+                      onClick={() => setMenuAction(null)}
+                      className="inline-flex min-h-11 items-center rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
 
-                {/* Approval requirement */}
-                {canUpload && (
-                  <li>
-                    <label className="flex min-h-11 w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-ink hover:bg-cream">
-                      <input
-                        type="checkbox"
-                        checked={!selected.requires_approval}
-                        onChange={(e) =>
-                          setDocumentApprovalRequirement(selected.id, !e.target.checked)
-                        }
-                        className="size-4 rounded border-border"
-                      />
-                      <span className="min-w-0 flex-1 font-medium">No approval needed</span>
-                    </label>
-                  </li>
-                )}
+              {!canReview && (
+                <p className="border-t border-border px-4 py-3 text-xs text-ink-soft">
+                  {locked
+                    ? "This production is closed and archived — documents stay readable, but no new reviews or versions can be added."
+                    : "Viewers can read documents and their review history."}
+                </p>
+              )}
 
-                {!canReview && (
-                  <li className="px-4 py-2.5 text-xs text-ink-soft">
-                    {locked
-                      ? "This production is closed and archived — documents stay readable, but no new reviews or versions can be added."
-                      : "Viewers can read documents and their review history."}
-                  </li>
-                )}
-              </ul>
 
               {selected.requires_approval &&
                 (() => {
