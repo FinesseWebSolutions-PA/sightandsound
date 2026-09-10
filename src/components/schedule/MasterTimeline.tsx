@@ -330,20 +330,6 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
                                 </span>
                               </p>
                             ))}
-                            {!locked && (
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                {[-7, -1, 1, 7].map((shift) => (
-                                  <button
-                                    key={shift}
-                                    type="button"
-                                    onClick={() => void openPreview(task, shift)}
-                                    className="min-h-11 rounded-md border border-border bg-card px-2.5 text-xs font-semibold text-ink lg:min-h-9"
-                                  >
-                                    {shift > 0 ? `+${shift}d` : `${shift}d`}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
                           </div>
 
                           <div className="relative hidden h-16 flex-1 px-3 lg:block">
