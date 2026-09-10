@@ -450,6 +450,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     supabase.from("approvals").select("*").order("requested_at"),
     supabase.from("discussion_threads").select("*").order("created_at"),
     supabase.from("comments").select("*").order("created_at"),
+    supabase.from("comment_attachments").select("*").order("created_at"),
     supabase.from("mentions").select("*"),
     supabase.from("notifications").select("*").order("created_at", { ascending: false }),
     supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(200),
