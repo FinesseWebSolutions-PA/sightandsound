@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { Crown, Link2, Plus, X } from "lucide-react";
+import { Crown, ExternalLink, Link2, Plus, X } from "lucide-react";
 
 import { ConversationRail } from "@/components/ConversationRail";
 import { DocumentBrowser } from "@/components/DocumentBrowser";
@@ -52,6 +52,7 @@ function SetsTab() {
 
   const canEdit = can.adminConfig && !isClosed(projectId);
   const [newName, setNewName] = useState("");
+  const [newPortal, setNewPortal] = useState("");
   const [selectedId, setSelectedId] = useState(search.set ?? "");
   const [adding, setAdding] = useState(false);
   const { createScene } = useStore();
@@ -69,9 +70,10 @@ function SetsTab() {
 
   const add = async () => {
     if (!newName.trim()) return;
-    const id = await createScene(projectId, newName);
+    const id = await createScene(projectId, newName, newPortal);
     if (id) {
       setNewName("");
+      setNewPortal("");
       setSelectedId(id);
       setAdding(false);
     }
@@ -120,6 +122,17 @@ function SetsTab() {
               if (e.key === "Escape") setAdding(false);
             }}
             placeholder="e.g. Set 4 — The Flood"
+            className="min-h-11 flex-1 rounded-md border border-border bg-card px-3 text-base text-ink focus:ring-2 focus:ring-ring focus:outline-none sm:text-sm"
+          />
+          <input
+            aria-label="Portal (set simulation) link"
+            value={newPortal}
+            onChange={(e) => setNewPortal(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void add();
+              if (e.key === "Escape") setAdding(false);
+            }}
+            placeholder="Portal link (optional)"
             className="min-h-11 flex-1 rounded-md border border-border bg-card px-3 text-base text-ink focus:ring-2 focus:ring-ring focus:outline-none sm:text-sm"
           />
           <button
@@ -428,6 +441,42 @@ function SetDetail({
                         set.lag_days ? ` + ${set.lag_days} day gap` : ""
                       }`
                     : "Starts on its own"}
+                </span>
+              )}
+            </dd>
+          </div>
+
+          <div className="sm:col-span-2">
+            <dt className="rule-label">Portal (set simulation)</dt>
+            <dd className="mt-1 space-y-2">
+              {canEdit && (
+                <input
+                  type="url"
+                  aria-label="Portal (set simulation) link"
+                  defaultValue={set.portal_url}
+                  placeholder="https://…"
+                  onBlur={(e) => {
+                    if (e.target.value.trim() !== set.portal_url)
+                      void updateScene(set.id, projectId, {
+                        portal_link_url: e.target.value,
+                      });
+                  }}
+                  className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink focus:ring-2 focus:ring-ring focus:outline-none sm:text-sm"
+                />
+              )}
+              {set.portal_url ? (
+                <a
+                  href={set.portal_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-gold-deep hover:underline"
+                >
+                  Open Portal
+                  <ExternalLink aria-hidden className="size-3.5" />
+                </a>
+              ) : (
+                <span className="block text-xs text-ink-soft">
+                  No simulation linked for this set yet.
                 </span>
               )}
             </dd>
