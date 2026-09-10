@@ -331,16 +331,11 @@ function TimelineTab() {
   };
 
 
-  // A deep link to one work item's conversation lands on the list view.
-  const initialView: ViewId = search.task
-    ? "list"
-    : views.some((v) => v.id === search.view)
-      ? (search.view as ViewId)
-      : "master";
+  const initialView: ViewId = views.some((v) => v.id === search.view)
+    ? (search.view as ViewId)
+    : "master";
   const [view, setView] = useState<ViewId>(initialView);
-  useEffect(() => {
-    if (search.task) setView("list");
-  }, [search.task]);
+
 
   const activeView = views.find((v) => v.id === view) ?? views[0];
 
