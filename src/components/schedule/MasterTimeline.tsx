@@ -105,6 +105,7 @@ export function MasterTimeline({
     isClosed,
     previewReschedule,
     setTaskDates,
+    updateScene,
   } = useStore();
   const readOnly = isClosed(projectId) || !can.editCoreTimeline;
   const wide = useWideScreen();
@@ -154,7 +155,7 @@ export function MasterTimeline({
   const locked = readOnly || clean;
 
   /** The chart window covers every set and work item on screen. */
-  const span = useMemo(
+  const baseSpan = useMemo(
     () =>
       spanOfDates([
         ...projectTasks.flatMap((t) => [
@@ -172,6 +173,21 @@ export function MasterTimeline({
       ]),
     [projectTasks, projectScenes],
   );
+
+  /**
+   * The calendar keeps going in both directions: scrolling near either edge adds
+   * more weeks to the window, so you can always keep going.
+   */
+  const [pad, setPad] = useState({ before: 0, after: 0 });
+  const span = useMemo(
+    () => ({
+      start: addDays(baseSpan.start, -pad.before),
+      end: addDays(baseSpan.end, pad.after),
+    }),
+    [baseSpan, pad],
+  );
+
+
 
 
   const totalDays = Math.max(1, daysBetween(span.start, span.end));
@@ -192,7 +208,8 @@ export function MasterTimeline({
     return () => ro.disconnect();
   }, [wide]);
 
-  const fitZoom = Math.max(ZOOM_MIN, viewportWidth / totalDays);
+  const baseDays = Math.max(1, daysBetween(baseSpan.start, baseSpan.end));
+  const fitZoom = Math.max(ZOOM_MIN, viewportWidth / baseDays);
   const chartWidth = Math.round(totalDays * pxPerDay);
 
   /** Open on the whole run so the shape of the production reads at a glance. */
@@ -202,6 +219,35 @@ export function MasterTimeline({
     fitted.current = true;
     setPxPerDay(fitZoom);
   }, [fitZoom, wide]);
+
+  /* Endless calendar: grow the window whenever a scroll reaches either edge. */
+  const shiftAfterGrow = useRef(0);
+  const growing = useRef(false);
+  const CHUNK = 56; // days added each time
+
+  const onChartScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el || growing.current) return;
+    const px = zoomRef.current;
+    if (el.scrollLeft < 200) {
+      growing.current = true;
+      shiftAfterGrow.current = CHUNK * px;
+      setPad((p) => ({ ...p, before: p.before + CHUNK }));
+    } else if (el.scrollWidth - el.scrollLeft - el.clientWidth < 200) {
+      growing.current = true;
+      setPad((p) => ({ ...p, after: p.after + CHUNK }));
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el && shiftAfterGrow.current) {
+      el.scrollLeft += shiftAfterGrow.current;
+      shiftAfterGrow.current = 0;
+    }
+    growing.current = false;
+  }, [pad]);
+
 
 
   const setZoom = useCallback(
@@ -452,6 +498,86 @@ export function MasterTimeline({
     setPending(null);
   };
 
+  /* ---------------- drag a set's dates on the chart ---------------- */
+
+  const canDragSets = !readOnly && can.adminConfig;
+  const [sDrag, setSDrag] = useState<{
+    sceneId: string;
+    kind: "move" | "start" | "end";
+    startX: number;
+    days: number;
+  } | null>(null);
+
+  const beginSetDrag = (
+    sceneId: string,
+    kind: "move" | "start" | "end",
+    e: React.PointerEvent,
+  ) => {
+    if (!canDragSets) return;
+    e.preventDefault();
+    e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    setSDrag({ sceneId, kind, startX: e.clientX, days: 0 });
+  };
+
+  /** Sets that follow the one that moved slide along with it. */
+  const cascadeFrom = useCallback(
+    (sceneId: string, finish: string) => {
+      let cursorId = sceneId;
+      let cursorFinish = finish;
+      const guard = new Set<string>([sceneId]);
+      for (;;) {
+        const next = projectScenes.find((s) => s.depends_on_scene_id === cursorId);
+        if (!next || guard.has(next.id)) break;
+        guard.add(next.id);
+        const length = Math.max(0, daysBetween(next.start_date, next.due_date));
+        const start = addDays(cursorFinish, 1 + (next.lag_days || 0));
+        const due = addDays(start, length);
+        void updateScene(next.id, projectId, { start_date: start, due_date: due });
+        cursorId = next.id;
+        cursorFinish = due;
+      }
+    },
+    [projectScenes, updateScene, projectId],
+  );
+
+  useEffect(() => {
+    if (!sDrag) return;
+    const scene = projectScenes.find((s) => s.id === sDrag.sceneId);
+    if (!scene) return;
+    const onMove = (e: PointerEvent) => {
+      const days = Math.round((e.clientX - sDrag.startX) / pxPerDay);
+      setSDrag((cur) => (cur && cur.days !== days ? { ...cur, days } : cur));
+    };
+    const onUp = () => {
+      const { kind, days } = sDrag;
+      setSDrag(null);
+      if (!days) return;
+      const start =
+        kind === "end" ? scene.start_date : addDays(scene.start_date || todayISO, days);
+      const due = kind === "start" ? scene.due_date : addDays(scene.due_date || todayISO, days);
+      if (daysBetween(start, due) < 0) return;
+      const patch =
+        kind === "start"
+          ? { start_date: start }
+          : kind === "end"
+            ? { due_date: due }
+            : { start_date: start, due_date: due };
+      void Promise.resolve(updateScene(scene.id, projectId, patch)).then(() =>
+        cascadeFrom(scene.id, due),
+      );
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [sDrag, projectScenes, pxPerDay, updateScene, projectId, cascadeFrom]);
+
+
   /* ---------------- render ---------------- */
 
   const detail = openTask ? taskById(openTask) : undefined;
@@ -609,7 +735,7 @@ export function MasterTimeline({
       )}
 
       <div className="surface-card overflow-hidden">
-        <div ref={scrollRef} className="overflow-x-auto">
+        <div ref={scrollRef} onScroll={onChartScroll} className="overflow-x-auto">
           <div ref={wrapRef} className="relative" style={wide ? { width: NAME_COL + chartWidth } : undefined}>
             {/* axis */}
             {wide && (
@@ -788,24 +914,69 @@ export function MasterTimeline({
                               className="absolute inset-y-0 w-0.5 bg-gold"
                             />
                           )}
-                          {/* committed plan: the bar people read */}
-                          <button
-                            type="button"
-                            ref={(el) => {
-                              if (el) barRefs.current.set(`set-${s.id}`, el);
-                              else barRefs.current.delete(`set-${s.id}`);
-                            }}
-                            onClick={() => setOpenSetId(s.id)}
-                            onMouseEnter={() => setHoveredScene(s.id)}
-                            onMouseLeave={() => setHoveredScene(null)}
-                            style={{ left: setPlanned.left, width: setPlanned.width }}
-                            title={`${s.name} · ${formatDate(s.start_date)} – ${formatDate(s.due_date)}`}
-                            className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-md border border-ink bg-ink px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm ${
-                              setDimmed ? "opacity-30" : ""
-                            }`}
-                          >
-                            {setPlanned.width > 84 ? s.name : ""}
-                          </button>
+                          {/* committed plan: the bar people read, and drag */}
+                          {(() => {
+                            const dragging = sDrag?.sceneId === s.id;
+                            const shift = dragging ? sDrag.days * pxPerDay : 0;
+                            const left =
+                              setPlanned.left + (dragging && sDrag.kind !== "end" ? shift : 0);
+                            const width =
+                              setPlanned.width +
+                              (dragging && sDrag.kind === "end" ? shift : 0) +
+                              (dragging && sDrag.kind === "start" ? -shift : 0);
+                            return (
+                              <>
+                                <button
+                                  type="button"
+                                  ref={(el) => {
+                                    if (el) barRefs.current.set(`set-${s.id}`, el);
+                                    else barRefs.current.delete(`set-${s.id}`);
+                                  }}
+                                  onPointerDown={(e) => {
+                                    if (e.button === 0 && canDragSets) beginSetDrag(s.id, "move", e);
+                                  }}
+                                  onClick={() => {
+                                    if (!sDrag) setOpenSetId(s.id);
+                                  }}
+                                  onMouseEnter={() => setHoveredScene(s.id)}
+                                  onMouseLeave={() => setHoveredScene(null)}
+                                  style={{ left, width: Math.max(pxPerDay, width) }}
+                                  title={`${s.name} · ${formatDate(s.start_date)} – ${formatDate(s.due_date)}${
+                                    canDragSets ? " · drag the bar or its ends to reschedule" : ""
+                                  }`}
+                                  className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-md border border-ink bg-ink px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm ${
+                                    setDimmed ? "opacity-30" : ""
+                                  } ${canDragSets ? "cursor-grab" : "cursor-pointer"} ${
+                                    dragging ? "ring-2 ring-gold" : ""
+                                  }`}
+                                >
+                                  {Math.max(pxPerDay, width) > 84 ? s.name : ""}
+                                  {canDragSets && (
+                                    <>
+                                      <span
+                                        aria-hidden
+                                        onPointerDown={(e) => beginSetDrag(s.id, "start", e)}
+                                        className="absolute inset-y-0 left-0 w-2.5 cursor-ew-resize bg-cream/25"
+                                      />
+                                      <span
+                                        aria-hidden
+                                        onPointerDown={(e) => beginSetDrag(s.id, "end", e)}
+                                        className="absolute inset-y-0 right-0 w-2.5 cursor-ew-resize bg-cream/25"
+                                      />
+                                    </>
+                                  )}
+                                </button>
+                                {dragging && sDrag.days !== 0 && (
+                                  <span
+                                    style={{ left, top: 2 }}
+                                    className="absolute rounded-md border border-ink bg-card px-1.5 py-0.5 text-[11px] font-semibold text-ink shadow-sm"
+                                  >
+                                    {sDrag.days > 0 ? `+${sDrag.days}` : sDrag.days} days
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()}
                           {/* slip past the committed finish, drawn as an overhang */}
                           {slip > 0 && (
                             <span
