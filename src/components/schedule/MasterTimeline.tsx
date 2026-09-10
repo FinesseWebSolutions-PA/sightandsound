@@ -207,7 +207,8 @@ export function MasterTimeline({
     return () => ro.disconnect();
   }, [wide]);
 
-  const fitZoom = Math.max(ZOOM_MIN, viewportWidth / totalDays);
+  const baseDays = Math.max(1, daysBetween(baseSpan.start, baseSpan.end));
+  const fitZoom = Math.max(ZOOM_MIN, viewportWidth / baseDays);
   const chartWidth = Math.round(totalDays * pxPerDay);
 
   /** Open on the whole run so the shape of the production reads at a glance. */
@@ -217,6 +218,35 @@ export function MasterTimeline({
     fitted.current = true;
     setPxPerDay(fitZoom);
   }, [fitZoom, wide]);
+
+  /* Endless calendar: grow the window whenever a scroll reaches either edge. */
+  const shiftAfterGrow = useRef(0);
+  const growing = useRef(false);
+  const CHUNK = 56; // days added each time
+
+  const onChartScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el || growing.current) return;
+    const px = zoomRef.current;
+    if (el.scrollLeft < 200) {
+      growing.current = true;
+      shiftAfterGrow.current = CHUNK * px;
+      setPad((p) => ({ ...p, before: p.before + CHUNK }));
+    } else if (el.scrollWidth - el.scrollLeft - el.clientWidth < 200) {
+      growing.current = true;
+      setPad((p) => ({ ...p, after: p.after + CHUNK }));
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el && shiftAfterGrow.current) {
+      el.scrollLeft += shiftAfterGrow.current;
+      shiftAfterGrow.current = 0;
+    }
+    growing.current = false;
+  }, [pad]);
+
 
 
   const setZoom = useCallback(
