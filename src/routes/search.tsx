@@ -154,7 +154,7 @@ function SearchPage() {
           if (rows.length === 0) return null;
           return (
             <section key={group.kind} className="surface-card overflow-hidden">
-              <header className="flex items-center gap-2 border-b border-border bg-cream-soft px-4 py-3">
+              <header className="flex items-center gap-2 panel-header px-4 py-3">
                 <group.icon aria-hidden className="size-4 text-ink-soft" />
                 <h2 className="text-sm font-semibold text-ink">{group.label}</h2>
                 <span className="text-xs text-ink-soft">{rows.length}</span>

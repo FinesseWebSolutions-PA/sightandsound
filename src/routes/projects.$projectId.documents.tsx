@@ -187,7 +187,7 @@ function DocumentsTab() {
           <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[34rem] text-sm">
               <thead>
-                <tr className="border-b border-border bg-cream-soft text-left">
+                <tr className="panel-header text-left">
                   <th className="rule-label px-4 py-2.5">Document</th>
                   <th className="rule-label px-4 py-2.5">Department</th>
                   <th className="rule-label px-4 py-2.5">Ver.</th>
@@ -388,7 +388,7 @@ function DocumentsTab() {
             </div>
 
             <div className="surface-card overflow-hidden">
-              <header className="flex items-center gap-2 border-b border-border bg-cream-soft px-4 py-2.5">
+              <header className="flex items-center gap-2 panel-header px-4 py-2.5">
                 <History aria-hidden className="size-4 text-ink-soft" />
                 <h4 className="text-sm font-semibold text-ink">Version history</h4>
               </header>
@@ -420,7 +420,7 @@ function DocumentsTab() {
             </div>
 
             <div className="surface-card overflow-hidden">
-              <header className="border-b border-border bg-cream-soft px-4 py-2.5">
+              <header className="panel-header px-4 py-2.5">
                 <h4 className="text-sm font-semibold text-ink">Review record</h4>
               </header>
               <ul className="divide-y divide-border">

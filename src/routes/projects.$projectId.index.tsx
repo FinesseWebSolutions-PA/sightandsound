@@ -55,7 +55,7 @@ function Panel({
 }) {
   return (
     <section className="surface-card overflow-hidden">
-      <header className="flex items-center gap-2 border-b border-border bg-cream-soft px-4 py-3">
+      <header className="flex items-center gap-2 panel-header px-4 py-3">
         <Icon aria-hidden className="size-4 text-ink-soft" />
         <h2 className="text-sm font-semibold text-ink">{title}</h2>
         {action && <div className="ml-auto">{action}</div>}

@@ -68,7 +68,7 @@ export function DepartmentWorkQueue({ projectId }: { projectId: string }) {
           });
           return (
             <section key={dept.id} className="surface-card overflow-hidden">
-              <header className="border-b border-border bg-cream-soft px-4 py-3">
+              <header className="panel-header px-4 py-3">
                 <h3 className="text-base font-semibold text-ink">{dept.name}</h3>
                 <p className="mt-0.5 text-xs text-ink-soft">
                   {open.length} open · {blocked.length} blocked · {dueSoon.length} due within two

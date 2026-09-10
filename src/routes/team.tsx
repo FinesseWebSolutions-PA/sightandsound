@@ -64,7 +64,7 @@ function GlobalTeamPage() {
       </header>
 
       <section className="surface-card overflow-hidden">
-        <header className="border-b border-border bg-cream-soft px-4 py-3">
+        <header className="panel-header px-4 py-3">
           <h2 className="text-sm font-semibold text-ink">People</h2>
         </header>
         <ul className="divide-y divide-border">
@@ -127,7 +127,7 @@ function GlobalTeamPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         {departments.map((dept) => (
           <section key={dept.id} className="surface-card overflow-hidden">
-            <header className="flex flex-wrap items-center gap-2 border-b border-border bg-cream-soft px-4 py-3">
+            <header className="flex flex-wrap items-center gap-2 panel-header px-4 py-3">
               <Users aria-hidden className="size-4 text-ink-soft" />
               <h2 className="text-sm font-semibold text-ink">{dept.name}</h2>
               <span className="code-id">{dept.code}</span>

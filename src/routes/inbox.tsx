@@ -355,7 +355,7 @@ function MyWorkPage() {
         if (rows.length === 0) return null;
         return (
           <section key={bucket.id} className="surface-card overflow-hidden">
-            <header className="flex flex-wrap items-center gap-2 border-b border-border bg-cream-soft px-4 py-3">
+            <header className="flex flex-wrap items-center gap-2 panel-header px-4 py-3">
               <h2 className="text-sm font-semibold text-ink">{bucket.label}</h2>
               <span className="text-xs text-ink-soft">{rows.length}</span>
               {rows.some((r) => !r.read) && (

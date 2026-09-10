@@ -119,7 +119,7 @@ function TeamTab() {
 
           return (
             <section key={dept.id} className="surface-card overflow-hidden">
-              <header className="flex flex-wrap items-center gap-2 border-b border-border bg-cream-soft px-4 py-3">
+              <header className="flex flex-wrap items-center gap-2 panel-header px-4 py-3">
                 <Users aria-hidden className="size-4 text-ink-soft" />
                 <h3 className="text-sm font-semibold text-ink">{dept.name}</h3>
                 <span className="code-id">{dept.code}</span>
@@ -263,7 +263,7 @@ function TeamTab() {
       </div>
 
       <section className="surface-card overflow-x-auto">
-        <header className="border-b border-border bg-cream-soft px-4 py-3">
+        <header className="panel-header px-4 py-3">
           <h3 className="text-sm font-semibold text-ink">Everyone with access</h3>
         </header>
         <ul className="divide-y divide-border lg:hidden">
