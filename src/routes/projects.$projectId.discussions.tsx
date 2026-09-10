@@ -101,7 +101,7 @@ function UpdatesTab() {
         {/* Conversation list — the left rail, like a chat app's channel list. */}
         <aside
           className={cn(
-            "surface-card flex flex-col overflow-hidden",
+            "surface-card flex min-w-0 flex-col overflow-hidden",
             active && picked ? "hidden lg:flex" : "flex",
           )}
         >
@@ -178,7 +178,7 @@ function UpdatesTab() {
         </aside>
 
         {/* The open conversation. */}
-        <div className={cn("space-y-2", active && picked ? "block" : "hidden lg:block")}>
+        <div className={cn("min-w-0 space-y-2", active && picked ? "block" : "hidden lg:block")}>
           {picked && (
             <button
               type="button"
