@@ -507,6 +507,22 @@ export async function loadProductionData(): Promise<ProductionData> {
 
   const memberships = membershipsRes.data ?? [];
 
+  const projectAssignments: ProjectAssignment[] = (assignmentsRes.data ?? []).map((a) => ({
+    id: a.id,
+    project_id: a.project_id,
+    person_id: a.person_id,
+    department_id: a.department_id,
+    job_title: a.job_title ?? "",
+    is_head: a.is_head ?? false,
+  }));
+
+  const departmentJobTitles: DepartmentJobTitle[] = (jobTitlesRes.data ?? []).map((t) => ({
+    id: t.id,
+    department_id: t.department_id,
+    title: t.title,
+    sort_order: t.sort_order ?? 0,
+  }));
+
   const departments: Department[] = (departmentsRes.data ?? []).map((d) => ({
     id: d.id,
     name: d.name,
