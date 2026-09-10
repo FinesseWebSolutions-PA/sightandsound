@@ -174,25 +174,9 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
   );
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  const [preview, setPreview] = useState<PreviewState | null>(null);
 
   const taskTitle = (id: string) => tasks.find((t) => t.id === id)?.title ?? id;
 
-  async function openPreview(task: Task, shift: number) {
-    const start = addDays(task.start_date, shift);
-    const finish = addDays(task.due_date, shift);
-    setPreview({ task, start, finish, rows: null, error: null });
-    try {
-      const rows = await previewReschedule(task.id, start, finish);
-      setPreview((cur) => (cur && cur.task.id === task.id ? { ...cur, rows } : cur));
-    } catch (err) {
-      setPreview((cur) =>
-        cur && cur.task.id === task.id
-          ? { ...cur, error: err instanceof Error ? err.message : "Could not work that out." }
-          : cur,
-      );
-    }
-  }
 
   const groups: { milestone: Milestone | null; rows: Task[] }[] = [
     ...projectMilestones.map((m) => ({
