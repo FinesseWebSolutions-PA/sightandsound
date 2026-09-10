@@ -481,6 +481,9 @@ export async function loadProductionData(): Promise<ProductionData> {
   const milestones: Milestone[] = milestoneRows.map((m) => {
     const first = tasks.find((t) => t.milestone_id === m.id);
     const project = projects.find((p) => p.id === m.project_id);
+    const mineFloat = tasks
+      .filter((t) => t.milestone_id === m.id && t.total_float_hours !== null)
+      .map((t) => t.total_float_hours as number);
     return {
       id: m.id,
       project_id: m.project_id,
@@ -490,6 +493,12 @@ export async function loadProductionData(): Promise<ProductionData> {
       owner_id: first?.assignee_id || project?.owner_id || "",
       department_id: first?.department_id ?? "",
       is_core: true,
+      forecast_date: dateOnly(m.forecast_date) || dateOnly(m.due_date),
+      actual_date: dateOnly(m.actual_date),
+      criticality: asCriticality(m.criticality),
+      total_float_hours: mineFloat.length ? Math.min(...mineFloat) : null,
+      affects_rehearsal: m.affects_rehearsal ?? false,
+      affects_performance: m.affects_performance ?? false,
     };
   });
 
