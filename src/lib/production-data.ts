@@ -542,6 +542,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     department_id: a.department_id,
     job_title: a.job_title ?? "",
     is_head: a.is_head ?? false,
+    scene_id: a.scene_id ?? "",
   }));
 
   const departmentJobTitles: DepartmentJobTitle[] = (jobTitlesRes.data ?? []).map((t) => ({
