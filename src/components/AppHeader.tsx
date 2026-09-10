@@ -52,7 +52,7 @@ export function AppHeader() {
                 "relative flex min-h-11 items-center px-3 text-sm font-semibold text-ink after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-gold",
             }}
           >
-            Production Portfolio
+            Productions
           </Link>
           <Link
             to="/inbox"
