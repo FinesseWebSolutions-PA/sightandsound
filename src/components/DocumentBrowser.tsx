@@ -159,6 +159,7 @@ export function DocumentBrowser({
     threads,
     comments,
     createThread,
+    currentUserId,
   } = useStore();
   const project = projects.find((p) => p.id === projectId);
   if (!project) return null;
@@ -183,6 +184,8 @@ export function DocumentBrowser({
   }, [openDocumentId]);
 
   const [note, setNote] = useState("");
+  /** A decision is only recorded once the reviewer signs it with their own name. */
+  const [signature, setSignature] = useState("");
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"list" | "grid">("list");
   const [pane, setPane] = useState<"details" | "conversation">("details");
@@ -284,8 +287,12 @@ export function DocumentBrowser({
     setMenuAction(null);
     setMenuOpen(false);
     setNote("");
+    setSignature("");
     setPane("details");
   }, [openedId]);
+  useEffect(() => {
+    setSignature("");
+  }, [menuAction]);
   useEffect(() => {
     if (!menuOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -327,13 +334,22 @@ export function DocumentBrowser({
     });
   };
 
+  /** Who is signing, and whether what they typed matches their own name. */
+  const signerName = personById(currentUserId)?.full_name ?? "";
+  const needsSignature = (decision: string) => decision !== "requested";
+  const signatureOk =
+    signature.trim().toLowerCase() === signerName.trim().toLowerCase() && signerName !== "";
+
   const act = async (decision: "requested" | "approved" | "changes_requested" | "rejected") => {
     if (!opened || sending) return;
+    if (needsSignature(decision) && !signatureOk) return;
+    const signedLine = needsSignature(decision) ? ` Signed: ${signerName}.` : "";
     setSending(true);
     try {
-      recordApproval(opened.id, decision, note || "No note added.");
+      recordApproval(opened.id, decision, `${note || "No note added."}${signedLine}`);
       await postNoteToConversation(`${decisionLabel[decision]} —`);
       setNote("");
+      setSignature("");
     } finally {
       setSending(false);
     }
@@ -1018,10 +1034,33 @@ export function DocumentBrowser({
                             ariaLabel="Review note"
                             placeholder="What did you check, or what needs to change? Type @ to bring someone in"
                           />
+                          {needsSignature(decision) && (
+                            <div>
+                              <label
+                                htmlFor="review-signature"
+                                className="text-xs font-medium text-ink-soft"
+                              >
+                                Sign this decision — type your full name
+                              </label>
+                              <input
+                                id="review-signature"
+                                value={signature}
+                                onChange={(e) => setSignature(e.target.value)}
+                                autoComplete="off"
+                                placeholder={signerName}
+                                className="mt-1 min-h-11 w-full rounded-md border border-border bg-card px-3 font-display text-lg text-ink"
+                              />
+                              <p className="mt-1 text-xs text-ink-soft">
+                                {signatureOk
+                                  ? `Signing as ${signerName} · ${formatDate(new Date().toISOString())}`
+                                  : `Type “${signerName}” exactly to sign. This name is recorded with the decision.`}
+                              </p>
+                            </div>
+                          )}
                           <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
-                              disabled={sending}
+                              disabled={sending || (needsSignature(decision) && !signatureOk)}
                               onClick={() => {
                                 void act(decision);
                                 setMenuAction(null);
