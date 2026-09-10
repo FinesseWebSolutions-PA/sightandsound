@@ -69,6 +69,7 @@ import {
   type ReschedulePreviewRow,
   type Role,
   type Scene,
+  type SetStatus,
   type StagedAttachment,
   type Task,
   type TaskDependency,
