@@ -99,7 +99,6 @@ export function MasterTimeline({
 }) {
   const {
     tasks,
-    milestones,
     scenes,
     can,
     isClosed,
@@ -109,13 +108,7 @@ export function MasterTimeline({
   const readOnly = isClosed(projectId) || !can.editCoreTimeline;
   const wide = useWideScreen();
 
-  const projectMilestones = useMemo(
-    () =>
-      milestones
-        .filter((m) => m.project_id === projectId)
-        .sort((a, b) => a.due_date.localeCompare(b.due_date)),
-    [milestones, projectId],
-  );
+
   const projectTasks = useMemo(
     () => tasks.filter((t) => t.project_id === projectId),
     [tasks, projectId],
@@ -158,10 +151,8 @@ export function MasterTimeline({
 
   const locked = readOnly || clean;
 
-  const span = useMemo(
-    () => spanOf(projectTasks, projectMilestones),
-    [projectTasks, projectMilestones],
-  );
+  const span = useMemo(() => spanOf(projectTasks, []), [projectTasks]);
+
   const totalDays = Math.max(1, daysBetween(span.start, span.end));
 
   /* ---------------- zoom + horizontal scroll ---------------- */

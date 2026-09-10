@@ -47,8 +47,8 @@ export function TaskDetailPanel({
   const {
     tasks,
     documents,
-    milestones,
     scenes,
+
     can,
     setTaskStatus,
     unapprovedDocuments,
