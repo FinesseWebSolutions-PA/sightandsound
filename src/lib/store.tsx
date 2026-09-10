@@ -1060,6 +1060,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setDocumentApprovalRequirement,
       setDocumentFolder,
       setDocumentSet,
+      deleteDocument,
       markNotifications,
       setDepartmentOnProject,
       assignPerson,
