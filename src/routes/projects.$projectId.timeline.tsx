@@ -149,9 +149,8 @@ function TaskCards({
   onStatus,
   taskTitle,
   emptyLabel,
-  openTaskId,
-  onToggleThread,
-  highlightCommentId,
+  onOpenTask,
+
 }: TaskViewProps) {
   if (rows.length === 0) {
     return <p className="px-4 py-3 text-sm text-ink-soft lg:hidden">{emptyLabel}</p>;
@@ -190,12 +189,8 @@ function TaskCards({
               </p>
             )}
             <StatusControl task={task} canUpdate={canUpdate} onStatus={onStatus} size="touch" />
-            <TaskConversation
-              task={task}
-              open={openTaskId === task.id}
-              onToggle={() => onToggleThread(task.id)}
-              {...(highlightCommentId ? { highlightCommentId } : {})}
-            />
+            <TaskCommentsButton task={task} onOpen={() => onOpenTask(task.id)} />
+
           </li>
         );
       })}
@@ -209,9 +204,8 @@ function TaskTable({
   onStatus,
   taskTitle,
   emptyLabel,
-  openTaskId,
-  onToggleThread,
-  highlightCommentId,
+  onOpenTask,
+
 }: TaskViewProps) {
   return (
     <div className="hidden overflow-x-auto lg:block">
@@ -273,12 +267,8 @@ function TaskTable({
               </tr>
               <tr>
                 <td colSpan={6} className="px-4 pb-3">
-                  <TaskConversation
-                    task={task}
-                    open={openTaskId === task.id}
-                    onToggle={() => onToggleThread(task.id)}
-                    {...(highlightCommentId ? { highlightCommentId } : {})}
-                  />
+                  <TaskCommentsButton task={task} onOpen={() => onOpenTask(task.id)} />
+
                 </td>
               </tr>
               </Fragment>
