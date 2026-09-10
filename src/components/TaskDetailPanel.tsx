@@ -44,8 +44,18 @@ export function TaskDetailPanel({
   /** Present only when the viewer may restructure this work item. */
   onEdit?: (taskId: string) => void;
 }) {
-  const { tasks, documents, milestones, scenes, can, setTaskStatus, isClosed, saveWorkItem, saving } =
-    useStore();
+  const {
+    tasks,
+    documents,
+    milestones,
+    scenes,
+    can,
+    setTaskStatus,
+    unapprovedDocuments,
+    isClosed,
+    saveWorkItem,
+    saving,
+  } = useStore();
   const task = tasks.find((t) => t.id === taskId);
   // An "Ask <Department>" prefill is used once: after the message is sent it is gone.
   const [askUsed, setAskUsed] = useState(false);
@@ -68,6 +78,7 @@ export function TaskDetailPanel({
   if (!task) return null;
 
   const locked = isClosed(task.project_id);
+  const pendingDocs = unapprovedDocuments(task.id);
   const canUpdate = can.updateWork && !locked;
   const dept = departments.find((d) => d.id === task.department_id);
   const milestone = milestones.find((m) => m.id === task.milestone_id);
@@ -171,11 +182,17 @@ export function TaskDetailPanel({
                 className="mt-1 block min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
               >
                 {statusOptions.map((s) => (
-                  <option key={s} value={s}>
+                  <option key={s} value={s} disabled={s === "complete" && pendingDocs.length > 0}>
                     {taskStatusMeta[s].label}
+                    {s === "complete" && pendingDocs.length > 0 ? " (needs approvals)" : ""}
                   </option>
                 ))}
               </select>
+              {pendingDocs.length > 0 && (
+                <span className="mt-1.5 block text-xs text-ink-soft">
+                  Waiting on approval: {pendingDocs.map((d) => d.title).join(", ")}
+                </span>
+              )}
             </label>
           )}
 
