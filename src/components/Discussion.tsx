@@ -523,7 +523,8 @@ export function Discussion({
       t.project_id === projectId &&
       t.context_type === contextType &&
       (taskId === null || t.task_id === taskId) &&
-      (documentId === null || t.document_id === documentId),
+      (documentId === null || t.document_id === documentId) &&
+      (sceneId === null || t.scene_id === sceneId),
   );
 
   // Jumping in from My Work lands on a specific message.
