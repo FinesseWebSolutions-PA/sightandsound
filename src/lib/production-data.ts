@@ -645,6 +645,8 @@ export async function loadProductionData(): Promise<ProductionData> {
     return {
       id: d.id,
       project_id: d.project_id,
+      task_id: d.task_id ?? "",
+      scene_id: d.scene_id ?? "",
       title: d.title,
       kind: dept ? `${dept} document` : "Production document",
       department_id: task?.department_id ?? "",
