@@ -587,7 +587,7 @@ export function DocumentBrowser({
                     onClick={() => setMenuAction(menuAction === "folder" ? null : "folder")}
                     className="flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-ink hover:bg-cream"
                   >
-                    <FolderClosed aria-hidden className="size-4 shrink-0 text-ink-soft" />
+                    <Folder aria-hidden className="size-4 shrink-0 text-ink-soft" />
                     <span className="min-w-0 flex-1 font-medium">
                       {canUpload ? "Move to folder" : "Folder"}
                     </span>
