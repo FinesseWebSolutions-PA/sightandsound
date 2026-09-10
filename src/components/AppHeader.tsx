@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Bell, Inbox, Search } from "lucide-react";
+import { Bell, Inbox, Search, Users } from "lucide-react";
 
 import { people, roleLabels, useStore } from "@/lib/store";
 import type { Role } from "@/lib/production-data";
@@ -85,6 +85,17 @@ export function AppHeader() {
           >
             <Search aria-hidden className="size-4" />
             Search
+          </Link>
+          <Link
+            to="/team"
+            className="relative flex min-h-11 items-center gap-1.5 px-3 text-sm font-medium text-ink-soft transition-colors hover:text-ink"
+            activeProps={{
+              className:
+                "relative flex min-h-11 items-center gap-1.5 px-3 text-sm font-semibold text-ink after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-gold",
+            }}
+          >
+            <Users aria-hidden className="size-4" />
+            Team
           </Link>
         </nav>
 
