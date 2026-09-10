@@ -956,11 +956,13 @@ export function MasterTimeline({
                                       <span
                                         aria-hidden
                                         onPointerDown={(e) => beginSetDrag(s.id, "start", e)}
+                                        onClick={(e) => e.stopPropagation()}
                                         className="absolute inset-y-0 left-0 w-2.5 cursor-ew-resize bg-cream/25"
                                       />
                                       <span
                                         aria-hidden
                                         onPointerDown={(e) => beginSetDrag(s.id, "end", e)}
+                                        onClick={(e) => e.stopPropagation()}
                                         className="absolute inset-y-0 right-0 w-2.5 cursor-ew-resize bg-cream/25"
                                       />
                                     </>
