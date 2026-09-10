@@ -22,6 +22,7 @@ import {
   writeApproval,
   writeComment,
   writeDocumentVersion,
+  removeDocument,
   writeMilestoneDate,
   writeNotificationRead,
   writePortalUrl,
@@ -159,6 +160,7 @@ export type Store = {
   setDocumentApprovalRequirement: (documentId: string, requiresApproval: boolean) => void;
   setDocumentFolder: (documentId: string, folder: string) => void;
   setDocumentSet: (documentId: string, sceneId: string | null) => void;
+  deleteDocument: (documentId: string) => void;
   createThread: (input: {
     projectId: string;
     contextType: ThreadContext;
@@ -657,6 +659,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [allowed, run],
   );
 
+  const deleteDocument = useCallback(
+    (documentId: string) => {
+      if (!allowed(projectOfDocument(documentId), "contribute")) return;
+      run(() => removeDocument(documentId, currentUserIdRef.current));
+    },
+    [allowed, run],
+  );
+
   /* ------------------------------------------------------------- staffing */
 
   const adminGlobal = () => roleRef.current === "admin";
@@ -934,6 +944,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             setDocumentApprovalRequirement,
             setDocumentFolder,
             setDocumentSet,
+            deleteDocument,
             markNotifications,
             projectAssignments: data.projectAssignments,
             departmentJobTitles: data.departmentJobTitles,
@@ -1000,6 +1011,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             setDocumentApprovalRequirement: () => {},
             setDocumentFolder: () => {},
             setDocumentSet: () => {},
+            deleteDocument: () => {},
             createThread: async () => false,
             markNotifications: () => {},
             projectAssignments: [],
@@ -1048,6 +1060,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setDocumentApprovalRequirement,
       setDocumentFolder,
       setDocumentSet,
+      deleteDocument,
       markNotifications,
       setDepartmentOnProject,
       assignPerson,

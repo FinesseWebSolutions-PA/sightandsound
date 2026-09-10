@@ -503,7 +503,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     supabase.from("milestones").select("*").order("sort_order"),
     supabase.from("tasks").select("*").order("sort_order"),
     supabase.from("task_dependencies").select("*"),
-    supabase.from("documents").select("*").order("created_at"),
+    supabase.from("documents").select("*").is("deleted_at", null).order("created_at"),
     supabase.from("document_versions").select("*").order("version_number"),
     supabase.from("approvals").select("*").order("requested_at"),
     supabase.from("discussion_threads").select("*").order("created_at"),
@@ -1503,6 +1503,16 @@ export async function writeDocumentScene(
     .eq("id", documentId);
   if (error) throw new Error(error.message);
   await recordAudit("document", documentId, actorId, "set_changed", { scene_id: sceneId });
+}
+
+/** Soft-deletes a document so it disappears from the production's document list. */
+export async function removeDocument(documentId: string, actorId: string) {
+  const { error } = await supabase
+    .from("documents")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", documentId);
+  if (error) throw new Error(error.message);
+  await recordAudit("document", documentId, actorId, "document_removed", {});
 }
 
 /* --------------------------------------------------------------- staffing */

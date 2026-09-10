@@ -14,6 +14,7 @@ import {
   MessageSquare,
   Send,
   ThumbsDown,
+  Trash2,
   X,
   XCircle,
 } from "lucide-react";
@@ -152,6 +153,7 @@ export function DocumentBrowser({
     recordApproval,
     setDocumentApprovalRequirement,
     addDocumentVersion,
+    deleteDocument,
     isClosed,
     threads,
     comments,
@@ -766,6 +768,28 @@ export function DocumentBrowser({
                           <span className="flex-1">No approval needed</span>
                         </label>
                       </li>
+                    )}
+                    {canUpload && (
+                      <>
+                        <li role="separator" className="my-1 border-t border-border" />
+                        <li role="none">
+                          <button
+                            role="menuitem"
+                            type="button"
+                            onClick={() => {
+                              setMenuOpen(false);
+                              if (window.confirm(`Delete “${opened.title}”? It will be removed from the production's documents but any conversation history stays visible.`)) {
+                                deleteDocument(opened.id);
+                                setOpenedId("");
+                              }
+                            }}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-danger hover:bg-danger-bg"
+                          >
+                            <Trash2 aria-hidden className="size-4" />
+                            <span className="flex-1">Delete document</span>
+                          </button>
+                        </li>
+                      </>
                     )}
                   </ul>
                 </div>
