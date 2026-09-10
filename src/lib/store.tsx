@@ -22,6 +22,7 @@ import {
   writeApproval,
   writeComment,
   writeDocumentVersion,
+  removeDocument,
   writeMilestoneDate,
   writeNotificationRead,
   writePortalUrl,
