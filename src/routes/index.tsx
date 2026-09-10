@@ -135,7 +135,7 @@ function PortfolioPage() {
               </div>
 
               {/* Secondary detail: owner and next date, demoted */}
-              <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-4">
+              <div className="mt-4 flex items-center justify-between gap-3 border-t border-border-strong pt-4">
                 <span className="flex min-w-0 items-center gap-2">
                   <span
                     aria-hidden
