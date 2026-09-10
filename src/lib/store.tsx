@@ -156,6 +156,7 @@ export type Store = {
     contextType: ThreadContext;
     taskId?: string | null;
     documentId?: string | null;
+    sceneId?: string | null;
     subject: string;
     body: string;
     attachments?: StagedAttachment[];
