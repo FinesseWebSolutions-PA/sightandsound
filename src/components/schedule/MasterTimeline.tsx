@@ -30,7 +30,7 @@ import {
   daysBetween,
   placePx,
   slipDays,
-  spanOf,
+  spanOfDates,
   xAt,
   ZOOM_MAX,
   ZOOM_MIN,
