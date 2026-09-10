@@ -84,6 +84,7 @@ export function SetTasksPanel({
       <button
         type="button"
         onClick={() => {
+          setQuickOpen(false);
           setQuickParent(null);
           setQuickTitle("");
         }}
