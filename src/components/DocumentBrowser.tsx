@@ -225,6 +225,10 @@ export function DocumentBrowser({
     return d.folder === place.name && !d.scene_id;
   });
 
+  /** Only a document you can actually see in the current folder opens on the right. */
+  const selected = visibleDocs.find((d) => d.id === selectedId);
+
+
   const [sending, setSending] = useState(false);
   /** Which action row in the document menu is open; only one at a time. */
   type MenuAction =
