@@ -1778,8 +1778,16 @@ export type NewProductionInput = {
   startDate: string | null;
   targetCloseDate: string | null;
   departmentIds: string[];
+  /** People staffed on the production at creation time. */
+  assignments: {
+    personId: string;
+    departmentId: string;
+    jobTitle: string;
+    isHead: boolean;
+  }[];
   actorId: string;
 };
+
 
 /** Every production in this build is Lancaster; venue stays in the schema only. */
 const LANCASTER = "Lancaster, PA";
