@@ -398,6 +398,8 @@ export function MasterTimeline({
     const base = wrap.getBoundingClientRect();
     setSurfaceHeight(base.height);
     const next: Arrow[] = [];
+    const chartLeft = NAME_COL;
+    const chartRight = NAME_COL + chartWidth;
     for (const dep of taskDependencies) {
       const fromEl = barRefs.current.get(dep.depends_on_task_id);
       const toEl = barRefs.current.get(dep.task_id);
@@ -407,12 +409,15 @@ export function MasterTimeline({
       const b = toEl.getBoundingClientRect();
       const fromEnd = dep.type === "start_to_start" || dep.type === "start_to_finish";
       const toEnd = dep.type === "finish_to_finish" || dep.type === "start_to_finish";
+      const x1 = (fromEnd ? a.left : a.right) - base.left;
+      const x2 = (toEnd ? b.right : b.left) - base.left;
+      if (x2 < chartLeft || x1 > chartRight) continue;
       next.push({
         id: dep.id,
         label: `${dependencyTypeLabel[dep.type]}${dep.lag_hours ? ` +${dep.lag_hours}h` : ""}`,
-        x1: (fromEnd ? a.left : a.right) - base.left,
+        x1: Math.max(chartLeft, x1),
         y1: a.top + a.height / 2 - base.top,
-        x2: (toEnd ? b.right : b.left) - base.left,
+        x2: Math.max(chartLeft, Math.min(chartRight, x2)),
         y2: b.top + b.height / 2 - base.top,
         from: dep.depends_on_task_id,
         to: dep.task_id,
@@ -426,19 +431,22 @@ export function MasterTimeline({
       if (!fromEl || !toEl) continue;
       const a = fromEl.getBoundingClientRect();
       const b = toEl.getBoundingClientRect();
+      const x1 = a.right - base.left;
+      const x2 = b.left - base.left;
+      if (x2 < chartLeft || x1 > chartRight) continue;
       next.push({
         id: `set-chain-${s.id}`,
         label: s.lag_days ? `then +${s.lag_days}d` : "then",
-        x1: a.right - base.left,
+        x1: Math.max(chartLeft, x1),
         y1: a.top + a.height / 2 - base.top,
-        x2: b.left - base.left,
+        x2: Math.max(chartLeft, Math.min(chartRight, x2)),
         y2: b.top + b.height / 2 - base.top,
         from: `set-${s.depends_on_scene_id}`,
         to: `set-${s.id}`,
       });
     }
     setArrows(next);
-  }, [layoutKey, wide, visibleTaskIds, projectScenes]);
+  }, [layoutKey, wide, visibleTaskIds, projectScenes, chartWidth]);
 
   /* ---------------- drag to reschedule ---------------- */
 
@@ -817,10 +825,14 @@ export function MasterTimeline({
                 height={surfaceHeight}
               >
                 <defs>
+                  <clipPath id="gantt-clip">
+                    <rect x={NAME_COL} y={0} width={chartWidth} height={surfaceHeight} />
+                  </clipPath>
                   <marker id="gantt-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
                     <path d="M0,0 L7,3.5 L0,7 Z" fill="currentColor" />
                   </marker>
                 </defs>
+                <g clipPath="url(#gantt-clip)">
                 {arrows.map((a) => {
                   const lit = setChain
                     ? setChain.has(a.from.replace("set-", "")) &&
@@ -855,6 +867,7 @@ export function MasterTimeline({
                     </g>
                   );
                 })}
+                </g>
               </svg>
             )}
 

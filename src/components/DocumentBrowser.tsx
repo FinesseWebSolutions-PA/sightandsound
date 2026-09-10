@@ -250,7 +250,9 @@ export function DocumentBrowser({
 
   /** Uploading a file straight into wherever you're standing. */
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const versionFileInputRef = useRef<HTMLInputElement>(null);
   const [needsApproval, setNeedsApproval] = useState(true);
+  const [versionFile, setVersionFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const addFiles = async (files: File[]) => {
     if (files.length === 0 || uploading) return;
@@ -288,6 +290,7 @@ export function DocumentBrowser({
     setMenuOpen(false);
     setNote("");
     setSignature("");
+    setVersionFile(null);
     setPane("details");
   }, [openedId]);
   useEffect(() => {
@@ -1082,8 +1085,22 @@ export function DocumentBrowser({
                     })()}
 
                     {menuAction === "version" && canUpload && (
-                      <div className="space-y-2 rounded-md border border-border bg-cream-soft px-3 py-3">
+                      <div className="space-y-3 rounded-md border border-border bg-cream-soft px-3 py-3">
                         <p className="text-xs font-medium text-ink-soft">Upload new version</p>
+                        <input
+                          ref={versionFileInputRef}
+                          type="file"
+                          className="sr-only"
+                          onChange={(e) => setVersionFile(e.target.files?.[0] ?? null)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => versionFileInputRef.current?.click()}
+                          className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream"
+                        >
+                          <FileUp aria-hidden className="size-4" />
+                          {versionFile ? versionFile.name : "Choose file"}
+                        </button>
                         <MentionInput
                           value={note}
                           onChange={setNote}
@@ -1094,12 +1111,20 @@ export function DocumentBrowser({
                         <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
-                            disabled={sending}
+                            disabled={sending || !versionFile}
                             onClick={() => {
-                              addDocumentVersion(opened.id, note);
-                              void postNoteToConversation("New version uploaded —");
-                              setNote("");
-                              setMenuAction(null);
+                              if (!versionFile) return;
+                              setSending(true);
+                              addDocumentVersion(opened.id, versionFile, note)
+                                .then((ok) => {
+                                  if (ok) {
+                                    void postNoteToConversation("New version uploaded —");
+                                    setNote("");
+                                    setVersionFile(null);
+                                    setMenuAction(null);
+                                  }
+                                })
+                                .finally(() => setSending(false));
                             }}
                             className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-ink-soft disabled:opacity-60"
                           >
@@ -1107,7 +1132,10 @@ export function DocumentBrowser({
                           </button>
                           <button
                             type="button"
-                            onClick={() => setMenuAction(null)}
+                            onClick={() => {
+                              setMenuAction(null);
+                              setVersionFile(null);
+                            }}
                             className="inline-flex min-h-11 items-center rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream"
                           >
                             Cancel

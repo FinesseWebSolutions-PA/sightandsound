@@ -245,6 +245,15 @@ export type Comment = {
   created_at: string;
 };
 
+/** A single emoji reaction on a message. */
+export type CommentReaction = {
+  id: string;
+  comment_id: string;
+  person_id: string;
+  emoji: string;
+  created_at: string;
+};
+
 /** A file or photo shared inside a conversation. */
 export type CommentAttachment = {
   id: string;
@@ -315,6 +324,7 @@ export type ProductionData = {
   discussionThreads: DiscussionThread[];
   comments: Comment[];
   commentAttachments: CommentAttachment[];
+  commentReactions: CommentReaction[];
   mentions: Mention[];
   notifications: Notification[];
   auditLog: AuditEntry[];
@@ -492,6 +502,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     approvalsRes,
     threadsRes,
     commentsRes,
+    reactionsRes,
     attachmentsRes,
     mentionsRes,
     notificationsRes,
@@ -513,6 +524,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     supabase.from("approvals").select("*").order("requested_at"),
     supabase.from("discussion_threads").select("*").order("created_at"),
     supabase.from("comments").select("*").order("created_at"),
+    supabase.from("comment_reactions").select("*").order("created_at"),
     supabase.from("comment_attachments").select("*").order("created_at"),
     supabase.from("mentions").select("*"),
     supabase.from("notifications").select("*").order("created_at", { ascending: false }),
@@ -536,6 +548,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     approvalsRes,
     threadsRes,
     commentsRes,
+    reactionsRes,
     attachmentsRes,
     mentionsRes,
     notificationsRes,
@@ -859,6 +872,14 @@ export async function loadProductionData(): Promise<ProductionData> {
     created_at: a.created_at,
   }));
 
+  const commentReactions: CommentReaction[] = (reactionsRes.data ?? []).map((r) => ({
+    id: r.id,
+    comment_id: r.comment_id,
+    person_id: r.person_id,
+    emoji: r.emoji,
+    created_at: r.created_at,
+  }));
+
 
   const discussionThreads: DiscussionThread[] = (threadsRes.data ?? []).map((t) => {
     const opener = comments.find((c) => c.thread_id === t.id);
@@ -992,6 +1013,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     discussionThreads,
     comments,
     commentAttachments,
+    commentReactions,
     mentions,
     notifications,
     auditLog,
@@ -1124,6 +1146,74 @@ export async function writeDocumentVersion(
   if (docError) throw new Error(docError.message);
   await recordAudit("document_version", data.id, actorId, "version_uploaded", {
     version_number: nextVersion,
+  });
+}
+
+/** Uploads one file for a document revision and returns the staged key. */
+export async function uploadDocumentVersion(
+  file: File,
+  projectId: string,
+  documentId: string,
+): Promise<StagedAttachment> {
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    throw new Error(`${file.name} is larger than 25 MB.`);
+  }
+  const key = `${projectId}/documents/${documentId}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+  const { error } = await supabase.storage.from(CHAT_BUCKET).upload(key, file, {
+    contentType: file.type || "application/octet-stream",
+    upsert: false,
+  });
+  if (error) throw new Error(error.message);
+  return {
+    storage_key: key,
+    file_name: file.name,
+    mime_type: file.type || "application/octet-stream",
+    byte_size: file.size,
+  };
+}
+
+/** Creates a real document version from an uploaded file. */
+export async function writeDocumentVersionFile(
+  documentId: string,
+  file: File,
+  note: string,
+  actorId: string,
+) {
+  const { data: doc, error: docFetchError } = await supabase
+    .from("documents")
+    .select("project_id, title")
+    .eq("id", documentId)
+    .single();
+  if (docFetchError) throw new Error(docFetchError.message);
+  if (!doc) throw new Error("Document not found");
+  const { data: versions } = await supabase
+    .from("document_versions")
+    .select("version_number")
+    .eq("document_id", documentId)
+    .order("version_number", { ascending: false })
+    .limit(1);
+  const nextVersion = (versions && versions.length > 0 ? versions[0]?.version_number ?? 0 : 0) + 1;
+  const uploaded = await uploadDocumentVersion(file, doc.project_id, documentId);
+  const { data, error } = await supabase
+    .from("document_versions")
+    .insert({
+      document_id: documentId,
+      version_number: nextVersion,
+      storage_key: uploaded.storage_key,
+      uploaded_by: actorId,
+      change_note: note || "New version uploaded",
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+  const { error: docError } = await supabase
+    .from("documents")
+    .update({ status: "draft" })
+    .eq("id", documentId);
+  if (docError) throw new Error(docError.message);
+  await recordAudit("document_version", data.id, actorId, "version_uploaded", {
+    version_number: nextVersion,
+    file_name: uploaded.file_name,
   });
 }
 
@@ -1364,6 +1454,24 @@ export async function writeThread(input: {
   await recordAudit("discussion_thread", data.id, input.authorId, "thread_started", {
     context_type: input.contextType,
   });
+}
+
+/** Adds a reaction to a chat message. */
+export async function writeCommentReaction(
+  commentId: string,
+  emoji: string,
+  personId: string,
+) {
+  const { error } = await supabase
+    .from("comment_reactions")
+    .insert({ comment_id: commentId, emoji, person_id: personId });
+  if (error) throw new Error(error.message);
+}
+
+/** Removes one of the current user's reactions from a chat message. */
+export async function removeCommentReaction(reactionId: string) {
+  const { error } = await supabase.from("comment_reactions").delete().eq("id", reactionId);
+  if (error) throw new Error(error.message);
 }
 
 /** Marks personal Inbox items read (or unread again). */
