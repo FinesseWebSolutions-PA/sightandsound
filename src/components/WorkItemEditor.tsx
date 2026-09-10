@@ -26,7 +26,7 @@ const field =
 
 /**
  * One panel for adding and editing a piece of build work, framed the way a shop
- * plans it: which department, which scene, which build milestone, who, when, and
+ * plans it: which department, which set, which build milestone, who, when, and
  * what it waits on.
  */
 export function WorkItemEditor({
@@ -231,7 +231,7 @@ export function WorkItemEditor({
             </label>
             <div>
               <label className="block">
-                <span className="text-sm font-medium text-ink">Scene</span>
+                <span className="text-sm font-medium text-ink">Set</span>
                 <select
                   value={addingScene ? "__new" : sceneId}
                   onChange={(e) => {
@@ -244,22 +244,22 @@ export function WorkItemEditor({
                   }}
                   className={field}
                 >
-                  <option value="">Production-wide (no scene)</option>
+                  <option value="">Production-wide (no set)</option>
                   {projectScenes.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
                     </option>
                   ))}
-                  <option value="__new">+ New scene…</option>
+                  <option value="__new">+ New set…</option>
                 </select>
               </label>
               {addingScene && (
                 <div className="mt-2 flex flex-wrap gap-2">
                   <input
-                    aria-label="New scene name"
+                    aria-label="New set name"
                     value={newSceneName}
                     onChange={(e) => setNewSceneName(e.target.value)}
-                    placeholder="e.g. Scene 4 — The Flood"
+                    placeholder="e.g. Set 4 — The Flood"
                     className="min-h-10 flex-1 rounded-md border border-border bg-card px-3 text-sm text-ink focus:ring-2 focus:ring-ring focus:outline-none"
                   />
                   <button

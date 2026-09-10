@@ -196,7 +196,7 @@ export function TaskDetailPanel({
             </div>
             {scene && (
               <div>
-                <dt className="rule-label">Scene</dt>
+                <dt className="rule-label">Set</dt>
                 <dd className="mt-0.5 text-ink">{scene.name}</dd>
               </div>
             )}
