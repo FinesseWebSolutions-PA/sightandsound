@@ -714,6 +714,8 @@ export function MasterTimeline({
                             <span className="mt-1 block text-xs text-ink-soft">
                               {s.start_date ? formatDate(s.start_date) : "No start"} –{" "}
                               {s.due_date ? formatDate(s.due_date) : "No finish"}
+                              {s.start_date && s.due_date &&
+                                ` · ${Math.max(1, daysBetween(s.start_date, s.due_date))} days`}
                               {slip > 0 && (
                                 <span className="font-semibold text-danger">
                                   {" "}
@@ -722,6 +724,7 @@ export function MasterTimeline({
                               )}
                               {follows && ` · follows ${follows.name}`}
                             </span>
+
                           </span>
                         );
                         const shellClass =
