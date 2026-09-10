@@ -890,6 +890,8 @@ export async function loadProductionData(): Promise<ProductionData> {
     people,
     projects,
     projectDepartments,
+    projectAssignments,
+    departmentJobTitles,
     scenes,
     milestones,
     tasks,
