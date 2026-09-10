@@ -81,7 +81,7 @@ export function TaskDetailPanel({
   const pendingDocs = unapprovedDocuments(task.id);
   const canUpdate = can.updateWork && !locked;
   const dept = departments.find((d) => d.id === task.department_id);
-  const milestone = undefined as { name: string } | undefined;
+  
   const scene = scenes.find((s) => s.id === task.scene_id);
   const waitsOn = taskDependencies.filter((d) => d.task_id === task.id);
   const blocks = taskDependencies.filter((d) => d.depends_on_task_id === task.id);
@@ -133,10 +133,8 @@ export function TaskDetailPanel({
       >
         <header className="sticky top-0 z-10 flex items-start gap-3 panel-header px-4 py-3">
           <div className="min-w-0 flex-1">
-            <p className="rule-label">
-              {dept?.name ?? "Work item"}
-              {milestone ? ` · ${milestone.name}` : ""}
-            </p>
+            <p className="rule-label">{dept?.name ?? "Work item"}</p>
+
             <h2 className="mt-0.5 text-base font-semibold text-ink">{task.title}</h2>
             {parent && (
               <p className="mt-0.5 flex items-center gap-1 text-xs text-ink-soft">
