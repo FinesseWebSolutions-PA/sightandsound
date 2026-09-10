@@ -200,6 +200,9 @@ export type DocumentVersion = {
   uploaded_at: string;
   note: string;
   file_label: string;
+  /** Where the actual file lives, when this revision has one. */
+  storage_key: string | null;
+
 };
 
 export type Approval = {
