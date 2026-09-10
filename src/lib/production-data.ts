@@ -1459,10 +1459,10 @@ async function conversationParticipants(threadId: string): Promise<string[]> {
   if (thread?.document_id) {
     const { data: doc } = await supabase
       .from("documents")
-      .select("owner_id")
+      .select("created_by")
       .eq("id", thread.document_id)
       .maybeSingle();
-    people.push(doc?.owner_id);
+    people.push(doc?.created_by);
   }
   return people.filter((id): id is string => Boolean(id));
 }
