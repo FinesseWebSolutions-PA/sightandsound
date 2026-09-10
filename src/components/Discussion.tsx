@@ -492,31 +492,14 @@ export function Discussion({
     isClosed,
     currentUserId,
   } = useStore();
-  const [showNew, setShowNew] = useState(false);
-  const [anchorId, setAnchorId] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
 
   const locked = isClosed(projectId);
   const canPost = can.comment && !locked;
 
-  const projectTasks = tasks.filter((t) => t.project_id === projectId);
-  const projectDocuments = documents.filter((d) => d.project_id === projectId);
-  const needsAnchor =
-    (contextType === "task" && !taskId) || (contextType === "document" && !documentId);
-  // Each work item and each document carries exactly one conversation, so anything
-  // that already has one is not offered again — you add to it instead.
-  const anchorOptions = (contextType === "task" ? projectTasks : projectDocuments).filter((o) =>
-    contextType === "task"
-      ? !threads.some((t) => t.task_id === o.id)
-      : !threads.some((t) => t.document_id === o.id),
-  );
-  const resolvedTaskId = contextType === "task" ? (taskId ?? (anchorId || null)) : taskId;
-  const resolvedDocumentId =
-    contextType === "document" ? (documentId ?? (anchorId || null)) : documentId;
-  const canStart = canPost && (!needsAnchor || anchorOptions.length > 0);
-  // Only project-level topics need a name of their own; a conversation about a
-  // work item or a drawing is simply that thing's conversation.
-  const needsSubject = contextType === "project";
+  const resolvedTaskId = taskId;
+  const resolvedDocumentId = documentId;
+
 
   const visible = threads.filter(
     (t) =>
