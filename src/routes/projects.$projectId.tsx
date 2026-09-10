@@ -28,7 +28,7 @@ const tabs = [
   { to: "/projects/$projectId", label: "Dashboard", exact: true },
   { to: "/projects/$projectId/timeline", label: "Timeline", exact: false },
   { to: "/projects/$projectId/documents", label: "Documents", exact: false },
-  { to: "/projects/$projectId/discussions", label: "Updates", exact: false },
+  { to: "/projects/$projectId/discussions", label: "Conversations", exact: false },
   { to: "/projects/$projectId/team", label: "Team & Departments", exact: false },
 ] as const;
 
