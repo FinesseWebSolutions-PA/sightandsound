@@ -31,6 +31,7 @@ export function SaveToDocsDialog({
   const [choice, setChoice] = useState(existing[0] ?? "__new");
   const [newFolder, setNewFolder] = useState("");
   const [title, setTitle] = useState(fileName);
+  const [noApproval, setNoApproval] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -52,7 +53,12 @@ export function SaveToDocsDialog({
     setBusy(true);
     setError("");
     try {
-      await saveAttachmentToDocuments({ attachmentId, folder, title: title.trim() || fileName });
+      await saveAttachmentToDocuments({
+        attachmentId,
+        folder,
+        title: title.trim() || fileName,
+        requiresApproval: !noApproval,
+      });
       onClose();
     } catch {
       setError("That could not be saved. Try again.");
@@ -124,6 +130,22 @@ export function SaveToDocsDialog({
             />
           </div>
         )}
+
+        <label className="mt-4 flex items-start gap-2.5 text-sm text-ink">
+          <input
+            type="checkbox"
+            checked={noApproval}
+            onChange={(e) => setNoApproval(e.target.checked)}
+            className="mt-0.5 size-4 rounded border-border"
+          />
+          <span>
+            No approval needed
+            <span className="block text-xs text-ink-soft">
+              By default this document has to be approved before the work it belongs to can be
+              marked complete.
+            </span>
+          </span>
+        </label>
 
         {error && <p className="mt-3 text-sm text-danger">{error}</p>}
 
