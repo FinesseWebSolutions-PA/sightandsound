@@ -43,7 +43,6 @@ export function AppHeader() {
                 height={29}
               />
             </span>
-            <span className="rule-label hidden leading-none sm:block">Show Production</span>
           </Link>
         </div>
 
