@@ -349,6 +349,39 @@ export function DocumentBrowser({
             )}
           </nav>
           <div className="ml-auto flex items-center gap-2">
+            {canUpload && (
+              <>
+                <label className="flex items-center gap-1.5 text-xs text-ink-soft">
+                  <input
+                    type="checkbox"
+                    checked={needsApproval}
+                    onChange={(e) => setNeedsApproval(e.target.checked)}
+                    className="size-4 rounded border-border"
+                  />
+                  Needs approval
+                </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    e.target.value = "";
+                    void addFiles(files);
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="btn-primary min-h-9 gap-1.5 px-3 text-sm"
+                >
+                  <FileUp aria-hidden className="size-4" />
+                  {uploading ? "Uploading…" : "Add document"}
+                </button>
+              </>
+            )}
             <label className="relative">
               <Search
                 aria-hidden
