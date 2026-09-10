@@ -5,6 +5,7 @@ import { Crown, Link2, Plus, X } from "lucide-react";
 import { ConversationRail } from "@/components/ConversationRail";
 import { DocumentBrowser } from "@/components/DocumentBrowser";
 import { MasterTimeline } from "@/components/schedule/MasterTimeline";
+import { ProductionCalendar } from "@/components/schedule/ProductionCalendar";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
   departmentJobTitles,
@@ -191,6 +192,7 @@ function SetDetail({
   } = useStore();
   const [nameDraft, setNameDraft] = useState(set.name);
   const [tab, setTab] = useState<"schedule" | "documents" | "conversation" | "team">("schedule");
+  const [scheduleMode, setScheduleMode] = useState<"gantt" | "calendar">("gantt");
 
   const index = order.findIndex((s) => s.id === set.id);
   const others = order.filter((s) => s.id !== set.id);
@@ -540,8 +542,33 @@ function SetDetail({
 
       {tab === "schedule" && (
         <section className="min-w-0 space-y-3">
+          <div className="flex overflow-hidden rounded-md border border-border-strong w-fit">
+            {(
+              [
+                { id: "gantt", label: "Gantt" },
+                { id: "calendar", label: "Calendar" },
+              ] as const
+            ).map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setScheduleMode(m.id)}
+                className={`min-h-11 px-3 text-sm font-medium ${
+                  scheduleMode === m.id
+                    ? "bg-ink text-cream-soft"
+                    : "bg-card text-ink-soft hover:bg-cream"
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
           <div className="min-w-0 overflow-hidden">
-            <MasterTimeline projectId={projectId} sceneId={set.id} />
+            {scheduleMode === "gantt" ? (
+              <MasterTimeline projectId={projectId} sceneId={set.id} />
+            ) : (
+              <ProductionCalendar projectId={projectId} sceneId={set.id} />
+            )}
           </div>
         </section>
       )}

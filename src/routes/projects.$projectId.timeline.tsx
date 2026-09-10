@@ -8,6 +8,7 @@ import { WorkItemEditor } from "@/components/WorkItemEditor";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DepartmentWorkQueue } from "@/components/schedule/DepartmentWorkQueue";
 import { MasterTimeline } from "@/components/schedule/MasterTimeline";
+import { ProductionCalendar } from "@/components/schedule/ProductionCalendar";
 import { SceneReadinessMatrix } from "@/components/schedule/SceneReadinessMatrix";
 import { departments, personById, taskDependencies, useStore } from "@/lib/store";
 import { formatDate, formatDateTime, taskStatusMeta } from "@/lib/status";
@@ -18,8 +19,13 @@ import type { Task, TaskStatus } from "@/lib/production-data";
 const views = [
   {
     id: "master",
-    label: "Master Timeline",
+    label: "Gantt",
     blurb: "Set by set, with their dates and the chain between them",
+  },
+  {
+    id: "calendar",
+    label: "Calendar",
+    blurb: "The same schedule by day — sets across the weeks, work items on their due date",
   },
   {
     id: "queue",
@@ -438,6 +444,7 @@ function TimelineTab() {
       </div>
 
       {view === "master" && <MasterTimeline projectId={projectId} />}
+      {view === "calendar" && <ProductionCalendar projectId={projectId} />}
       {view === "queue" && (
         <DepartmentWorkQueue
           projectId={projectId}
