@@ -344,14 +344,9 @@ function TimelineTab() {
     sceneId?: string;
   } | null>(null);
 
-  const projectMilestones = milestones
-    .filter((m) => m.project_id === projectId)
-    .sort((a, b) => a.due_date.localeCompare(b.due_date));
-
   const projectTasks = tasks.filter((t) => t.project_id === projectId);
-  const unscheduled = projectTasks
-    .filter((t) => !t.milestone_id || !projectMilestones.some((m) => m.id === t.milestone_id))
-    .sort((a, b) => a.due_date.localeCompare(b.due_date));
+  const listTasks = [...projectTasks].sort((a, b) => a.due_date.localeCompare(b.due_date));
+
 
   const taskTitle = (id: string) => tasks.find((t) => t.id === id)?.title ?? id;
 
