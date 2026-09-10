@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 
 import { Discussion } from "@/components/Discussion";
+import { DocumentPreview } from "@/components/DocumentPreview";
+
 import { MentionInput } from "@/components/MentionInput";
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, personById, useStore } from "@/lib/store";
