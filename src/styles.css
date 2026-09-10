@@ -161,14 +161,12 @@
   font-size: 0.75rem;
   letter-spacing: 0.02em;
   color: var(--warm-gray-700);
-  text-transform: uppercase;
 }
 
 @utility rule-label {
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
   color: var(--warm-gray-700);
 }
 

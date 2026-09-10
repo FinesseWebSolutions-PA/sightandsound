@@ -140,7 +140,7 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-2">
                         {m && <Diamond aria-hidden className="size-3.5 text-gold-deep" />}
-                        <span className="text-xs font-bold tracking-[0.08em] text-ink uppercase">
+                        <span className="text-xs font-bold text-ink">
                           {m ? m.name : "Not tied to a milestone yet"}
                         </span>
                         <span className="rounded-full border border-border-strong bg-card px-2 py-0.5 text-[11px] font-semibold text-ink-soft">

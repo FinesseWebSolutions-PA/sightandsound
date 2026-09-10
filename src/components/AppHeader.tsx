@@ -102,7 +102,7 @@ export function AppHeader() {
                 <span className="block text-xs leading-none font-semibold text-bar-foreground">
                   {person?.full_name}
                 </span>
-                <span className="mt-1 block text-[0.625rem] leading-none font-semibold tracking-[0.09em] text-bar-muted uppercase">
+                <span className="mt-1 block text-[0.625rem] leading-none font-semibold text-bar-muted">
                   {roleLabels[role]}
                 </span>
               </span>
@@ -114,7 +114,7 @@ export function AppHeader() {
               <p className="px-2 pb-2 text-xs text-muted-foreground">{person?.title}</p>
 
               <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-[0.6875rem] tracking-[0.09em] uppercase">
+              <DropdownMenuLabel className="text-[0.6875rem] ">
                 Viewing as
               </DropdownMenuLabel>
               {roles.map((r) => (
