@@ -1,0 +1,1 @@
+ALTER TABLE public.scenes ADD COLUMN IF NOT EXISTS portal_link_url text;

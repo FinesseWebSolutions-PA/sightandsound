@@ -842,6 +842,7 @@ export type Database = {
           lag_days: number
           name: string
           owner_id: string | null
+          portal_link_url: string | null
           project_id: string
           sort_order: number
           start_date: string | null
@@ -856,6 +857,7 @@ export type Database = {
           lag_days?: number
           name: string
           owner_id?: string | null
+          portal_link_url?: string | null
           project_id: string
           sort_order?: number
           start_date?: string | null
@@ -870,6 +872,7 @@ export type Database = {
           lag_days?: number
           name?: string
           owner_id?: string | null
+          portal_link_url?: string | null
           project_id?: string
           sort_order?: number
           start_date?: string | null
