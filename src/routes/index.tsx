@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { CalendarDays, SlidersHorizontal } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 
 import { departments, projectDepartments, personById, useStore } from "@/lib/store";
 import { formatDate, projectStatusMeta, readinessMeta, type Tone } from "@/lib/status";
@@ -41,23 +41,14 @@ const statusFilters: ("all" | ProjectStatus)[] = ["all", "active", "planning", "
 function PortfolioPage() {
   const { projects, milestones } = useStore();
   const [status, setStatus] = useState<"all" | ProjectStatus>("all");
-  const [department, setDepartment] = useState("all");
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const rows = useMemo(
     () =>
       projects.filter((project) => {
         if (status !== "all" && project.status !== status) return false;
-        if (
-          department !== "all" &&
-          !projectDepartments.some(
-            (pd) => pd.project_id === project.id && pd.department_id === department,
-          )
-        )
-          return false;
         return true;
       }),
-    [projects, status, department],
+    [projects, status],
   );
 
   const nextKeyDate = (projectId: string) => {
@@ -66,8 +57,6 @@ function PortfolioPage() {
       .sort((a, b) => a.due_date.localeCompare(b.due_date));
     return open[0];
   };
-
-  const activeFilters = (status !== "all" ? 1 : 0) + (department !== "all" ? 1 : 0);
 
   return (
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-10">
@@ -78,7 +67,6 @@ function PortfolioPage() {
       </div>
       <div className="gold-rule mt-4 w-24" />
 
-      {/* Status chips scroll sideways on a phone; department moves into a filter panel. */}
       <div className="mt-6 space-y-3 sm:mt-8">
         <div className="-mx-4 flex snap-x items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
           <span className="rule-label shrink-0">Status</span>
@@ -97,46 +85,6 @@ function PortfolioPage() {
               {option === "all" ? "All" : projectStatusMeta[option].label}
             </button>
           ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setFiltersOpen((v) => !v)}
-          aria-expanded={filtersOpen}
-          aria-controls="portfolio-filters"
-          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-ink sm:hidden"
-        >
-          <SlidersHorizontal aria-hidden className="size-4" />
-          {filtersOpen ? "Hide filters" : "Department filter"}
-          {activeFilters > 0 && (
-            <span className="rounded-full bg-ink px-2 py-0.5 text-xs text-cream-soft">
-              {activeFilters}
-            </span>
-          )}
-        </button>
-
-        <div
-          id="portfolio-filters"
-          className={cn(
-            "flex-col gap-3 sm:flex sm:flex-row sm:flex-wrap sm:items-end sm:gap-6",
-            filtersOpen ? "flex" : "hidden",
-          )}
-        >
-          <label className="flex flex-col gap-1.5 text-sm sm:flex-row sm:items-center sm:gap-2">
-            <span className="rule-label">Department</span>
-            <select
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-              className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:min-h-9 sm:w-auto sm:text-sm"
-            >
-              <option value="all">All departments</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </label>
         </div>
       </div>
 
