@@ -795,12 +795,16 @@ export function DocumentBrowser({
                 })()}
             </div>
 
-            <div className="surface-card overflow-hidden">
-              <header className="flex items-center gap-2 panel-header px-4 py-2.5">
-                <History aria-hidden className="size-4 text-ink-soft" />
-                <h4 className="text-sm font-semibold text-ink">Version history</h4>
-              </header>
-              <ul className="row-list">
+            {/* Rarely needed, so it stays tucked away until someone asks for it. */}
+            <details className="surface-card overflow-hidden">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 py-2.5 text-sm text-ink-soft hover:bg-cream">
+                <History aria-hidden className="size-4" />
+                Version history
+                <span className="ml-auto text-xs">
+                  {documentVersions.filter((v) => v.document_id === selected.id).length}
+                </span>
+              </summary>
+              <ul className="row-list border-t border-border">
                 {documentVersions
                   .filter((v) => v.document_id === selected.id)
                   .sort((a, b) => b.version - a.version)
@@ -809,9 +813,7 @@ export function DocumentBrowser({
                       <div className="flex flex-wrap items-baseline gap-2">
                         <span className="code-id">v{v.version}</span>
                         {v.version === selected.current_version && (
-                          <span className="rounded-full bg-gold-tint px-2 py-0.5 text-[11px] font-semibold text-gold-deep">
-                            Current
-                          </span>
+                          <span className="text-[11px] font-medium text-ink-soft">Current</span>
                         )}
                         <span className="ml-auto text-xs text-ink-soft">
                           {formatDate(v.uploaded_at)}
@@ -825,7 +827,8 @@ export function DocumentBrowser({
                     </li>
                   ))}
               </ul>
-            </div>
+            </details>
+
 
             <div className="surface-card overflow-hidden">
               <header className="panel-header px-4 py-2.5">
