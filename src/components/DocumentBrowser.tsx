@@ -153,6 +153,7 @@ export function DocumentBrowser({
     recordApproval,
     setDocumentApprovalRequirement,
     addDocumentVersion,
+    deleteDocument,
     isClosed,
     threads,
     comments,
