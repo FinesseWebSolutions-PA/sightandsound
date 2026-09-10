@@ -270,21 +270,23 @@ function DocumentsTab() {
             </div>
           </div>
 
-          {/* Folders, shown as tiles you can open — only at the top level. */}
+          {/* Folders use the familiar compact Drive grid at the top level. */}
           {folder === null && !query.trim() && folderList.length > 0 && (
-            <div className="border-b border-border px-3 py-3">
-              <p className="rule-label mb-2">Folders</p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="border-b border-border bg-card px-4 py-4">
+              <h3 className="mb-3 text-sm font-medium text-ink">Folders</h3>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {folderList.map((f) => (
                   <button
                     key={f.name}
                     type="button"
-                    onDoubleClick={() => setFolder(f.name)}
                     onClick={() => setFolder(f.name)}
-                    className="flex min-h-14 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left hover:bg-cream-soft"
+                    className="group flex min-h-14 select-none items-center gap-3 rounded-lg border border-border bg-cream-soft px-3 py-3 text-left transition-colors hover:border-border-strong hover:bg-cream"
                   >
-                    <Folder aria-hidden className="size-5 shrink-0 text-gold-deep" />
-                    <span className="min-w-0">
+                    <Folder
+                      aria-hidden
+                      className="size-6 shrink-0 fill-gold-tint text-gold-deep transition-colors group-hover:fill-cream-deep"
+                    />
+                    <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium text-ink">{f.name}</span>
                       <span className="block text-xs text-ink-soft">
                         {f.count} file{f.count === 1 ? "" : "s"}
@@ -327,6 +329,11 @@ function DocumentsTab() {
             </div>
           ) : (
             <>
+              {folder === null && folderList.length > 0 && !query.trim() && (
+                <h3 className="border-b border-border bg-card px-4 py-3 text-sm font-medium text-ink">
+                  Files
+                </h3>
+              )}
               {/* Phones get full-width tappable rows instead of a table. */}
               <ul className="row-list lg:hidden">
                 {visibleDocs.map((doc) => (
