@@ -2005,7 +2005,14 @@ export async function writeSceneFields(
   },
   actorId: string,
 ) {
-  const patch: Record<string, unknown> = {};
+  const patch: {
+    owner_id?: string | null;
+    status?: string;
+    start_date?: string | null;
+    due_date?: string | null;
+    depends_on_scene_id?: string | null;
+    lag_days?: number;
+  } = {};
   if ("owner_id" in fields) patch['owner_id'] = fields.owner_id || null;
   if (fields.status) patch['status'] = fields.status;
   if ("start_date" in fields) patch['start_date'] = fields.start_date || null;
