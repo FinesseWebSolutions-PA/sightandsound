@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, Crown, Link2, Plus, X } from "lucide-react";
+import { Crown, Link2, Plus, X } from "lucide-react";
 
 import { ConversationRail } from "@/components/ConversationRail";
 import { DocumentBrowser } from "@/components/DocumentBrowser";
 import { MasterTimeline } from "@/components/schedule/MasterTimeline";
+import { ProductionCalendar } from "@/components/schedule/ProductionCalendar";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
   departmentJobTitles,
@@ -183,7 +184,6 @@ function SetDetail({
     tasks,
     projectAssignments,
     updateScene,
-    reorderScene,
     renameScene,
     deleteScene,
     assignPerson,
@@ -192,10 +192,9 @@ function SetDetail({
   } = useStore();
   const [nameDraft, setNameDraft] = useState(set.name);
   const [tab, setTab] = useState<"schedule" | "documents" | "conversation" | "team">("schedule");
+  const [scheduleMode, setScheduleMode] = useState<"gantt" | "calendar">("gantt");
 
   const index = order.findIndex((s) => s.id === set.id);
-  const previous = order[index - 1];
-  const next = order[index + 1];
   const others = order.filter((s) => s.id !== set.id);
   const setTasks = tasks.filter((t) => t.scene_id === set.id);
 
@@ -255,24 +254,6 @@ function SetDetail({
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={!previous || saving}
-              onClick={() => previous && void reorderScene(set.id, previous.id, projectId)}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-ink hover:bg-cream disabled:opacity-50"
-            >
-              <ArrowUp aria-hidden className="size-4" />
-              Move earlier
-            </button>
-            <button
-              type="button"
-              disabled={!next || saving}
-              onClick={() => next && void reorderScene(set.id, next.id, projectId)}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-ink hover:bg-cream disabled:opacity-50"
-            >
-              <ArrowDown aria-hidden className="size-4" />
-              Move later
-            </button>
-            <button
-              type="button"
               onClick={() => void deleteScene(set.id, projectId)}
               className="min-h-11 rounded-md border border-border px-3 text-sm font-medium text-danger hover:bg-cream"
             >
@@ -280,6 +261,7 @@ function SetDetail({
             </button>
           </div>
         )}
+
 
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
@@ -560,8 +542,33 @@ function SetDetail({
 
       {tab === "schedule" && (
         <section className="min-w-0 space-y-3">
+          <div className="flex overflow-hidden rounded-md border border-border-strong w-fit">
+            {(
+              [
+                { id: "gantt", label: "Gantt" },
+                { id: "calendar", label: "Calendar" },
+              ] as const
+            ).map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setScheduleMode(m.id)}
+                className={`min-h-11 px-3 text-sm font-medium ${
+                  scheduleMode === m.id
+                    ? "bg-ink text-cream-soft"
+                    : "bg-card text-ink-soft hover:bg-cream"
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
           <div className="min-w-0 overflow-hidden">
-            <MasterTimeline projectId={projectId} sceneId={set.id} />
+            {scheduleMode === "gantt" ? (
+              <MasterTimeline projectId={projectId} sceneId={set.id} />
+            ) : (
+              <ProductionCalendar projectId={projectId} sceneId={set.id} />
+            )}
           </div>
         </section>
       )}
