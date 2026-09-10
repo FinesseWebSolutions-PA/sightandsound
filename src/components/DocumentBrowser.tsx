@@ -588,12 +588,13 @@ export function DocumentBrowser({
                     aria-label="Document actions"
                     aria-haspopup="menu"
                     aria-expanded={menuOpen}
-                    disabled={locked || !canReview}
+                    disabled={locked}
                     onClick={() => setMenuOpen((v) => !v)}
                     className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-soft hover:bg-cream disabled:opacity-40"
                   >
                     <MoreVertical aria-hidden className="size-5" />
                   </button>
+
                   {menuOpen && (
                     <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-lg border border-border bg-white shadow-lg">
                       <ul role="menu" className="py-1">
