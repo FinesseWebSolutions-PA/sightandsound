@@ -35,6 +35,8 @@ export const Route = createFileRoute("/team")({
 
 const roles: Role[] = ["admin", "contributor", "viewer"];
 
+const isLead = (personId: string) => departments.some((d) => d.lead_ids.includes(personId));
+
 function GlobalTeamPage() {
   const {
     can,
@@ -78,7 +80,7 @@ function GlobalTeamPage() {
                   value={p.primary_department_id ?? ""}
                   disabled={!editable}
                   onChange={(e) =>
-                    setPersonDepartment(p.id, e.target.value, p.is_lead ?? false)
+                    setPersonDepartment(p.id, e.target.value, isLead(p.id))
                   }
                   className="min-h-11 rounded-md border border-border bg-card px-2 text-base text-ink disabled:bg-muted disabled:text-ink-soft sm:text-sm"
                 >
@@ -93,7 +95,7 @@ function GlobalTeamPage() {
               <label className="flex min-h-11 items-center gap-2 text-sm text-ink lg:w-32">
                 <input
                   type="checkbox"
-                  checked={p.is_lead ?? false}
+                  checked={isLead(p.id)}
                   disabled={!editable || !p.primary_department_id}
                   onChange={(e) =>
                     setPersonDepartment(p.id, p.primary_department_id ?? "", e.target.checked)

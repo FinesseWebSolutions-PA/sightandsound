@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as TeamRouteImport } from './routes/team'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects.$projectId.index'
 import { Route as ProjectsProjectIdDiscussionsRouteImport } from './routes/projects.$projectId.discussions'
@@ -32,6 +33,11 @@ const InboxRoute = InboxRouteImport.update({
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeamRoute = TeamRouteImport.update({
+  id: '/team',
+  path: '/team',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/inbox': typeof InboxRoute
   '/search': typeof SearchRoute
+  '/team': typeof TeamRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/projects/$projectId/discussions': typeof ProjectsProjectIdDiscussionsRoute
   '/projects/$projectId/documents': typeof ProjectsProjectIdDocumentsRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/inbox': typeof InboxRoute
   '/search': typeof SearchRoute
+  '/team': typeof TeamRoute
   '/projects/$projectId/discussions': typeof ProjectsProjectIdDiscussionsRoute
   '/projects/$projectId/documents': typeof ProjectsProjectIdDocumentsRoute
   '/projects/$projectId/team': typeof ProjectsProjectIdTeamRoute
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/inbox': typeof InboxRoute
   '/search': typeof SearchRoute
+  '/team': typeof TeamRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/projects/$projectId/discussions': typeof ProjectsProjectIdDiscussionsRoute
   '/projects/$projectId/documents': typeof ProjectsProjectIdDocumentsRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/inbox'
     | '/search'
+    | '/team'
     | '/projects/$projectId'
     | '/projects/$projectId/discussions'
     | '/projects/$projectId/documents'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/'
     | '/inbox'
     | '/search'
+    | '/team'
     | '/projects/$projectId/discussions'
     | '/projects/$projectId/documents'
     | '/projects/$projectId/team'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/'
     | '/inbox'
     | '/search'
+    | '/team'
     | '/projects/$projectId'
     | '/projects/$projectId/discussions'
     | '/projects/$projectId/documents'
@@ -140,6 +152,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   InboxRoute: typeof InboxRoute
   SearchRoute: typeof SearchRoute
+  TeamRoute: typeof TeamRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRouteWithChildren
 }
 
@@ -164,6 +177,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/team': {
+      id: '/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof TeamRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects/$projectId': {
@@ -234,6 +254,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   InboxRoute: InboxRoute,
   SearchRoute: SearchRoute,
+  TeamRoute: TeamRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
