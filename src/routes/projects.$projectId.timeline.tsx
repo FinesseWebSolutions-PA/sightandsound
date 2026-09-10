@@ -143,11 +143,17 @@ function StatusControl({
         }
       >
         {statusOptions.map((s) => (
-          <option key={s} value={s}>
+          <option key={s} value={s} disabled={s === "complete" && pendingDocs.length > 0}>
             {taskStatusMeta[s].label}
+            {s === "complete" && pendingDocs.length > 0 ? " (needs approvals)" : ""}
           </option>
         ))}
       </select>
+      {pendingDocs.length > 0 && (
+        <span className="block text-xs text-ink-soft">
+          {pendingDocs.length} document{pendingDocs.length === 1 ? "" : "s"} waiting on approval
+        </span>
+      )}
     </div>
   );
 }
