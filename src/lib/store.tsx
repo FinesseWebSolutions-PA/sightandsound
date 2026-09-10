@@ -140,6 +140,8 @@ export type Store = {
     file: File;
     folder: string | null;
     sceneId: string | null;
+    /** Attaches the file to one work item, so it shows on that task. */
+    taskId?: string | null;
     requiresApproval: boolean;
   }) => Promise<boolean>;
   recordApproval: (documentId: string, decision: Approval["decision"], note: string) => void;
