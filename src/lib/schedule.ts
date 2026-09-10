@@ -3,7 +3,7 @@
  * maths (spare time, critical path, forecast dates) is done in the database —
  * this file only turns dates into positions on a bar chart.
  */
-import type { Milestone, Task } from "./production-data";
+import type { Milestone, Task, TaskDependency } from "./production-data";
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -152,3 +152,67 @@ export function axisTicks(span: Span, pxPerDay: number): AxisTick[] {
   return ticks;
 }
 
+
+/* ------------------------------------------------------------------ *
+ * Dependency guard — a work item cannot be scheduled ahead of what it
+ * waits on unless somebody says so on purpose.
+ * ------------------------------------------------------------------ */
+
+export type DependencyConflict = { message: string; earliest: string | null };
+
+/**
+ * Checks proposed dates for a work item against everything it waits on.
+ * Returns a plain-language problem for each dependency that would be broken.
+ */
+export function dependencyConflicts({
+  startDate,
+  dueDate,
+  dependencies,
+  tasks,
+}: {
+  startDate: string | null;
+  dueDate: string | null;
+  dependencies: TaskDependency[];
+  tasks: Task[];
+}): DependencyConflict[] {
+  const out: DependencyConflict[] = [];
+  for (const dep of dependencies) {
+    const before = tasks.find((t) => t.id === dep.depends_on_task_id);
+    if (!before) continue;
+    const lag = Math.round((dep.lag_hours ?? 0) / 24);
+    const name = before.title;
+
+    const check = (
+      anchor: string | null | undefined,
+      proposed: string | null,
+      gap: number,
+      what: string,
+      anchorWhat: string,
+    ) => {
+      if (!anchor || !proposed) return;
+      const earliest = addDays(anchor, gap + lag);
+      if (proposed < earliest) {
+        out.push({
+          message: `${what} can't be before ${earliest} — it waits on ${anchorWhat} of “${name}”.`,
+          earliest,
+        });
+      }
+    };
+
+    switch (dep.type) {
+      case "start_to_start":
+        check(before.start_date, startDate, 0, "The start", "the start");
+        break;
+      case "finish_to_finish":
+        check(before.due_date, dueDate, 0, "The finish", "the finish");
+        break;
+      case "start_to_finish":
+        check(before.start_date, dueDate, 0, "The finish", "the start");
+        break;
+      default:
+        check(before.due_date, startDate, 1, "The start", "the finish");
+        break;
+    }
+  }
+  return out;
+}
