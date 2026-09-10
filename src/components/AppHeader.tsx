@@ -3,6 +3,7 @@ import { Bell, Inbox, Search } from "lucide-react";
 
 import { people, roleLabels, useStore } from "@/lib/store";
 import type { Role } from "@/lib/production-data";
+import logoAsset from "@/assets/sight-and-sound-logo.svg.asset.json";
 
 const roles: Role[] = ["admin", "contributor", "viewer"];
 
@@ -32,11 +33,17 @@ export function AppHeader() {
       <div className="mx-auto flex max-w-[1400px] items-stretch px-4 sm:px-6">
         {/* Brand zone */}
         <div className="flex min-w-0 items-center py-2.5 md:border-r md:border-border md:pr-6 lg:pr-8">
-          <Link to="/" className="flex min-h-11 min-w-0 flex-col justify-center gap-0.5 py-1">
-            <span className="truncate font-display text-xl leading-none text-ink sm:text-2xl">
-              Sight &amp; Sound
+          <Link to="/" className="flex min-h-11 min-w-0 items-center gap-3 py-1">
+            <span className="flex items-center rounded-md bg-[var(--ss-warm-gray-900,#302B27)] px-3 py-2">
+              <img
+                src={logoAsset.url}
+                alt="Sight &amp; Sound"
+                className="h-4 w-auto sm:h-[18px]"
+                width={215}
+                height={29}
+              />
             </span>
-            <span className="rule-label leading-none">Show Production</span>
+            <span className="rule-label hidden leading-none sm:block">Show Production</span>
           </Link>
         </div>
 
