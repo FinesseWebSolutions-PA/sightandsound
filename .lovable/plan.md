@@ -35,4 +35,13 @@ Emoji reactions:
 - Store exposes `commentReactions` and `toggleReaction(commentId, emoji)` behind the existing posting guard, optimistic with refresh on failure.
 - New `src/components/chat/MessageReactions.tsx` used from the `Message` component in `src/components/Discussion.tsx`, so all chat surfaces inherit it.
 
-Verification: typecheck, then browser checks at 1280px and 390px — upload a real version and open it, add/remove a reaction and reload for persistence, confirm no console errors, and remove temporary QA rows/files.
+## 3. Keep Gantt dependency arrows inside the chart
+
+The dependency arrow SVG currently draws lines between any two bars whose DOM rectangles are found. That lets lines run outside the visible scroll/port area or produce "stray" connector strokes when bars are off-screen, collapsed, or only partially visible.
+
+Fix:
+- Skip drawing an arrow when either the source or target bar's full rectangle lies outside the visible scroll viewport (use the container's `getBoundingClientRect()` and the bar rect to cull).
+- Clip the SVG to the scrollable area or hide arrows whose coordinates fall outside the current chart bounds.
+- Keep the existing chain-highlight behavior.
+
+Verification: typecheck, then browser checks at 1280px and 390px — confirm dependency arrows never float outside the Gantt area, collapsed sets don't show broken arrows, upload a real version and open it, add/remove a reaction and reload for persistence, and remove temporary QA rows/files.
