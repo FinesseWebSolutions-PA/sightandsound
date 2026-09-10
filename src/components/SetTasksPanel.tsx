@@ -187,6 +187,19 @@ export function SetTasksPanel({
                         : "No dates yet"}
                     </span>
                     <StatusBadge meta={taskStatusMeta[t.status]} size="sm" />
+                    {canEdit && !t.parent_task_id && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setQuickParent(t.id);
+                          setQuickOpen(true);
+                          setQuickTitle("");
+                        }}
+                        className="min-h-11 rounded-md border border-border px-2.5 text-xs font-medium text-ink-soft hover:bg-cream"
+                      >
+                        + Sub-task
+                      </button>
+                    )}
                     {canEdit && (
                       <button
                         type="button"
@@ -201,7 +214,23 @@ export function SetTasksPanel({
                     )}
                   </li>
                 ));
-              })}
+                }).flat()}
+            {canEdit && quickOpen && <li>{quickAddRow(quickParent)}</li>}
+            {canEdit && !quickOpen && (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuickParent(null);
+                    setQuickOpen(true);
+                    setQuickTitle("");
+                  }}
+                  className="min-h-11 w-full px-4 py-3 text-left text-sm font-medium text-gold-deep hover:bg-cream"
+                >
+                  + Add task
+                </button>
+              </li>
+            )}
           </ul>
         )}
       </section>
