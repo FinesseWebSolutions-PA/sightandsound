@@ -94,13 +94,14 @@ export function ConversationRail({
         </div>
       )}
 
-      <div className="grid gap-3 lg:grid-cols-[19rem_minmax(0,1fr)]">
+      <div className="grid gap-3 md:grid-cols-[17rem_minmax(0,1fr)] lg:grid-cols-[19rem_minmax(0,1fr)]">
         <aside
           className={cn(
             "surface-card flex min-w-0 flex-col overflow-hidden",
-            activeId && picked ? "hidden lg:flex" : "flex",
+            activeId && picked ? "hidden md:flex" : "flex",
           )}
         >
+
           <header className="panel-header flex items-center justify-between gap-2 px-3 py-2">
             <h2 className="text-sm font-semibold text-ink">{listTitle}</h2>
             {canStart && (
