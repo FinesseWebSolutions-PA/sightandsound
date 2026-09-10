@@ -12,7 +12,7 @@ export function AppHeader() {
   const unread = notifications.filter((n) => !n.read).length;
   // What is unread for this person specifically, which is what the Inbox shows.
   const myUnread = notifications.filter((n) => !n.read && n.recipient_id === currentUserId).length;
-  const [menuOpen, setMenuOpen] = useState(false);
+  
 
   const roleSelect = (id: string) => (
     <select
