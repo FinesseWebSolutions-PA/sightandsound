@@ -53,7 +53,11 @@ export type ProjectDepartment = {
   head_id: string;
 };
 
-/** One person staffed on one production, inside one department. */
+/**
+ * One person staffed on one production, inside one department. When scene_id is
+ * empty the row is the production-wide default; when it names a set, the row is
+ * that person's job on that set.
+ */
 export type ProjectAssignment = {
   id: string;
   project_id: string;
@@ -61,6 +65,7 @@ export type ProjectAssignment = {
   department_id: string;
   job_title: string;
   is_head: boolean;
+  scene_id: string;
 };
 
 /** A preset job title offered when staffing a department on a production. */
