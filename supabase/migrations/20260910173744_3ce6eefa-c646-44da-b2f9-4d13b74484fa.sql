@@ -1,0 +1,11 @@
+revoke all on function public.recompute_scene_rollup(uuid) from public, anon, authenticated;
+revoke all on function public.tasks_sync_scene_rollup() from public, anon, authenticated;
+revoke all on function public.recompute_milestone_status(uuid) from public, anon, authenticated;
+revoke all on function public.recompute_parent_task(uuid) from public, anon, authenticated;
+revoke all on function public.tasks_sync_milestone_status() from public, anon, authenticated;
+revoke all on function public.tasks_sync_parent_rollup() from public, anon, authenticated;
+revoke all on function public.scenes_validate_chain() from public, anon, authenticated;
+revoke all on function public.rls_auto_enable() from public, anon, authenticated;
+revoke all on function public.cpm_task_schedule(uuid, uuid, date, date) from public, anon, authenticated;
+grant execute on function public.compute_project_schedule(uuid) to anon, authenticated;
+grant execute on function public.preview_task_reschedule(uuid, date, date) to anon, authenticated;
