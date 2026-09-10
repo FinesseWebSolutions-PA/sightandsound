@@ -522,13 +522,46 @@ export function MasterTimeline({
   const beginSetDrag = (
     sceneId: string,
     kind: "move" | "start" | "end",
-    e: React.PointerEvent,
+    e: React.PointerEvent | PointerEvent,
   ) => {
     if (!canDragSets) return;
     e.preventDefault();
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     setSDrag({ sceneId, kind, startX: e.clientX, days: 0 });
+  };
+
+  const handleSetPointerDown = (
+    sceneId: string,
+    kind: "move" | "start" | "end",
+    e: React.PointerEvent,
+  ) => {
+    if (!canDragSets) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setDragStartRef.current = { sceneId, kind, startX: e.clientX };
+
+    const onMove = (ev: PointerEvent) => {
+      if (!setDragStartRef.current || sDragRef.current) return;
+      const dx = Math.abs(ev.clientX - setDragStartRef.current.startX);
+      if (dx > SET_DRAG_THRESHOLD) {
+        suppressSetClickRef.current = true;
+        beginSetDrag(sceneId, kind, ev);
+        cleanup();
+      }
+    };
+    const onUp = () => {
+      cleanup();
+      setDragStartRef.current = null;
+    };
+    const cleanup = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
   };
 
   /** Sets that follow the one that moved slide along with it. */
