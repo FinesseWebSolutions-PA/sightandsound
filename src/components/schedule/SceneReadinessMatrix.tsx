@@ -42,10 +42,10 @@ function cellFor(
     };
   }
 
-  const waitingReview = documents.find((d) => d.state === "in_review");
+  const waitingReview = documents.find((d) => d.approval_state === "in_review");
   if (waitingReview) {
     const pending = approvals.find(
-      (a) => a.document_id === waitingReview.id && a.decision === "pending",
+      (a) => a.document_id === waitingReview.id && a.decision === "requested",
     );
     return {
       readiness: "at_risk",
@@ -56,7 +56,9 @@ function cellFor(
     };
   }
 
-  const changes = documents.find((d) => d.state === "changes_requested" || d.state === "rejected");
+  const changes = documents.find(
+    (d) => d.approval_state === "changes_requested" || d.approval_state === "rejected",
+  );
   if (changes) {
     return {
       readiness: "at_risk",
