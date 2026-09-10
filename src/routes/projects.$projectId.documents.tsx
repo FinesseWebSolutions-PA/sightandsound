@@ -3,7 +3,13 @@ import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronRight,
+  FileText,
   FileUp,
+  Folder,
+  LayoutGrid,
+  List,
+  Search,
   History,
   MessageSquare,
   Send,
@@ -147,6 +153,25 @@ function DocumentsTab() {
   }, [search.document]);
   const selected = projectDocs.find((d) => d.id === selectedId) ?? projectDocs[0];
   const [note, setNote] = useState("");
+  const [folder, setFolder] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [view, setView] = useState<"list" | "grid">("list");
+
+  // Folder tiles, like Drive's top level.
+  const folderList = Array.from(
+    projectDocs.reduce((acc, d) => {
+      if (d.folder) acc.set(d.folder, (acc.get(d.folder) ?? 0) + 1);
+      return acc;
+    }, new Map<string, number>()),
+  )
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const q = query.trim().toLowerCase();
+  const visibleDocs = projectDocs.filter((d) => {
+    if (q) return d.title.toLowerCase().includes(q) || (d.folder ?? "").toLowerCase().includes(q);
+    return folder === null ? !d.folder : d.folder === folder;
+  });
 
   const [sending, setSending] = useState(false);
 
