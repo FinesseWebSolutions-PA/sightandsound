@@ -440,15 +440,32 @@ export async function loadProductionData(): Promise<ProductionData> {
   const milestoneRows = milestonesRes.data ?? [];
   const taskRows = tasksRes.data ?? [];
 
+  const scenes: Scene[] = (scenesRes.data ?? []).map((s) => ({
+    id: s.id,
+    project_id: s.project_id,
+    name: s.name,
+    sort_order: s.sort_order,
+  }));
+
   const tasks: Task[] = taskRows.map((t) => ({
     id: t.id,
     project_id: t.project_id,
     milestone_id: t.milestone_id ?? "",
+    scene_id: t.scene_id ?? "",
     title: t.title,
     status: asTaskStatus(t.status),
+    start_date: dateOnly(t.start_date) || dateOnly(t.due_date),
     due_date: dateOnly(t.due_date) || dateOnly(t.start_date),
     assignee_id: t.owner_id ?? "",
     department_id: t.department_id ?? "",
+    forecast_start: dateOnly(t.forecast_start) || dateOnly(t.start_date),
+    forecast_finish: dateOnly(t.forecast_finish) || dateOnly(t.due_date),
+    actual_start: dateOnly(t.actual_start),
+    actual_finish: dateOnly(t.actual_finish),
+    criticality: asCriticality(t.criticality),
+    total_float_hours: t.total_float_hours === null ? null : Number(t.total_float_hours),
+    affects_rehearsal: t.affects_rehearsal ?? false,
+    affects_performance: t.affects_performance ?? false,
   }));
 
   const projects: Project[] = (projectsRes.data ?? []).map((p) => {
