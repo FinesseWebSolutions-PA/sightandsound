@@ -55,6 +55,7 @@ export function WorkItemEditor({
     deleteWorkItem,
     addDependency,
     removeDependency,
+    createScene,
   } = useStore();
 
   const existing = taskId ? tasks.find((t) => t.id === taskId) : undefined;
@@ -78,6 +79,8 @@ export function WorkItemEditor({
     existing?.affects_performance ?? false,
   );
   const [problem, setProblem] = useState<string | null>(null);
+  const [addingScene, setAddingScene] = useState(false);
+  const [newSceneName, setNewSceneName] = useState("");
 
   // New dependency being added.
   const [waitsOnId, setWaitsOnId] = useState("");
@@ -226,17 +229,69 @@ export function WorkItemEditor({
                 ))}
               </select>
             </label>
-            <label className="block">
-              <span className="text-sm font-medium text-ink">Scene</span>
-              <select value={sceneId} onChange={(e) => setSceneId(e.target.value)} className={field}>
-                <option value="">Production-wide (no scene)</option>
-                {projectScenes.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div>
+              <label className="block">
+                <span className="text-sm font-medium text-ink">Scene</span>
+                <select
+                  value={addingScene ? "__new" : sceneId}
+                  onChange={(e) => {
+                    if (e.target.value === "__new") {
+                      setAddingScene(true);
+                      return;
+                    }
+                    setAddingScene(false);
+                    setSceneId(e.target.value);
+                  }}
+                  className={field}
+                >
+                  <option value="">Production-wide (no scene)</option>
+                  {projectScenes.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                  <option value="__new">+ New scene…</option>
+                </select>
+              </label>
+              {addingScene && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <input
+                    aria-label="New scene name"
+                    value={newSceneName}
+                    onChange={(e) => setNewSceneName(e.target.value)}
+                    placeholder="e.g. Scene 4 — The Flood"
+                    className="min-h-10 flex-1 rounded-md border border-border bg-card px-3 text-sm text-ink focus:ring-2 focus:ring-ring focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    disabled={saving || !newSceneName.trim()}
+                    onClick={() => {
+                      void (async () => {
+                        const id = await createScene(projectId, newSceneName);
+                        if (!id) return;
+                        setSceneId(id);
+                        setNewSceneName("");
+                        setAddingScene(false);
+                      })();
+                    }}
+                    className="min-h-10 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground disabled:opacity-60"
+                  >
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddingScene(false);
+                      setNewSceneName("");
+                    }}
+                    className="min-h-10 rounded-md border border-border px-3 text-sm font-medium text-ink"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+
             {rollsUp ? (
               <p className="rounded-md border border-border bg-cream-soft px-3 py-2 text-xs text-ink-soft">
                 This work item has {children.length} sub-item

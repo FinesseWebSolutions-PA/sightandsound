@@ -40,6 +40,9 @@ import {
   writeTaskDependency,
   removeTaskDependency,
   writeProduction,
+  writeScene,
+  writeSceneName,
+  removeScene,
   writeThread,
   type DependencyType,
   type WorkItemInput,
@@ -187,6 +190,10 @@ export type Store = {
     projectId: string;
   }) => Promise<boolean>;
   removeDependency: (id: string, taskId: string, projectId: string) => Promise<boolean>;
+  /** Scenes a production's work can be tied to. Admin only, open productions. */
+  createScene: (projectId: string, name: string) => Promise<string | null>;
+  renameScene: (sceneId: string, projectId: string, name: string) => void;
+  deleteScene: (sceneId: string, projectId: string) => Promise<boolean>;
   /** Starts a new production. Admin only; resolves the new production's id. */
   createProduction: (input: Omit<NewProductionInput, "actorId">) => Promise<string | null>;
 };
@@ -700,6 +707,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [allowed, runAsync],
   );
 
+  const createScene = useCallback<Store["createScene"]>(
+    async (projectId, name) => {
+      if (!allowed(projectId, "admin") || !name.trim()) return null;
+      setSaving(true);
+      try {
+        const id = await writeScene(projectId, name, currentUserIdRef.current);
+        await refresh();
+        return id;
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "That scene could not be added.");
+        return null;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [allowed, refresh],
+  );
+
+  const renameScene = useCallback<Store["renameScene"]>(
+    (sceneId, projectId, name) => {
+      if (!allowed(projectId, "admin") || !name.trim()) return;
+      run(() => writeSceneName(sceneId, projectId, name, currentUserIdRef.current));
+    },
+    [allowed, run],
+  );
+
+  const deleteScene = useCallback<Store["deleteScene"]>(
+    async (sceneId, projectId) => {
+      if (!allowed(projectId, "admin")) return false;
+      return await runAsync(() => removeScene(sceneId, projectId, currentUserIdRef.current));
+    },
+    [allowed, runAsync],
+  );
+
   const createProduction = useCallback<Store["createProduction"]>(
     async (input) => {
       if (!adminGlobal()) return null;
@@ -796,6 +837,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             deleteWorkItem,
             addDependency,
             removeDependency,
+            createScene,
+            renameScene,
+            deleteScene,
             createProduction,
           }
         : {
@@ -855,6 +899,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             deleteWorkItem: async () => false,
             addDependency: async () => false,
             removeDependency: async () => false,
+            createScene: async () => null,
+            renameScene: () => {},
+            deleteScene: async () => false,
             createProduction: async () => null,
           },
     [
@@ -892,6 +939,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteWorkItem,
       addDependency,
       removeDependency,
+      createScene,
+      renameScene,
+      deleteScene,
       createProduction,
     ],
   );
