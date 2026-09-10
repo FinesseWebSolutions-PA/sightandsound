@@ -576,19 +576,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (contextType === "scene" && !sceneId) return false;
       if (!body.trim() && !(attachments && attachments.length > 0)) return false;
       // One conversation per work item / document: if one exists already, this
-      // message joins it instead of starting a second one.
-      const existing = dataRef.current?.discussionThreads.find(
-        (t) =>
-          t.project_id === projectId &&
-          t.context_type === contextType &&
-          (contextType === "task"
-            ? t.task_id === taskId
-            : contextType === "document"
-              ? t.document_id === documentId
-              : contextType === "scene"
-                ? t.scene_id === sceneId
-                : false),
-      );
+      // message joins it instead of starting a second one. Production-wide and
+      // set-level topics are free to have as many separate conversations as needed.
+      const existing =
+        contextType === "task" || contextType === "document"
+          ? dataRef.current?.discussionThreads.find(
+              (t) =>
+                t.project_id === projectId &&
+                t.context_type === contextType &&
+                (contextType === "task" ? t.task_id === taskId : t.document_id === documentId),
+            )
+          : undefined;
       if (existing) {
         return await addComment(existing.id, body, attachments);
       }

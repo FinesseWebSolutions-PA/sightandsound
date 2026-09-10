@@ -1274,19 +1274,9 @@ export async function writeThread(input: {
   // A work item or a document keeps exactly one conversation, so if one already
   // exists (including one just created by a double tap) the message joins it.
   let threadId: string | null = null;
-  if (input.contextType !== "project") {
-    const column =
-      input.contextType === "task"
-        ? "task_id"
-        : input.contextType === "scene"
-          ? "scene_id"
-          : "document_id";
-    const anchor =
-      input.contextType === "task"
-        ? input.taskId
-        : input.contextType === "scene"
-          ? (input.sceneId ?? null)
-          : input.documentId;
+  if (input.contextType === "task" || input.contextType === "document") {
+    const column = input.contextType === "task" ? "task_id" : "document_id";
+    const anchor = input.contextType === "task" ? input.taskId : input.documentId;
     if (anchor) {
       const { data: existing } = await supabase
         .from("discussion_threads")
