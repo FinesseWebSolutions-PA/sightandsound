@@ -126,6 +126,8 @@ function StatusControl({
   onStatus: (taskId: string, status: TaskStatus) => void;
   size: "sm" | "touch";
 }) {
+  const { unapprovedDocuments } = useStore();
+  const pendingDocs = unapprovedDocuments(task.id);
   if (!canUpdate) return <StatusBadge meta={taskStatusMeta[task.status]} size="sm" />;
   return (
     <div className="space-y-1.5">
