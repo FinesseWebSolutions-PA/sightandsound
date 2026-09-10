@@ -129,7 +129,7 @@ export function MasterTimeline({
     [scenes, projectId],
   );
 
-  const [clean, setClean] = useState(false);
+  const clean: boolean = true;
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [openTask, setOpenTask] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
