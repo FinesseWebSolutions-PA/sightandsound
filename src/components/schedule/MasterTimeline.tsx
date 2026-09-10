@@ -154,7 +154,7 @@ export function MasterTimeline({
   const locked = readOnly || clean;
 
   /** The chart window covers every set and work item on screen. */
-  const span = useMemo(
+  const baseSpan = useMemo(
     () =>
       spanOfDates([
         ...projectTasks.flatMap((t) => [
@@ -172,6 +172,21 @@ export function MasterTimeline({
       ]),
     [projectTasks, projectScenes],
   );
+
+  /**
+   * The calendar keeps going in both directions: scrolling near either edge adds
+   * more weeks to the window, so you can always keep going.
+   */
+  const [pad, setPad] = useState({ before: 0, after: 0 });
+  const span = useMemo(
+    () => ({
+      start: addDays(baseSpan.start, -pad.before),
+      end: addDays(baseSpan.end, pad.after),
+    }),
+    [baseSpan, pad],
+  );
+
+
 
 
   const totalDays = Math.max(1, daysBetween(span.start, span.end));
