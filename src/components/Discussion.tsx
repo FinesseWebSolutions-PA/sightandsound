@@ -492,31 +492,14 @@ export function Discussion({
     isClosed,
     currentUserId,
   } = useStore();
-  const [showNew, setShowNew] = useState(false);
-  const [anchorId, setAnchorId] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
 
   const locked = isClosed(projectId);
   const canPost = can.comment && !locked;
 
-  const projectTasks = tasks.filter((t) => t.project_id === projectId);
-  const projectDocuments = documents.filter((d) => d.project_id === projectId);
-  const needsAnchor =
-    (contextType === "task" && !taskId) || (contextType === "document" && !documentId);
-  // Each work item and each document carries exactly one conversation, so anything
-  // that already has one is not offered again — you add to it instead.
-  const anchorOptions = (contextType === "task" ? projectTasks : projectDocuments).filter((o) =>
-    contextType === "task"
-      ? !threads.some((t) => t.task_id === o.id)
-      : !threads.some((t) => t.document_id === o.id),
-  );
-  const resolvedTaskId = contextType === "task" ? (taskId ?? (anchorId || null)) : taskId;
-  const resolvedDocumentId =
-    contextType === "document" ? (documentId ?? (anchorId || null)) : documentId;
-  const canStart = canPost && (!needsAnchor || anchorOptions.length > 0);
-  // Only project-level topics need a name of their own; a conversation about a
-  // work item or a drawing is simply that thing's conversation.
-  const needsSubject = contextType === "project";
+  const resolvedTaskId = taskId;
+  const resolvedDocumentId = documentId;
+
 
   const visible = threads.filter(
     (t) =>
@@ -553,21 +536,9 @@ export function Discussion({
   return (
     <section className="space-y-4">
       {heading && (
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-          <div>
-            <h2 className="font-display text-2xl text-ink">{heading}</h2>
-            {blurb && <p className="mt-1 text-sm text-ink-soft">{blurb}</p>}
-          </div>
-          {canStart && (
-            <button
-              type="button"
-              onClick={() => setShowNew((v) => !v)}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink transition-colors hover:bg-cream sm:w-auto"
-            >
-              <MessageSquarePlus aria-hidden className="size-4" />
-              {showNew ? "Cancel" : "New conversation"}
-            </button>
-          )}
+        <div>
+          <h2 className="font-display text-2xl text-ink">{heading}</h2>
+          {blurb && <p className="mt-1 text-sm text-ink-soft">{blurb}</p>}
         </div>
       )}
 
@@ -578,58 +549,8 @@ export function Discussion({
         </p>
       )}
 
-      {showNew && canStart && (
-        <div className="space-y-2">
-          {needsAnchor && (
-            <div className="surface-card flex flex-col gap-2 p-3 text-sm sm:flex-row sm:flex-wrap sm:items-center">
-              <span className="rule-label">
-                {contextType === "task" ? "Work item" : "Document"}
-              </span>
-              <select
-                aria-label={contextType === "task" ? "Choose a work item" : "Choose a document"}
-                value={anchorId}
-                onChange={(e) => setAnchorId(e.target.value)}
-                className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:min-h-0 sm:w-auto sm:py-1 sm:text-sm"
-              >
-                <option value="">Choose one…</option>
-                {anchorOptions.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          {(!needsAnchor || anchorId) && (
-            <Composer
-              projectId={projectId}
-              threadKey="new"
-              withSubject={needsSubject}
-              placeholder="Write the first message…"
-              submitLabel="Send"
-              onSubmit={async (body, subject, attachments) => {
-                const ok = await createThread({
-                  projectId,
-                  contextType,
-                  taskId: resolvedTaskId,
-                  documentId: resolvedDocumentId,
-                  sceneId,
-                  subject,
-                  body,
-                  attachments,
-                });
-                if (!ok) return false;
-                setAnchorId("");
-                setShowNew(false);
-                onSent?.();
-                return true;
-              }}
-            />
-          )}
-        </div>
-      )}
 
-      {visible.length === 0 && !inline && !showNew && (
+      {visible.length === 0 && !inline && (
         <p className="surface-card p-4 text-sm text-ink-soft">
           Nothing here yet.
           {canPost ? " Start a conversation to bring the right departments in." : ""}
