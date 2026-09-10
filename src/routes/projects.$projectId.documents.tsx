@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { Discussion } from "@/components/Discussion";
+import { MentionInput } from "@/components/MentionInput";
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, personById, useStore } from "@/lib/store";
 import { approvalStateMeta, formatDate, formatDateTime } from "@/lib/status";
@@ -108,6 +109,13 @@ function FolderControl({
   );
 }
 
+const decisionLabel: Record<"requested" | "approved" | "changes_requested" | "rejected", string> = {
+  requested: "Review requested",
+  approved: "Approved",
+  changes_requested: "Changes requested",
+  rejected: "Rejected",
+};
+
 function DocumentsTab() {
   const { projectId } = Route.useParams();
   const search = Route.useSearch();
@@ -122,6 +130,7 @@ function DocumentsTab() {
     isClosed,
     threads,
     comments,
+    createThread,
   } = useStore();
   const project = projects.find((p) => p.id === projectId);
   if (!project) throw notFound();
@@ -139,10 +148,33 @@ function DocumentsTab() {
   const selected = projectDocs.find((d) => d.id === selectedId) ?? projectDocs[0];
   const [note, setNote] = useState("");
 
-  const act = (decision: "requested" | "approved" | "changes_requested" | "rejected") => {
-    if (!selected) return;
-    recordApproval(selected.id, decision, note || "No note added.");
-    setNote("");
+  const [sending, setSending] = useState(false);
+
+  /**
+   * A review note behaves like a chat message: it lands in this document's
+   * conversation too, so any @mentions in it actually reach people.
+   */
+  const postNoteToConversation = async (prefix: string) => {
+    if (!selected || !note.trim()) return;
+    await createThread({
+      projectId,
+      contextType: "document",
+      documentId: selected.id,
+      subject: selected.title,
+      body: `${prefix} ${note.trim()}`,
+    });
+  };
+
+  const act = async (decision: "requested" | "approved" | "changes_requested" | "rejected") => {
+    if (!selected || sending) return;
+    setSending(true);
+    try {
+      recordApproval(selected.id, decision, note || "No note added.");
+      await postNoteToConversation(`${decisionLabel[decision]} —`);
+      setNote("");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -327,40 +359,47 @@ function DocumentsTab() {
                   <label htmlFor="review-note" className="rule-label">
                     Review note
                   </label>
-                  <textarea
-                    id="review-note"
+                  <MentionInput
                     value={note}
-                    onChange={(e) => setNote(e.target.value)}
+                    onChange={setNote}
                     rows={2}
-                    placeholder="What did you check, or what needs to change?"
-                    className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-ink focus:ring-2 focus:ring-ring focus:outline-none"
+                    ariaLabel="Review note"
+                    placeholder="What did you check, or what needs to change? Type @ to bring someone in"
                   />
+                  <p className="text-xs text-ink-soft">
+                    Notes post into this document&rsquo;s conversation, so anyone you @mention gets
+                    notified.
+                  </p>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <button
                       type="button"
-                      onClick={() => act("requested")}
-                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-ink-soft"
+                      disabled={sending}
+                      onClick={() => void act("requested")}
+                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-ink-soft disabled:opacity-60"
                     >
                       <Send aria-hidden className="size-4" /> Request review
                     </button>
                     <button
                       type="button"
-                      onClick={() => act("approved")}
-                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-success/30 bg-success-bg px-3 text-sm font-medium text-success hover:brightness-98"
+                      disabled={sending}
+                      onClick={() => void act("approved")}
+                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-success/30 bg-success-bg px-3 text-sm font-medium text-success hover:brightness-98 disabled:opacity-60"
                     >
                       <CheckCircle2 aria-hidden className="size-4" /> Approve
                     </button>
                     <button
                       type="button"
-                      onClick={() => act("changes_requested")}
-                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-warning/30 bg-warning-bg px-3 text-sm font-medium text-warning hover:brightness-98"
+                      disabled={sending}
+                      onClick={() => void act("changes_requested")}
+                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-warning/30 bg-warning-bg px-3 text-sm font-medium text-warning hover:brightness-98 disabled:opacity-60"
                     >
                       <ThumbsDown aria-hidden className="size-4" /> Request changes
                     </button>
                     <button
                       type="button"
-                      onClick={() => act("rejected")}
-                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-danger/30 bg-danger-bg px-3 text-sm font-medium text-danger hover:brightness-98"
+                      disabled={sending}
+                      onClick={() => void act("rejected")}
+                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-danger/30 bg-danger-bg px-3 text-sm font-medium text-danger hover:brightness-98 disabled:opacity-60"
                     >
                       <XCircle aria-hidden className="size-4" /> Reject
                     </button>
@@ -368,8 +407,10 @@ function DocumentsTab() {
                   {canUpload && (
                     <button
                       type="button"
+                      disabled={sending}
                       onClick={() => {
                         addDocumentVersion(selected.id, note);
+                        void postNoteToConversation("New version uploaded —");
                         setNote("");
                       }}
                       className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream sm:w-auto"
