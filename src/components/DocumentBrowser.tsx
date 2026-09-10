@@ -14,6 +14,7 @@ import {
   MessageSquare,
   Send,
   ThumbsDown,
+  Trash2,
   X,
   XCircle,
 } from "lucide-react";
