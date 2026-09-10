@@ -193,6 +193,15 @@ export function MasterTimeline({
   const fitZoom = Math.max(ZOOM_MIN, viewportWidth / totalDays);
   const chartWidth = Math.round(totalDays * pxPerDay);
 
+  /** Open on the whole run so the shape of the production reads at a glance. */
+  const fitted = useRef(false);
+  useEffect(() => {
+    if (fitted.current || !wide) return;
+    fitted.current = true;
+    setPxPerDay(fitZoom);
+  }, [fitZoom, wide]);
+
+
   const setZoom = useCallback(
     (next: number, anchorX?: number) => {
       const el = scrollRef.current;
