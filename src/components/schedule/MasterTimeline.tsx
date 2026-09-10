@@ -755,12 +755,27 @@ export function MasterTimeline({
                         );
                       })()}
                       {wide && (
-                        <div className="relative" style={{ width: chartWidth, minHeight: 56 }}>
-                          <span
-                            style={{ left: setPlanned.left, width: setPlanned.width }}
-                            aria-hidden
-                            className={`absolute top-3.5 h-2 rounded-full border border-border-strong bg-card ${setDimmed ? "opacity-30" : ""}`}
-                          />
+                        <div
+                          className="relative"
+                          style={{ width: chartWidth, minHeight: setsOnly ? 64 : 56 }}
+                        >
+                          {/* gridlines keep every bar readable against the axis */}
+                          {ticks.map((t) => (
+                            <span
+                              key={t.key}
+                              style={{ left: t.left }}
+                              aria-hidden
+                              className={`absolute inset-y-0 w-px ${t.major ? "bg-border-strong" : "bg-border"}`}
+                            />
+                          ))}
+                          {todayX !== null && (
+                            <span
+                              style={{ left: todayX }}
+                              aria-hidden
+                              className="absolute inset-y-0 w-0.5 bg-gold"
+                            />
+                          )}
+                          {/* committed plan: the bar people read */}
                           <span
                             ref={(el) => {
                               if (el) barRefs.current.set(`set-${s.id}`, el);
@@ -768,16 +783,40 @@ export function MasterTimeline({
                             }}
                             onMouseEnter={() => setHoveredScene(s.id)}
                             onMouseLeave={() => setHoveredScene(null)}
-                            style={{ left: setLive.left, width: setLive.width }}
-                            title={`${s.name} · ${setStatusMeta[s.status].label}`}
-                            className={`absolute top-6 flex h-6 items-center overflow-hidden rounded-md border border-ink bg-ink px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm ${
-                              setDimmed ? "opacity-40" : ""
+                            style={{ left: setPlanned.left, width: setPlanned.width }}
+                            title={`${s.name} · ${formatDate(s.start_date)} – ${formatDate(s.due_date)}`}
+                            className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-md border border-ink bg-ink px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm ${
+                              setDimmed ? "opacity-30" : ""
                             }`}
                           >
-                            {s.name}
+                            {setPlanned.width > 84 ? s.name : ""}
+                          </span>
+                          {/* slip past the committed finish, drawn as an overhang */}
+                          {slip > 0 && (
+                            <span
+                              style={{
+                                left: setPlanned.left + setPlanned.width,
+                                width: Math.max(4, slip * pxPerDay),
+                              }}
+                              aria-hidden
+                              className={`absolute top-1/2 h-2.5 -translate-y-1/2 rounded-r-md bg-danger ${setDimmed ? "opacity-30" : ""}`}
+                            />
+                          )}
+                          <span
+                            style={{
+                              left:
+                                setPlanned.left +
+                                setPlanned.width +
+                                (slip > 0 ? Math.max(4, slip * pxPerDay) : 0) +
+                                8,
+                            }}
+                            className={`absolute top-1/2 -translate-y-1/2 text-[11px] whitespace-nowrap text-ink-soft ${setDimmed ? "opacity-30" : ""}`}
+                          >
+                            {Math.max(1, daysBetween(s.start_date, s.due_date))} days
                           </span>
                         </div>
                       )}
+
                     </header>
 
                     {!setsOnly && !isCollapsed && (
