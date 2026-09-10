@@ -69,13 +69,8 @@ function PortfolioPage() {
         <h1 className="mt-2 font-display text-3xl leading-tight text-ink sm:text-4xl lg:text-5xl">
           Production Portfolio
         </h1>
-        <p className="mt-3 text-base leading-relaxed text-ink-soft">
-          Every show build in one place, with the department readiness and key
-          dates that leadership asks about first. Open a production to see its dashboard, timeline,
-          documents, and discussions.
-        </p>
       </div>
-      <div className="gold-rule mt-6 w-24" />
+      <div className="gold-rule mt-4 w-24" />
 
       {/* Status chips scroll sideways on a phone; department moves into a filter panel. */}
       <div className="mt-6 space-y-3 sm:mt-8">
