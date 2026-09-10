@@ -498,6 +498,86 @@ export function MasterTimeline({
     setPending(null);
   };
 
+  /* ---------------- drag a set's dates on the chart ---------------- */
+
+  const canDragSets = !readOnly && can.adminConfig;
+  const [setDrag, setSetDrag] = useState<{
+    sceneId: string;
+    kind: "move" | "start" | "end";
+    startX: number;
+    days: number;
+  } | null>(null);
+
+  const beginSetDrag = (
+    sceneId: string,
+    kind: "move" | "start" | "end",
+    e: React.PointerEvent,
+  ) => {
+    if (!canDragSets) return;
+    e.preventDefault();
+    e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    setSetDrag({ sceneId, kind, startX: e.clientX, days: 0 });
+  };
+
+  /** Sets that follow the one that moved slide along with it. */
+  const cascadeFrom = useCallback(
+    (sceneId: string, finish: string) => {
+      let cursorId = sceneId;
+      let cursorFinish = finish;
+      const guard = new Set<string>([sceneId]);
+      for (;;) {
+        const next = projectScenes.find((s) => s.depends_on_scene_id === cursorId);
+        if (!next || guard.has(next.id)) break;
+        guard.add(next.id);
+        const length = Math.max(0, daysBetween(next.start_date, next.due_date));
+        const start = addDays(cursorFinish, 1 + (next.lag_days || 0));
+        const due = addDays(start, length);
+        void updateScene(next.id, projectId, { start_date: start, due_date: due });
+        cursorId = next.id;
+        cursorFinish = due;
+      }
+    },
+    [projectScenes, updateScene, projectId],
+  );
+
+  useEffect(() => {
+    if (!setDrag) return;
+    const scene = projectScenes.find((s) => s.id === setDrag.sceneId);
+    if (!scene) return;
+    const onMove = (e: PointerEvent) => {
+      const days = Math.round((e.clientX - setDrag.startX) / pxPerDay);
+      setSetDrag((cur) => (cur && cur.days !== days ? { ...cur, days } : cur));
+    };
+    const onUp = () => {
+      const { kind, days } = setDrag;
+      setSetDrag(null);
+      if (!days) return;
+      const start =
+        kind === "end" ? scene.start_date : addDays(scene.start_date || todayISO, days);
+      const due = kind === "start" ? scene.due_date : addDays(scene.due_date || todayISO, days);
+      if (daysBetween(start, due) < 0) return;
+      const patch =
+        kind === "start"
+          ? { start_date: start }
+          : kind === "end"
+            ? { due_date: due }
+            : { start_date: start, due_date: due };
+      void Promise.resolve(updateScene(scene.id, projectId, patch)).then(() =>
+        cascadeFrom(scene.id, due),
+      );
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [setDrag, projectScenes, pxPerDay, updateScene, projectId, cascadeFrom]);
+
+
   /* ---------------- render ---------------- */
 
   const detail = openTask ? taskById(openTask) : undefined;
