@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, X } from "lucide-react";
 
+import { PersonPicker } from "@/components/PersonPicker";
 import { departmentJobTitles, departments, people, useStore } from "@/lib/store";
 import { projectStatusMeta } from "@/lib/status";
 import type { ProjectStatus } from "@/lib/production-data";

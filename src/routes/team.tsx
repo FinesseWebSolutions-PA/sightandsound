@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Crown, Plus, Users, X } from "lucide-react";
 
+import { PersonPicker } from "@/components/PersonPicker";
 import {
   departmentJobTitles,
   departments,
@@ -143,7 +144,7 @@ function GlobalTeamPage() {
                     <PersonPicker
                       label={`Default head of ${dept.name}`}
                       value={dept.owner_id}
-                      onChange={(id) => setDepartmentOwner(dept.id, id)}
+                      onChange={(id: string) => setDepartmentOwner(dept.id, id)}
                       placeholder="No default head"
                       suggestedIds={people
                         .filter((p) => p.primary_department_id === dept.id)

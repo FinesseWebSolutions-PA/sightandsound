@@ -1,6 +1,7 @@
 import { Link2, Loader2, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { PersonPicker } from "@/components/PersonPicker";
 import { departments, personById, projectAssignments, taskDependencies, useStore } from "@/lib/store";
 import { dependencyTypeLabel } from "@/lib/status";
 import type { DependencyType, TaskStatus } from "@/lib/production-data";
