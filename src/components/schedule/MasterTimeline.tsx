@@ -82,8 +82,15 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
         {(["critical", "near_critical", "normal"] as const).map((c) => (
           <StatusBadge key={c} meta={criticalityMeta[c]} size="sm" />
         ))}
+        <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
+          <span aria-hidden className="h-2 w-5 rounded-full border border-border-strong bg-band" />
+          Committed plan
+        </span>
+        <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
+          <span aria-hidden className="h-0.5 w-4 bg-gold" /> Today
+        </span>
         {locked && (
-          <span className="flex items-center gap-1.5 rounded-md border border-border bg-cream px-2.5 py-1 text-xs text-ink-soft">
+          <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
             <Lock aria-hidden className="size-3.5" /> Dates are read-only for you here
           </span>
         )}
