@@ -383,6 +383,24 @@ function MyWorkPage() {
           </section>
         );
       })}
+
+      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
+        <label htmlFor="inbox-person" className="text-xs text-ink-soft">
+          Viewing as
+        </label>
+        <select
+          id="inbox-person"
+          value={viewedId}
+          onChange={(e) => setPersonId(e.target.value)}
+          className="min-h-11 rounded-md border border-border bg-card px-2.5 text-sm text-ink"
+        >
+          {people.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.full_name} — {p.title}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 }
