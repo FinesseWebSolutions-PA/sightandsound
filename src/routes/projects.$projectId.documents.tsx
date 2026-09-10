@@ -144,6 +144,7 @@ function DocumentsTab() {
                         {doc.title}
                       </button>
                       <span className="block text-xs text-ink-soft">
+                        {doc.folder ? `${doc.folder} · ` : ""}
                         {doc.kind} · updated {formatDate(doc.updated_at)}
                       </span>
                     </td>
@@ -179,6 +180,18 @@ function DocumentsTab() {
               </p>
               <div className="mt-3">
                 <StatusBadge meta={approvalStateMeta[selected.approval_state]} />
+              </div>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <span className="rule-label">Folder</span>
+                {canReview || can.upload ? (
+                  <FolderControl
+                    projectId={projectId}
+                    documentId={selected.id}
+                    current={selected.folder}
+                  />
+                ) : (
+                  <span className="text-sm text-ink">{selected.folder || "Not filed"}</span>
+                )}
               </div>
               {(() => {
                 const approvedVersions = approvals
