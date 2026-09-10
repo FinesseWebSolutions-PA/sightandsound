@@ -328,6 +328,40 @@ export function SetDialog({
               )}
             </dd>
           </div>
+
+          <div className="sm:col-span-2">
+            <dt className="rule-label">Portal (set simulation)</dt>
+            <dd className="mt-1 space-y-2">
+              {canEdit && (
+                <input
+                  type="url"
+                  aria-label="Portal (set simulation) link"
+                  defaultValue={set.portal_url}
+                  placeholder="https://…"
+                  onBlur={(e) => {
+                    if (e.target.value.trim() !== set.portal_url)
+                      void updateScene(set.id, projectId, { portal_link_url: e.target.value });
+                  }}
+                  className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink focus:ring-2 focus:ring-ring focus:outline-none sm:text-sm"
+                />
+              )}
+              {set.portal_url ? (
+                <a
+                  href={set.portal_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-gold-deep hover:underline"
+                >
+                  Open Portal
+                  <ExternalLink aria-hidden className="size-3.5" />
+                </a>
+              ) : (
+                <span className="block text-xs text-ink-soft">
+                  No simulation linked for this set yet.
+                </span>
+              )}
+            </dd>
+          </div>
         </dl>
         )}
 
