@@ -107,7 +107,7 @@ function PortfolioPage() {
               to="/projects/$projectId"
               params={{ projectId: project.id }}
               className={cn(
-                "surface-card group block p-5 shadow-sm transition-colors hover:border-gold",
+                "surface-card group block border-l-4 border-l-transparent p-5 transition-all hover:-translate-y-px hover:border-border-strong hover:border-l-gold hover:shadow-md",
                 project.status === "closed" && "opacity-80",
               )}
             >
