@@ -54,18 +54,27 @@ export function TaskDetailPanel({
     unapprovedDocuments,
     isClosed,
     saveWorkItem,
+    uploadDocument,
     saving,
   } = useStore();
-  const task = tasks.find((t) => t.id === taskId);
+  // A sub-task opens in the same panel, with the same features, and a way back up.
+  const [activeId, setActiveId] = useState(taskId);
+  const task = tasks.find((t) => t.id === activeId) ?? tasks.find((t) => t.id === taskId);
   // An "Ask <Department>" prefill is used once: after the message is sent it is gone.
   const [askUsed, setAskUsed] = useState(false);
   const [subTitle, setSubTitle] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [needsApproval, setNeedsApproval] = useState(true);
+  const [uploading, setUploading] = useState(false);
 
   // A fresh work item, or a fresh department to ask, starts the prefill over so it
   // never carries across to another work item.
   useEffect(() => {
     setAskUsed(false);
+    setActiveId(taskId);
+    setSubTitle("");
   }, [taskId, askDepartmentId]);
+
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
