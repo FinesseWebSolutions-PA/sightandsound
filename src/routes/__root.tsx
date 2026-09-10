@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomTabBar } from "@/components/BottomTabBar";
 import { StoreProvider } from "@/lib/store";
+import { DemoGate } from "@/components/DemoGate";
 
 function NotFoundComponent() {
   return (
@@ -123,14 +124,16 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <StoreProvider>
-        <div className="min-h-screen bg-background pb-[calc(60px+env(safe-area-inset-bottom))] md:pb-0">
-          <AppHeader />
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-          <BottomTabBar />
-        </div>
-      </StoreProvider>
+      <DemoGate>
+        <StoreProvider>
+          <div className="min-h-screen bg-background pb-[calc(60px+env(safe-area-inset-bottom))] md:pb-0">
+            <AppHeader />
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+            <BottomTabBar />
+          </div>
+        </StoreProvider>
+      </DemoGate>
     </QueryClientProvider>
   );
 }
