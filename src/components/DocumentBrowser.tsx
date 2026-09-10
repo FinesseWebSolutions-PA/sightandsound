@@ -728,17 +728,23 @@ export function DocumentBrowser({
               )}
 
               {(() => {
-                const reviewActions: Record<
-                  string,
-                  { label: string; Icon: typeof Send }
-                > = {
+                if (
+                  !menuAction ||
+                  !canReview ||
+                  !selected.requires_approval ||
+                  !(["requested", "approved", "changes_requested", "rejected"] as const).includes(
+                    menuAction as "requested" | "approved" | "changes_requested" | "rejected",
+                  )
+                )
+                  return null;
+                const decision = menuAction;
+                const reviewMeta = {
                   requested: { label: "Request review", Icon: Send },
                   approved: { label: "Approve", Icon: CheckCircle2 },
                   changes_requested: { label: "Request changes", Icon: ThumbsDown },
                   rejected: { label: "Reject", Icon: XCircle },
-                };
-                if (!menuAction || !(menuAction in reviewActions) || !canReview || !selected.requires_approval) return null;
-                const { label, Icon } = reviewActions[menuAction];
+                }[decision];
+                const { label, Icon } = reviewMeta;
                 return (
                   <div className="space-y-2 border-t border-border bg-cream-soft px-4 py-3">
                     <p className="text-xs font-medium text-ink-soft">{label}</p>
@@ -754,7 +760,7 @@ export function DocumentBrowser({
                         type="button"
                         disabled={sending}
                         onClick={() => {
-                          void act(menuAction as "requested" | "approved" | "changes_requested" | "rejected");
+                          void act(decision);
                           setMenuAction(null);
                         }}
                         className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-ink-soft disabled:opacity-60"
@@ -772,6 +778,7 @@ export function DocumentBrowser({
                   </div>
                 );
               })()}
+
 
               {menuAction === "version" && canUpload && (
                 <div className="space-y-2 border-t border-border bg-cream-soft px-4 py-3">
