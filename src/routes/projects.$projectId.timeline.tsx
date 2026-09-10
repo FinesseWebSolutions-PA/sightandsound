@@ -349,6 +349,7 @@ function TimelineTab() {
     taskId?: string;
     departmentId?: string;
     sceneId?: string;
+    parentTaskId?: string;
   } | null>(null);
 
   const projectTasks = tasks.filter((t) => t.project_id === projectId);
@@ -515,7 +516,15 @@ function TimelineTab() {
             setOpenTaskId(null);
             setAskId(null);
           }}
-          {...(canPlan ? { onEdit: (id: string) => setEditor({ taskId: id }) } : {})}
+          {...(canPlan
+            ? {
+                onEdit: (id: string) => setEditor({ taskId: id }),
+                onAddSubTask: (parentTaskId: string) => {
+                  setOpenTaskId(null);
+                  setEditor({ parentTaskId });
+                },
+              }
+            : {})}
           {...(search.comment ? { highlightCommentId: search.comment } : {})}
           {...(askId ? { askDepartmentId: askId } : {})}
         />
@@ -527,6 +536,7 @@ function TimelineTab() {
           {...(editor.taskId ? { taskId: editor.taskId } : {})}
           {...(editor.departmentId ? { presetDepartmentId: editor.departmentId } : {})}
           {...(editor.sceneId ? { presetSceneId: editor.sceneId } : {})}
+          {...(editor.parentTaskId ? { presetParentTaskId: editor.parentTaskId } : {})}
           onClose={() => setEditor(null)}
         />
       )}
