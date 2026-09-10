@@ -15,6 +15,7 @@ import {
   loadProductionData,
   previewTaskReschedule,
   saveAttachmentToDocs,
+  writeDocumentApprovalRequirement,
   uploadChatAttachment,
   writeDocumentFolder,
   writeDocumentScene,
@@ -152,7 +153,10 @@ export type Store = {
     attachmentId: string;
     folder: string;
     title: string;
+    requiresApproval: boolean;
   }) => Promise<void>;
+  /** Turns the approval requirement for one document on or off. */
+  setDocumentApprovalRequirement: (documentId: string, requiresApproval: boolean) => void;
   setDocumentFolder: (documentId: string, folder: string) => void;
   setDocumentSet: (documentId: string, sceneId: string | null) => void;
   createThread: (input: {
@@ -368,7 +372,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const unapprovedDocuments = useCallback(
     (taskId: string) =>
       (dataRef.current?.documents ?? []).filter(
-        (d) => d.task_id === taskId && d.approval_state !== "approved",
+        (d) => d.task_id === taskId && d.requires_approval && d.approval_state !== "approved",
       ),
     [],
   );
@@ -580,10 +584,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       attachmentId,
       folder,
       title,
+      requiresApproval,
     }: {
       attachmentId: string;
       folder: string;
       title: string;
+      requiresApproval: boolean;
     }) => {
       const current = dataRef.current;
       const attachment = current?.commentAttachments.find((a) => a.id === attachmentId);
@@ -601,6 +607,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           taskId: thread.task_id ?? null,
           folder,
           title,
+          requiresApproval,
           actorId: currentUserIdRef.current,
         });
         await refresh();
@@ -612,6 +619,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     },
     [allowed, refresh],
+  );
+
+  const setDocumentApprovalRequirement = useCallback(
+    (documentId: string, requiresApproval: boolean) => {
+      if (!allowed(projectOfDocument(documentId), "contribute")) return;
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              documents: prev.documents.map((d) =>
+                d.id === documentId ? { ...d, requires_approval: requiresApproval } : d,
+              ),
+            }
+          : prev,
+      );
+      run(() =>
+        writeDocumentApprovalRequirement(documentId, requiresApproval, currentUserIdRef.current),
+      );
+    },
+    [allowed, run],
   );
 
   const setDocumentFolder = useCallback(
@@ -904,6 +931,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             createThread,
             uploadAttachment,
             saveAttachmentToDocuments,
+            setDocumentApprovalRequirement,
             setDocumentFolder,
             setDocumentSet,
             markNotifications,
@@ -969,6 +997,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               throw new Error("Production data is still loading.");
             },
             saveAttachmentToDocuments: async () => {},
+            setDocumentApprovalRequirement: () => {},
             setDocumentFolder: () => {},
             setDocumentSet: () => {},
             createThread: async () => false,
@@ -1016,6 +1045,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       createThread,
       uploadAttachment,
       saveAttachmentToDocuments,
+      setDocumentApprovalRequirement,
       setDocumentFolder,
       setDocumentSet,
       markNotifications,
