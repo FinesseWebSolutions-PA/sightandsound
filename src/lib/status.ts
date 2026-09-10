@@ -8,12 +8,16 @@ import {
   FileEdit,
   PauseCircle,
   Play,
+  Timer,
   XCircle,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 
 import type {
   ApprovalState,
+  Criticality,
+  DependencyType,
   MilestoneStatus,
   ProjectDepartment,
   ProjectStatus,
