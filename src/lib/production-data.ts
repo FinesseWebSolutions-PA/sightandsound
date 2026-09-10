@@ -847,19 +847,24 @@ export async function loadProductionData(): Promise<ProductionData> {
   const discussionThreads: DiscussionThread[] = (threadsRes.data ?? []).map((t) => {
     const opener = comments.find((c) => c.thread_id === t.id);
     const contextType: ThreadContext =
-      t.context_type === "task" || t.context_type === "document" ? t.context_type : "project";
+      t.context_type === "task" || t.context_type === "document" || t.context_type === "scene"
+        ? t.context_type
+        : "project";
     const fallback =
       contextType === "task"
         ? tasks.find((x) => x.id === t.task_id)?.title
         : contextType === "document"
           ? documents.find((d) => d.id === t.document_id)?.title
-          : projects.find((p) => p.id === t.project_id)?.name;
+          : contextType === "scene"
+            ? scenes.find((s) => s.id === t.scene_id)?.name
+            : projects.find((p) => p.id === t.project_id)?.name;
     return {
       id: t.id,
       project_id: t.project_id,
       context_type: contextType,
       task_id: t.task_id,
       document_id: t.document_id,
+      scene_id: t.scene_id ?? null,
       subject: opener ? firstLine(opener.body) : (fallback ?? "Discussion"),
       created_by_id: t.created_by ?? "",
       created_at: t.created_at,
