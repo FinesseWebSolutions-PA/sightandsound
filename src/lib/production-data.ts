@@ -1320,7 +1320,7 @@ export async function writeThread(input: {
     authorId: input.authorId,
     projectId: input.projectId,
     sourceEntityType: input.contextType,
-    sourceEntityId: input.taskId ?? input.documentId ?? input.projectId,
+    sourceEntityId: input.taskId ?? input.documentId ?? input.sceneId ?? input.projectId,
     departments: input.departments,
     people: input.people,
     ...(input.attachments ? { attachments: input.attachments } : {}),
