@@ -341,7 +341,7 @@ function ThreadPanel({
   return (
     <article>
       <ChatPanel>
-        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-card px-3 py-2 sm:px-4">
+        <header className="panel-header flex flex-wrap items-center justify-between gap-2 px-3 py-2 sm:px-4">
           {!inline && (
             <div className="min-w-0">
               <h3 className="truncate text-sm font-semibold text-ink">{title}</h3>
@@ -357,9 +357,10 @@ function ThreadPanel({
                 aria-selected={tab === key}
                 onClick={() => setTab(key)}
                 className={cn(
-                  "inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors",
-                  tab === key ? "bg-ink text-cream-soft" : "text-ink-soft hover:bg-cream",
+                  "inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm transition-colors",
+                  tab === key ? "chip-selected font-semibold" : "chip-quiet font-medium hover:bg-cream",
                 )}
+
               >
                 {key === "messages" ? (
                   <MessageSquarePlus aria-hidden className="size-4" />
