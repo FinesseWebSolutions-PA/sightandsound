@@ -276,9 +276,6 @@ function SetDetail({
           </div>
         )}
 
-        {/* When a set follows another, its start is worked out from that set's
-            finish plus the gap — only the finish is committed by hand. */}
-        {(() => null)()}
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
             <dt className="rule-label">Set lead</dt>
