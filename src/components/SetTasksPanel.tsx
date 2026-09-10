@@ -74,7 +74,9 @@ export function SetTasksPanel({
         ) : (
           <ul className="row-list">
             {setTasks
-              .filter((t) => !t.parent_task_id)
+              // top level here = no parent, or a parent that lives on another set,
+              // so nothing on this set can ever be hidden
+              .filter((t) => !t.parent_task_id || !setTasks.some((p) => p.id === t.parent_task_id))
               .map((parent) => {
                 const children = setTasks.filter((t) => t.parent_task_id === parent.id);
                 return [parent, ...children].map((t) => (
