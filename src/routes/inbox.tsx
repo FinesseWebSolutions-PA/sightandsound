@@ -179,9 +179,9 @@ function MyWorkPage() {
           ? `${author} mentioned ${n.via_department ? (myDept?.name ?? "your department") : "you"} on ${where}`
           : author
             ? `${author} wrote on ${where}`
-            : n.summary
-                .replace(/^Approval /i, "")
-                .replace(/^(\w)/, (c) => c.toUpperCase());
+            : `${n.summary.replace(/^Approval /i, "").replace(/^(\w)/, (c) => c.toUpperCase())}${
+                target ? `: ${target.title}` : ""
+              }`;
 
       const linkClass = "text-sm font-semibold text-ink hover:underline";
       const open = task ? (
