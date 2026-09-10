@@ -113,10 +113,8 @@ export function WorkItemEditor({
 
   const children = existing ? tasks.filter((t) => t.parent_task_id === existing.id) : [];
   const rollsUp = children.length > 0;
-  // Nesting is one level deep, so only top-level work items can be a parent.
-  const parentOptions = otherTasks.filter(
-    (t) => !t.parent_task_id && !tasks.some((c) => c.parent_task_id === existing?.id),
-  );
+  // Nesting is one level deep, so only top-level work items from this production can be a parent.
+  const parentOptions = otherTasks.filter((t) => t.project_id === projectId && !t.parent_task_id);
 
   async function save() {
     if (!title.trim()) {
