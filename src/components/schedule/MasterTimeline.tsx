@@ -151,7 +151,26 @@ export function MasterTimeline({
 
   const locked = readOnly || clean;
 
-  const span = useMemo(() => spanOf(projectTasks, []), [projectTasks]);
+  /** The chart window covers every set and work item on screen. */
+  const span = useMemo(
+    () =>
+      spanOfDates([
+        ...projectTasks.flatMap((t) => [
+          t.start_date,
+          t.due_date,
+          t.forecast_start,
+          t.forecast_finish,
+        ]),
+        ...projectScenes.flatMap((s) => [
+          s.start_date,
+          s.due_date,
+          s.forecast_start,
+          s.forecast_finish,
+        ]),
+      ]),
+    [projectTasks, projectScenes],
+  );
+
 
   const totalDays = Math.max(1, daysBetween(span.start, span.end));
 
