@@ -658,7 +658,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [run],
   );
 
-  const value = useMemo<Store | null>(
+  const value = useMemo<Store>(
     () =>
       data
         ? {
