@@ -396,7 +396,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       );
       run(() => writeTaskStatus(taskId, status, currentUserIdRef.current));
     },
-    [allowed, run],
+    [allowed, run, unapprovedDocuments],
   );
 
   const setTaskDates = useCallback(
@@ -893,6 +893,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             notifications: data.notifications,
             saving,
             setTaskStatus,
+            unapprovedDocuments,
             setTaskDates,
             previewReschedule,
             setMilestoneDate,
@@ -956,6 +957,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             notifications: [],
             saving,
             setTaskStatus: () => {},
+            unapprovedDocuments: () => [],
             setTaskDates: () => {},
             previewReschedule: async () => [],
             setMilestoneDate: () => {},
@@ -1003,6 +1005,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       data,
       saving,
       setTaskStatus,
+      unapprovedDocuments,
       setTaskDates,
       previewReschedule,
       setMilestoneDate,
