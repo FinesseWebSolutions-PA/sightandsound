@@ -333,13 +333,22 @@ export function DocumentBrowser({
     });
   };
 
+  /** Who is signing, and whether what they typed matches their own name. */
+  const signerName = personById(currentUserId)?.full_name ?? "";
+  const needsSignature = (decision: string) => decision !== "requested";
+  const signatureOk =
+    signature.trim().toLowerCase() === signerName.trim().toLowerCase() && signerName !== "";
+
   const act = async (decision: "requested" | "approved" | "changes_requested" | "rejected") => {
     if (!opened || sending) return;
+    if (needsSignature(decision) && !signatureOk) return;
+    const signedLine = needsSignature(decision) ? ` Signed: ${signerName}.` : "";
     setSending(true);
     try {
-      recordApproval(opened.id, decision, note || "No note added.");
+      recordApproval(opened.id, decision, `${note || "No note added."}${signedLine}`);
       await postNoteToConversation(`${decisionLabel[decision]} —`);
       setNote("");
+      setSignature("");
     } finally {
       setSending(false);
     }
