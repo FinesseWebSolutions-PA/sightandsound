@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { AtSign, MessageSquarePlus, Send } from "lucide-react";
+import { AtSign, Loader2, MessageSquarePlus, Paperclip, Send, X } from "lucide-react";
 
+import { AttachmentList } from "@/components/AttachmentList";
 import { MentionInput } from "@/components/MentionInput";
 import { MentionText } from "@/components/MentionText";
 import { personById, useStore } from "@/lib/store";
-import type { ThreadContext } from "@/lib/production-data";
+import type { StagedAttachment, ThreadContext } from "@/lib/production-data";
 import { formatDateTime } from "@/lib/status";
 import { initials } from "@/lib/threads";
 import { cn } from "@/lib/utils";
@@ -17,17 +18,27 @@ function Composer({
   compact = false,
   initialDraft = "",
   autoFocus = false,
+  projectId,
+  threadKey,
 }: {
   placeholder: string;
   submitLabel: string;
-  onSubmit: (body: string, subject: string) => void;
+  onSubmit: (body: string, subject: string, attachments: StagedAttachment[]) => void;
+  /** Where uploaded files are filed in storage. */
+  projectId: string;
+  threadKey: string;
   withSubject?: boolean;
   compact?: boolean;
   initialDraft?: string;
   autoFocus?: boolean;
 }) {
+  const { uploadAttachment } = useStore();
   const [body, setBody] = useState(initialDraft);
   const [subject, setSubject] = useState("");
+  const [staged, setStaged] = useState<StagedAttachment[]>([]);
+  const [uploading, setUploading] = useState(0);
+  const [uploadError, setUploadError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -48,16 +59,36 @@ function Composer({
     keepInView();
   }, [autoFocus]);
 
+  const pickFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploadError("");
+    const list = Array.from(files);
+    setUploading((n) => n + list.length);
+    for (const file of list) {
+      try {
+        const uploaded = await uploadAttachment(file, projectId, threadKey);
+        setStaged((prev) => [...prev, uploaded]);
+      } catch (e: unknown) {
+        setUploadError(e instanceof Error ? e.message : `${file.name} could not be attached.`);
+      } finally {
+        setUploading((n) => Math.max(0, n - 1));
+      }
+    }
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
   return (
     <form
       ref={formRef}
       className={cn("space-y-2", compact ? "pt-2" : "surface-card p-4")}
       onSubmit={(e) => {
         e.preventDefault();
-        if (!body.trim() || (withSubject && !subject.trim())) return;
-        onSubmit(body.trim(), subject.trim());
+        if (uploading > 0) return;
+        if ((!body.trim() && staged.length === 0) || (withSubject && !subject.trim())) return;
+        onSubmit(body.trim(), subject.trim(), staged);
         setBody("");
         setSubject("");
+        setStaged([]);
       }}
     >
       {withSubject && (
@@ -80,14 +111,63 @@ function Composer({
         inputRef={areaRef}
       />
 
+      {(staged.length > 0 || uploading > 0 || uploadError) && (
+        <div className="space-y-1">
+          {staged.map((a) => (
+            <div
+              key={a.storage_key}
+              className="flex items-center gap-2 rounded-md border border-border bg-cream-soft px-2 py-1.5 text-sm text-ink"
+            >
+              <Paperclip aria-hidden className="size-4 shrink-0 text-ink-soft" />
+              <span className="min-w-0 flex-1 truncate">{a.file_name}</span>
+              <button
+                type="button"
+                onClick={() => setStaged((prev) => prev.filter((s2) => s2.storage_key !== a.storage_key))}
+                aria-label={`Remove ${a.file_name}`}
+                className="grid size-11 place-items-center rounded-md text-ink-soft hover:bg-cream hover:text-ink"
+              >
+                <X aria-hidden className="size-4" />
+              </button>
+            </div>
+          ))}
+          {uploading > 0 && (
+            <p className="flex items-center gap-1.5 text-xs text-ink-soft">
+              <Loader2 aria-hidden className="size-3.5 animate-spin" />
+              Adding {uploading} file{uploading === 1 ? "" : "s"}…
+            </p>
+          )}
+          {uploadError && <p className="text-xs text-danger">{uploadError}</p>}
+        </div>
+      )}
+
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <p className="flex items-center gap-1.5 text-xs text-ink-soft">
-          <AtSign aria-hidden className="size-3.5" />
-          Type @ to bring in a person or department
-        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            ref={fileRef}
+            type="file"
+            multiple
+            className="hidden"
+            aria-hidden
+            tabIndex={-1}
+            onChange={(e) => void pickFiles(e.target.files)}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream"
+          >
+            <Paperclip aria-hidden className="size-4" />
+            Attach
+          </button>
+          <p className="flex items-center gap-1.5 text-xs text-ink-soft">
+            <AtSign aria-hidden className="size-3.5" />
+            Type @ to bring in a person or department
+          </p>
+        </div>
         <button
           type="submit"
-          className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-ink-soft sm:w-auto"
+          disabled={uploading > 0}
+          className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-ink-soft disabled:opacity-60 sm:w-auto"
         >
           <Send aria-hidden className="size-4" />
           {submitLabel}
@@ -106,8 +186,10 @@ function Message({
   id,
   mine,
   reply = false,
+  projectId,
 }: {
   authorId: string;
+  projectId: string;
   body: string;
   createdAt: string;
   highlighted: boolean;
@@ -115,7 +197,9 @@ function Message({
   mine: boolean;
   reply?: boolean;
 }) {
+  const { commentAttachments } = useStore();
   const author = personById(authorId);
+  const files = commentAttachments.filter((a) => a.comment_id === id);
   return (
     <div
       id={`comment-${id}`}
@@ -143,7 +227,8 @@ function Message({
             mine ? "bg-gold-tint" : "bg-cream-soft",
           )}
         >
-          <MentionText body={body} />
+          {body && <MentionText body={body} />}
+          {files.length > 0 && <AttachmentList attachments={files} projectId={projectId} />}
         </div>
       </div>
     </div>
@@ -289,10 +374,12 @@ export function Discussion({
           )}
           {(!needsAnchor || anchorId) && (
             <Composer
+              projectId={projectId}
+              threadKey="new"
               withSubject={needsSubject}
               placeholder="Write the first message…"
               submitLabel="Send"
-              onSubmit={(body, subject) => {
+              onSubmit={(body, subject, attachments) => {
                 createThread({
                   projectId,
                   contextType,
@@ -300,6 +387,7 @@ export function Discussion({
                   documentId: resolvedDocumentId,
                   subject,
                   body,
+                  attachments,
                 });
                 setAnchorId("");
                 setShowNew(false);
@@ -323,11 +411,13 @@ export function Discussion({
           {canPost ? (
             <Composer
               compact
+              projectId={projectId}
+              threadKey="new"
               initialDraft={initialDraft}
               autoFocus={autoFocusComposer}
               placeholder="Message about this…"
               submitLabel="Send"
-              onSubmit={(body) => {
+              onSubmit={(body, _subject, attachments) => {
                 createThread({
                   projectId,
                   contextType,
@@ -335,6 +425,7 @@ export function Discussion({
                   documentId: resolvedDocumentId,
                   subject: "",
                   body,
+                  attachments,
                 });
                 onSent?.();
               }}
@@ -372,6 +463,7 @@ export function Discussion({
                 return (
                   <div key={root.id} className="space-y-2">
                     <Message
+                      projectId={projectId}
                       id={root.id}
                       authorId={root.author_id}
                       body={root.body}
@@ -382,6 +474,7 @@ export function Discussion({
                     {replies.map((reply) => (
                       <Message
                         key={reply.id}
+                        projectId={projectId}
                         reply
                         id={reply.id}
                         authorId={reply.author_id}
@@ -397,11 +490,13 @@ export function Discussion({
                         {replyTo === root.id ? (
                           <Composer
                             compact
+                            projectId={projectId}
+                            threadKey={thread.id}
                             autoFocus
                             placeholder="Write a reply…"
                             submitLabel="Reply"
-                            onSubmit={(body) => {
-                              addComment(thread.id, root.id, body);
+                            onSubmit={(body, _subject, attachments) => {
+                              addComment(thread.id, root.id, body, attachments);
                               setReplyTo(null);
                             }}
                           />
@@ -430,12 +525,14 @@ export function Discussion({
               >
                 <Composer
                   compact
+                  projectId={projectId}
+                  threadKey={thread.id}
                   initialDraft={initialDraft}
                   autoFocus={autoFocusComposer}
                   placeholder="Message…"
                   submitLabel="Send"
-                  onSubmit={(body) => {
-                    addComment(thread.id, null, body);
+                  onSubmit={(body, _subject, attachments) => {
+                    addComment(thread.id, null, body, attachments);
                     onSent?.();
                   }}
                 />
