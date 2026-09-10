@@ -201,7 +201,7 @@ function SetDetail({
   const shown = involved.length > 0 ? involved : departments;
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <section className="surface-card p-4">
         <header className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
