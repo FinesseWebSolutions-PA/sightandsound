@@ -320,17 +320,16 @@ function TimelineTab() {
 
   const taskTitle = (id: string) => tasks.find((t) => t.id === id)?.title ?? id;
 
-  // Arriving from the Inbox or the Dashboard opens that work item's thread straight away.
+  // Arriving from My Work, the Dashboard or a blocker link opens that work item in place.
   const [openTaskId, setOpenTaskId] = useState<string | null>(search.task ?? null);
   useEffect(() => {
     if (search.task) setOpenTaskId(search.task);
   }, [search.task]);
 
   const threadProps = {
-    openTaskId,
-    onToggleThread: (id: string) => setOpenTaskId((cur) => (cur === id ? null : id)),
-    ...(search.comment ? { highlightCommentId: search.comment } : {}),
+    onOpenTask: (id: string) => setOpenTaskId(id),
   };
+
 
   // A deep link to one work item's conversation lands on the list view.
   const initialView: ViewId = search.task
