@@ -1,14 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMemo } from "react";
-import {
-  AtSign,
-  CheckCircle2,
-  FileCheck2,
-  ListChecks,
-  MailOpen,
-  Users,
-} from "lucide-react";
+import { AtSign, CheckCircle2, FileCheck2, ListChecks, MailOpen, Users } from "lucide-react";
 
 import { MentionInput } from "@/components/MentionInput";
 import { departments, people, personById, useStore } from "@/lib/store";
@@ -231,9 +224,7 @@ function MyWorkPage() {
     }
 
     // Work assigned to this person that is still open; late work is pulled forward.
-    for (const task of tasks.filter(
-      (t) => t.assignee_id === viewedId && t.status !== "complete",
-    )) {
+    for (const task of tasks.filter((t) => t.assignee_id === viewedId && t.status !== "complete")) {
       const late = task.due_date < today;
       out.push({
         id: `t-${task.id}`,

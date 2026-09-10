@@ -67,8 +67,7 @@ function PortfolioPage() {
     return open[0];
   };
 
-  const activeFilters =
-    (status !== "all" ? 1 : 0) + (department !== "all" ? 1 : 0);
+  const activeFilters = (status !== "all" ? 1 : 0) + (department !== "all" ? 1 : 0);
 
   return (
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-10">

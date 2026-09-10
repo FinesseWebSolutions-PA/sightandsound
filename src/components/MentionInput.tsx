@@ -128,7 +128,6 @@ export function MentionInput({
     onChange(next);
   };
 
-
   return (
     <div className="relative">
       <textarea
@@ -230,7 +229,6 @@ export function MentionInput({
             </p>
           )}
         </div>
-
       )}
     </div>
   );

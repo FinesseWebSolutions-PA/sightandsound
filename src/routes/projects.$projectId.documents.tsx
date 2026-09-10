@@ -11,7 +11,6 @@ import {
   XCircle,
 } from "lucide-react";
 
-
 import { Discussion } from "@/components/Discussion";
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, personById, useStore } from "@/lib/store";
@@ -21,8 +20,8 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/projects/$projectId/documents")({
   validateSearch: (search: Record<string, unknown>): { document?: string; comment?: string } => ({
-    ...(typeof search['document'] === "string" ? { document: search['document'] } : {}),
-    ...(typeof search['comment'] === "string" ? { comment: search['comment'] } : {}),
+    ...(typeof search["document"] === "string" ? { document: search["document"] } : {}),
+    ...(typeof search["comment"] === "string" ? { comment: search["comment"] } : {}),
   }),
   head: () => ({
     meta: [
@@ -79,12 +78,10 @@ function DocumentsTab() {
     setNote("");
   };
 
-
   return (
     <div className="space-y-6">
       <div>
         <h2 className="font-display text-2xl text-ink sm:text-3xl">Documents</h2>
-
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[1.3fr_1fr]">
@@ -308,7 +305,6 @@ function DocumentsTab() {
                     : "Viewers can read documents and their review history."}
                 </p>
               )}
-
             </div>
 
             <div className="surface-card overflow-hidden">
@@ -376,9 +372,7 @@ function DocumentsTab() {
         )}
       </div>
 
-      {selected && (
-        <div id="document-discussion" />
-      )}
+      {selected && <div id="document-discussion" />}
       {selected && (
         <Discussion
           projectId={projectId}

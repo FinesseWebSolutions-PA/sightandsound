@@ -4,7 +4,13 @@ import { useMemo, useState } from "react";
 
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, personById, taskDependencies, useStore } from "@/lib/store";
-import { criticalityMeta, dependencyTypeLabel, formatDate, formatFloat, taskStatusMeta } from "@/lib/status";
+import {
+  criticalityMeta,
+  dependencyTypeLabel,
+  formatDate,
+  formatFloat,
+  taskStatusMeta,
+} from "@/lib/status";
 import { daysBetween, toISO } from "@/lib/schedule";
 import type { Task } from "@/lib/production-data";
 
@@ -139,7 +145,6 @@ export function DepartmentWorkQueue({ projectId }: { projectId: string }) {
                                   </Link>
                                 </li>
                               ))}
-
                             </ul>
                           </div>
                         )}

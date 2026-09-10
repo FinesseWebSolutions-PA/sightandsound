@@ -153,7 +153,10 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
     () => tasks.filter((t) => t.project_id === projectId),
     [tasks, projectId],
   );
-  const span = useMemo(() => spanOf(projectTasks, projectMilestones), [projectTasks, projectMilestones]);
+  const span = useMemo(
+    () => spanOf(projectTasks, projectMilestones),
+    [projectTasks, projectMilestones],
+  );
   const ticks = useMemo(() => monthTicks(span), [span]);
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -259,9 +262,7 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
                         <span className="mt-1 block text-xs text-ink-soft">
                           Committed {formatDate(m.due_date)} · Forecast{" "}
                           {formatDate(m.forecast_date)}
-                          {slip > 0 && (
-                            <span className="text-danger"> · {slip} days late</span>
-                          )}
+                          {slip > 0 && <span className="text-danger"> · {slip} days late</span>}
                           {m.affects_performance && " · affects performance"}
                         </span>
                       )}

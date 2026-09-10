@@ -11,15 +11,8 @@ import {
   MessageSquare,
 } from "lucide-react";
 
-
 import { StatusBadge } from "@/components/StatusBadge";
-import {
-  auditLog,
-  departments,
-  personById,
-  projectDepartments,
-  useStore,
-} from "@/lib/store";
+import { auditLog, departments, personById, projectDepartments, useStore } from "@/lib/store";
 import {
   formatDate,
   formatDateTime,
@@ -29,7 +22,6 @@ import {
 } from "@/lib/status";
 import { snippet } from "@/lib/threads";
 import { toISO } from "@/lib/schedule";
-
 
 export const Route = createFileRoute("/projects/$projectId/")({
   head: () => ({
@@ -93,7 +85,6 @@ function DashboardTab() {
 
   const [portalDraft, setPortalDraft] = useState(project.portal_url);
   const canEditPortal = can.adminConfig && !isClosed(projectId);
-
 
   const projectTasks = tasks.filter((t) => t.project_id === projectId);
   const openTasks = projectTasks
@@ -183,7 +174,6 @@ function DashboardTab() {
       })),
   ].slice(0, 6);
 
-
   return (
     <div className="space-y-6">
       <section className="surface-card p-4 sm:p-5">
@@ -254,7 +244,6 @@ function DashboardTab() {
           )}
 
           <Panel title="Department readiness" icon={ListChecks}>
-
             <ul className="divide-y divide-border">
               {involved.map((pd) => {
                 const dept = departments.find((d) => d.id === pd.department_id);
@@ -380,9 +369,7 @@ function DashboardTab() {
                         {formatDateTime(entry.created_at)}
                       </span>
                     </div>
-                    <p className="mt-0.5 pl-5 text-ink-soft italic">
-                      “{snippet(entry.body, 120)}”
-                    </p>
+                    <p className="mt-0.5 pl-5 text-ink-soft italic">“{snippet(entry.body, 120)}”</p>
                     <div className="pl-5">
                       {entry.task ? (
                         <Link
@@ -454,8 +441,7 @@ function DashboardTab() {
 
           <Panel title="Notifications" icon={Bell}>
             <p className="text-sm text-ink-soft">
-              {notices.filter((n) => !n.read).length} unread of {notices.length} on this
-              production.
+              {notices.filter((n) => !n.read).length} unread of {notices.length} on this production.
             </p>
             <ul className="mt-3 space-y-2.5">
               {notices.slice(0, 6).map((n) => (
@@ -543,7 +529,6 @@ function DashboardTab() {
                     : "Admins can change this link."}
                 </p>
               )}
-
             </div>
           </Panel>
         </div>

@@ -15,8 +15,16 @@ import type { Task, TaskStatus } from "@/lib/production-data";
 
 /** The scheduling views a person can switch between. */
 const views = [
-  { id: "master", label: "Master Timeline", blurb: "Milestones, dependencies and the critical path" },
-  { id: "queue", label: "Department Work Queue", blurb: "What each department owes, and what's blocking it" },
+  {
+    id: "master",
+    label: "Master Timeline",
+    blurb: "Milestones, dependencies and the critical path",
+  },
+  {
+    id: "queue",
+    label: "Department Work Queue",
+    blurb: "What each department owes, and what's blocking it",
+  },
   { id: "scenes", label: "Scene Readiness", blurb: "Scene by scene, department by department" },
   { id: "list", label: "Work & conversations", blurb: "Milestone list with comments in place" },
 ] as const;
@@ -37,13 +45,11 @@ export const Route = createFileRoute("/projects/$projectId/timeline")({
   validateSearch: (
     search: Record<string, unknown>,
   ): { task?: string; comment?: string; view?: string; ask?: string } => ({
-    ...(typeof search['task'] === "string" ? { task: search['task'] } : {}),
-    ...(typeof search['comment'] === "string" ? { comment: search['comment'] } : {}),
-    ...(typeof search['view'] === "string" ? { view: search['view'] } : {}),
-    ...(typeof search['ask'] === "string" ? { ask: search['ask'] } : {}),
+    ...(typeof search["task"] === "string" ? { task: search["task"] } : {}),
+    ...(typeof search["comment"] === "string" ? { comment: search["comment"] } : {}),
+    ...(typeof search["view"] === "string" ? { view: search["view"] } : {}),
+    ...(typeof search["ask"] === "string" ? { ask: search["ask"] } : {}),
   }),
-
-
 
   head: () => ({
     meta: [
@@ -108,8 +114,6 @@ function TaskCommentsButton({ task, onOpen }: { task: Task; onOpen: () => void }
   );
 }
 
-
-
 function StatusControl({
   task,
   canUpdate,
@@ -153,7 +157,6 @@ function TaskCards({
   taskTitle,
   emptyLabel,
   onOpenTask,
-
 }: TaskViewProps) {
   if (rows.length === 0) {
     return <p className="px-4 py-3 text-sm text-ink-soft lg:hidden">{emptyLabel}</p>;
@@ -193,7 +196,6 @@ function TaskCards({
             )}
             <StatusControl task={task} canUpdate={canUpdate} onStatus={onStatus} size="touch" />
             <TaskCommentsButton task={task} onOpen={() => onOpenTask(task.id)} />
-
           </li>
         );
       })}
@@ -208,7 +210,6 @@ function TaskTable({
   taskTitle,
   emptyLabel,
   onOpenTask,
-
 }: TaskViewProps) {
   return (
     <div className="hidden overflow-x-auto lg:block">
@@ -229,54 +230,56 @@ function TaskTable({
             const blocks = taskDependencies.filter((d) => d.depends_on_task_id === task.id);
             return (
               <Fragment key={task.id}>
-              <tr className="align-top">
-
-                <td className="px-4 py-3">
-                  <span className="text-ink">{task.title}</span>
-                  <span className="code-id mt-0.5 block">{task.id}</span>
-                  {blocks.length > 0 && (
-                    <span className="mt-1 inline-flex items-center gap-1 text-xs text-ink-soft">
-                      <ArrowUpRight aria-hidden className="size-3" />
-                      Blocks {blocks.map((b) => taskTitle(b.task_id)).join(", ")}
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-ink-soft">
-                  {departments.find((d) => d.id === task.department_id)?.name}
-                </td>
-                <td className="px-4 py-3 text-ink-soft">
-                  {personById(task.assignee_id)?.full_name}
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap text-ink-soft">
-                  {formatDate(task.due_date)}
-                </td>
-                <td className="px-4 py-3 text-ink-soft">
-                  {waitsOn.length === 0 ? (
-                    "—"
-                  ) : (
-                    <ul className="space-y-1">
-                      {waitsOn.map((d) => (
-                        <li key={d.depends_on_task_id} className="flex items-start gap-1.5">
-                          <Link2 aria-hidden className="mt-0.5 size-3 shrink-0" />
-                          <span>{taskTitle(d.depends_on_task_id)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <StatusControl task={task} canUpdate={canUpdate} onStatus={onStatus} size="sm" />
-                </td>
-              </tr>
-              <tr>
-                <td colSpan={6} className="px-4 pb-3">
-                  <TaskCommentsButton task={task} onOpen={() => onOpenTask(task.id)} />
-
-                </td>
-              </tr>
+                <tr className="align-top">
+                  <td className="px-4 py-3">
+                    <span className="text-ink">{task.title}</span>
+                    <span className="code-id mt-0.5 block">{task.id}</span>
+                    {blocks.length > 0 && (
+                      <span className="mt-1 inline-flex items-center gap-1 text-xs text-ink-soft">
+                        <ArrowUpRight aria-hidden className="size-3" />
+                        Blocks {blocks.map((b) => taskTitle(b.task_id)).join(", ")}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-ink-soft">
+                    {departments.find((d) => d.id === task.department_id)?.name}
+                  </td>
+                  <td className="px-4 py-3 text-ink-soft">
+                    {personById(task.assignee_id)?.full_name}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-ink-soft">
+                    {formatDate(task.due_date)}
+                  </td>
+                  <td className="px-4 py-3 text-ink-soft">
+                    {waitsOn.length === 0 ? (
+                      "—"
+                    ) : (
+                      <ul className="space-y-1">
+                        {waitsOn.map((d) => (
+                          <li key={d.depends_on_task_id} className="flex items-start gap-1.5">
+                            <Link2 aria-hidden className="mt-0.5 size-3 shrink-0" />
+                            <span>{taskTitle(d.depends_on_task_id)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusControl
+                      task={task}
+                      canUpdate={canUpdate}
+                      onStatus={onStatus}
+                      size="sm"
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan={6} className="px-4 pb-3">
+                    <TaskCommentsButton task={task} onOpen={() => onOpenTask(task.id)} />
+                  </td>
+                </tr>
               </Fragment>
             );
-
           })}
           {rows.length === 0 && (
             <tr>
@@ -333,12 +336,10 @@ function TimelineTab() {
     onOpenTask: (id: string) => setOpenTaskId(id),
   };
 
-
   const initialView: ViewId = views.some((v) => v.id === search.view)
     ? (search.view as ViewId)
     : "master";
   const [view, setView] = useState<ViewId>(initialView);
-
 
   const activeView = views.find((v) => v.id === view) ?? views[0];
 
@@ -418,7 +419,6 @@ function TimelineTab() {
       )}
 
       <div className={view === "list" ? "space-y-5" : "hidden"}>
-
         {projectMilestones.map((milestone) => {
           const milestoneTasks = projectTasks
             .filter((t) => t.milestone_id === milestone.id)
@@ -511,5 +511,4 @@ function TimelineTab() {
       )}
     </div>
   );
-
 }

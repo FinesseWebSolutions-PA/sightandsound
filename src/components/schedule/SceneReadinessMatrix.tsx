@@ -22,12 +22,7 @@ type Cell = {
  * Every cell is derived from real work: the tasks, documents and reviews for
  * that scene and department. Nothing here is decorative.
  */
-function cellFor(
-  tasks: Task[],
-  documents: Document[],
-  approvals: Approval[],
-  today: string,
-): Cell {
+function cellFor(tasks: Task[], documents: Document[], approvals: Approval[], today: string): Cell {
   if (tasks.length === 0 && documents.length === 0) {
     return { readiness: "not_involved", meta: null, reason: "Not involved in this scene" };
   }
@@ -92,15 +87,7 @@ function cellFor(
   };
 }
 
-function CellLink({
-  cell,
-  projectId,
-  label,
-}: {
-  cell: Cell;
-  projectId: string;
-  label: string;
-}) {
+function CellLink({ cell, projectId, label }: { cell: Cell; projectId: string; label: string }) {
   if (!cell.meta) {
     return <span className="block px-2 py-2 text-xs text-ink-soft">—</span>;
   }
@@ -147,9 +134,7 @@ export function SceneReadinessMatrix({ projectId }: { projectId: string }) {
 
   const projectScenes = useMemo(
     () =>
-      scenes
-        .filter((s) => s.project_id === projectId)
-        .sort((a, b) => a.sort_order - b.sort_order),
+      scenes.filter((s) => s.project_id === projectId).sort((a, b) => a.sort_order - b.sort_order),
     [scenes, projectId],
   );
 
@@ -168,8 +153,7 @@ export function SceneReadinessMatrix({ projectId }: { projectId: string }) {
           const sceneDocs = documents.filter(
             (d) =>
               d.scene_id === scene.id &&
-              (d.department_id === dept.id ||
-                sceneTasks.some((t) => t.id === d.task_id)),
+              (d.department_id === dept.id || sceneTasks.some((t) => t.id === d.task_id)),
           );
           const docApprovals = approvals.filter((a) =>
             sceneDocs.some((d) => d.id === a.document_id),
@@ -211,7 +195,11 @@ export function SceneReadinessMatrix({ projectId }: { projectId: string }) {
                 .map(({ dept, cell }) => (
                   <li key={dept.id} className="px-3 py-2">
                     <span className="rule-label">{dept.name}</span>
-                    <CellLink cell={cell} projectId={projectId} label={`${scene.name}, ${dept.name}`} />
+                    <CellLink
+                      cell={cell}
+                      projectId={projectId}
+                      label={`${scene.name}, ${dept.name}`}
+                    />
                   </li>
                 ))}
               {cells.every((c) => !c.cell.meta) && (

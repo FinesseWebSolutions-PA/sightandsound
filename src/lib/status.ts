@@ -88,8 +88,6 @@ export function formatFloat(hours: number | null): string {
   return `${days} day${days === 1 ? "" : "s"} spare`;
 }
 
-
-
 export const toneClasses: Record<Tone, string> = {
   success: "bg-success-bg text-success border-success/25",
   warning: "bg-warning-bg text-warning border-warning/25",

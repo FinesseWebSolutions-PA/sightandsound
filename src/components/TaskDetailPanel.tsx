@@ -54,9 +54,7 @@ export function TaskDetailPanel({
   const attached = documents.filter((d) => d.task_id === task.id);
   const taskTitle = (id: string) => tasks.find((t) => t.id === id)?.title ?? id;
 
-  const askDept = askDepartmentId
-    ? departments.find((d) => d.id === askDepartmentId)
-    : undefined;
+  const askDept = askDepartmentId ? departments.find((d) => d.id === askDepartmentId) : undefined;
   const draft = askDept ? `@${askDept.name} ` : "";
 
   return (
