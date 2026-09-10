@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, useStore } from "@/lib/store";
@@ -159,9 +159,8 @@ export function SceneReadinessMatrix({
   /** Present only when the viewer may plan work; opens the editor for that set. */
   onAddWork?: (sceneId: string, departmentId: string) => void;
 }) {
-  const { scenes, tasks, documents, approvals, can, isClosed } = useStore();
+  const { scenes, tasks, documents, approvals } = useStore();
   const today = toISO(new Date());
-  const canManage = can.adminConfig && !isClosed(projectId);
 
   const projectScenes = useMemo(
     () =>
@@ -202,7 +201,7 @@ export function SceneReadinessMatrix({
     <div className="space-y-4">
       {projectScenes.length === 0 ? (
         <p className="surface-card p-4 text-sm text-ink-soft">
-          No sets have been set up on this production yet.
+          No sets have been set up on this production yet. Sets are added on the Sets tab.
         </p>
       ) : (
         <>
