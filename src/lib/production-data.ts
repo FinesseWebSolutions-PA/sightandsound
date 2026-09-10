@@ -1483,6 +1483,7 @@ export async function writeNewDocument(input: {
       title: input.file.name,
       folder: input.sceneId ? null : input.folder || null,
       scene_id: input.sceneId,
+      task_id: input.taskId ?? null,
       requires_approval: input.requiresApproval,
       status: "draft",
       created_by: input.actorId,
