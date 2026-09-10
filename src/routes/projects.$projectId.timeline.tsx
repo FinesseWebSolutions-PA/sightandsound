@@ -2,7 +2,6 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { ArrowUpRight, Clock, Link2, Lock, MessageSquare } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 
-import { Discussion } from "@/components/Discussion";
 import { TaskDetailPanel } from "@/components/TaskDetailPanel";
 
 import { StatusBadge } from "@/components/StatusBadge";
