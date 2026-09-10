@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Bell, Inbox } from "lucide-react";
+import { Bell, Inbox, Search } from "lucide-react";
 
 import { people, roleLabels, useStore } from "@/lib/store";
 import type { Role } from "@/lib/production-data";
@@ -9,8 +9,7 @@ const roles: Role[] = ["admin", "contributor", "viewer"];
 export function AppHeader() {
   const { role, setRole, currentUserId, notifications } = useStore();
   const person = people.find((p) => p.id === currentUserId);
-  const unread = notifications.filter((n) => !n.read).length;
-  // What is unread for this person specifically, which is what the Inbox shows.
+  // One count everywhere: what is unread for the person you are viewing as.
   const myUnread = notifications.filter((n) => !n.read && n.recipient_id === currentUserId).length;
 
   const roleSelect = (id: string) => (
@@ -70,23 +69,34 @@ export function AppHeader() {
               </span>
             )}
           </Link>
+          <Link
+            to="/search"
+            className="relative flex min-h-11 items-center gap-1.5 px-3 text-sm font-medium text-ink-soft transition-colors hover:text-ink"
+            activeProps={{
+              className:
+                "relative flex min-h-11 items-center gap-1.5 px-3 text-sm font-semibold text-ink after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-gold",
+            }}
+          >
+            <Search aria-hidden className="size-4" />
+            Search
+          </Link>
         </nav>
 
         {/* Utilities zone */}
         <div className="ml-auto flex items-center gap-3 py-2.5 md:gap-5 md:border-l md:border-border md:pl-6 lg:pl-8">
           <Link
             to="/inbox"
-            aria-label={`${unread} unread notices`}
+            aria-label={`${myUnread} unread notices`}
             className="group flex min-h-11 items-center gap-2 rounded-md px-1.5 text-ink-soft hover:text-ink"
           >
             <span className="relative flex items-center">
               <Bell aria-hidden className="size-5 shrink-0" />
-              {unread > 0 && (
+              {myUnread > 0 && (
                 <span
                   aria-hidden
                   className="absolute -top-1.5 -right-2 inline-flex min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-bold text-cream-soft"
                 >
-                  {unread}
+                  {myUnread}
                 </span>
               )}
             </span>

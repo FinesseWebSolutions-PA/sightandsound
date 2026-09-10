@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Inbox, LayoutGrid, UserRound, X } from "lucide-react";
+import { Inbox, LayoutGrid, Search, UserRound, X } from "lucide-react";
 
 import { people, roleDescriptions, roleLabels, useStore } from "@/lib/store";
 import type { Role } from "@/lib/production-data";
@@ -47,6 +47,10 @@ export function BottomTabBar() {
               )}
             </span>
             My Work
+          </Link>
+          <Link to="/search" className={tabBase} activeProps={{ className: tabActive }}>
+            <Search aria-hidden className="size-6" />
+            Search
           </Link>
           <button
             type="button"

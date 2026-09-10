@@ -161,6 +161,7 @@ export function Discussion({
   highlightCommentId,
   initialDraft = "",
   autoFocusComposer = false,
+  onSent,
 }: {
   projectId: string;
   contextType: ThreadContext;
@@ -174,6 +175,8 @@ export function Discussion({
   /** Pre-written opening text, e.g. when asking a department about a blocker. */
   initialDraft?: string;
   autoFocusComposer?: boolean;
+  /** Fired after a message is sent, so a prefilled draft is only used once. */
+  onSent?: () => void;
 }) {
   const {
     threads,
@@ -300,6 +303,7 @@ export function Discussion({
                 });
                 setAnchorId("");
                 setShowNew(false);
+                onSent?.();
               }}
             />
           )}
@@ -323,7 +327,7 @@ export function Discussion({
               autoFocus={autoFocusComposer}
               placeholder="Message about this…"
               submitLabel="Send"
-              onSubmit={(body) =>
+              onSubmit={(body) => {
                 createThread({
                   projectId,
                   contextType,
@@ -331,8 +335,9 @@ export function Discussion({
                   documentId: resolvedDocumentId,
                   subject: "",
                   body,
-                })
-              }
+                });
+                onSent?.();
+              }}
             />
           ) : (
             <p className="text-sm text-ink-soft">
@@ -429,7 +434,10 @@ export function Discussion({
                   autoFocus={autoFocusComposer}
                   placeholder="Message…"
                   submitLabel="Send"
-                  onSubmit={(body) => addComment(thread.id, null, body)}
+                  onSubmit={(body) => {
+                    addComment(thread.id, null, body);
+                    onSent?.();
+                  }}
                 />
               </div>
             )}

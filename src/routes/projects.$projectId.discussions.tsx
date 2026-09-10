@@ -1,84 +1,116 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { FileText, ListChecks, MessageSquare } from "lucide-react";
 
 import { Discussion } from "@/components/Discussion";
-import { useStore } from "@/lib/store";
+import { personById, useStore } from "@/lib/store";
+import { formatDateTime } from "@/lib/status";
+import { snippet } from "@/lib/threads";
 
 export const Route = createFileRoute("/projects/$projectId/discussions")({
+  validateSearch: (search: Record<string, unknown>): { comment?: string } => ({
+    ...(typeof search["comment"] === "string" ? { comment: search["comment"] } : {}),
+  }),
   head: () => ({
     meta: [
-      { title: "Discussions — Sight & Sound Show Production" },
+      { title: "Updates — Sight & Sound Show Production" },
       {
         name: "description",
         content:
-          "Threaded conversation at the production, work item, and document level, with mentions of team members and departments.",
+          "Production-wide updates plus the full history of what has been said on work items and documents.",
       },
-      { property: "og:title", content: "Discussions — Sight & Sound Show Production" },
+      { property: "og:title", content: "Updates — Sight & Sound Show Production" },
       {
         property: "og:description",
-        content:
-          "Threaded conversation at production, work item, and document level with department mentions.",
+        content: "Production-wide updates and the full history of conversation across the build.",
       },
     ],
   }),
-  component: DiscussionsTab,
+  component: UpdatesTab,
 });
 
-const levels = [
-  { key: "project", label: "Production-level" },
-  { key: "task", label: "On work items" },
-  { key: "document", label: "On documents" },
-] as const;
-
-function DiscussionsTab() {
+function UpdatesTab() {
   const { projectId } = Route.useParams();
-  const { projects } = useStore();
+  const search = Route.useSearch();
+  const { projects, threads, comments, tasks, documents } = useStore();
   const project = projects.find((p) => p.id === projectId);
   if (!project) throw notFound();
 
-  const [level, setLevel] = useState<(typeof levels)[number]["key"]>("project");
+  // Everything said on work items and documents, newest first, with its context.
+  const elsewhere = comments
+    .map((c) => ({ comment: c, thread: threads.find((t) => t.id === c.thread_id) }))
+    .filter(
+      (row) =>
+        row.thread &&
+        row.thread.project_id === projectId &&
+        row.thread.context_type !== "project",
+    )
+    .sort((a, b) => b.comment.created_at.localeCompare(a.comment.created_at))
+    .slice(0, 20);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="font-display text-2xl text-ink sm:text-3xl">Discussions</h2>
-        <p className="mt-1 max-w-2xl text-sm text-ink-soft">
-          One conversation per subject, visible to every department. Mention a team member by name,
-          or a department to reach its owner and leads.
-        </p>
-      </div>
-
-      <div className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
-        {levels.map((option) => (
-          <button
-            key={option.key}
-            type="button"
-            onClick={() => setLevel(option.key)}
-            aria-pressed={level === option.key}
-            className={
-              level === option.key
-                ? "min-h-11 shrink-0 snap-start rounded-full border border-ink bg-ink px-4 text-sm font-semibold whitespace-nowrap text-cream-soft sm:min-h-9"
-                : "min-h-11 shrink-0 snap-start rounded-full border border-border bg-card px-4 text-sm font-medium whitespace-nowrap text-ink-soft hover:bg-cream sm:min-h-9"
-            }
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-
+    <div className="space-y-8">
       <Discussion
-        key={level}
         projectId={projectId}
-        contextType={level}
-        heading={levels.find((l) => l.key === level)?.label ?? "Discussions"}
-        blurb={
-          level === "project"
-            ? "Conversation about the production as a whole."
-            : level === "task"
-              ? "Conversation attached to individual work items on the timeline."
-              : "Conversation attached to documents and their versions."
-        }
+        contextType="project"
+        heading="Production updates"
+        {...(search.comment ? { highlightCommentId: search.comment } : {})}
       />
+
+      <section className="space-y-3">
+        <h2 className="font-display text-2xl text-ink">Said elsewhere on this production</h2>
+        <ul className="surface-card divide-y divide-border overflow-hidden">
+          {elsewhere.map(({ comment, thread }) => {
+            const task = thread!.task_id ? tasks.find((t) => t.id === thread!.task_id) : undefined;
+            const doc = thread!.document_id
+              ? documents.find((d) => d.id === thread!.document_id)
+              : undefined;
+            return (
+              <li key={comment.id} className="px-4 py-3">
+                <p className="rule-label flex items-center gap-1.5">
+                  {task ? (
+                    <ListChecks aria-hidden className="size-3.5" />
+                  ) : (
+                    <FileText aria-hidden className="size-3.5" />
+                  )}
+                  {task ? "Work item" : "Document"} · {formatDateTime(comment.created_at)}
+                </p>
+                {task ? (
+                  <Link
+                    to="/projects/$projectId/timeline"
+                    params={{ projectId }}
+                    search={{ task: task.id, comment: comment.id }}
+                    className="mt-0.5 block text-sm font-semibold text-ink hover:underline"
+                  >
+                    {personById(comment.author_id)?.full_name ?? "A team member"} on {task.title}
+                  </Link>
+                ) : doc ? (
+                  <Link
+                    to="/projects/$projectId/documents"
+                    params={{ projectId }}
+                    search={{ document: doc.id, comment: comment.id }}
+                    className="mt-0.5 block text-sm font-semibold text-ink hover:underline"
+                  >
+                    {personById(comment.author_id)?.full_name ?? "A team member"} on {doc.title}
+                  </Link>
+                ) : (
+                  <p className="mt-0.5 text-sm font-semibold text-ink">
+                    {personById(comment.author_id)?.full_name ?? "A team member"}
+                  </p>
+                )}
+                <p className="mt-0.5 text-sm text-ink-soft italic">
+                  “{snippet(comment.body, 140)}”
+                </p>
+              </li>
+            );
+          })}
+          {elsewhere.length === 0 && (
+            <li className="flex items-center gap-2 px-4 py-4 text-sm text-ink-soft">
+              <MessageSquare aria-hidden className="size-4" />
+              Nothing has been said on a work item or document yet.
+            </li>
+          )}
+        </ul>
+      </section>
     </div>
   );
 }

@@ -208,35 +208,34 @@ function DashboardTab() {
                 {attention.map((item) => (
                   <li key={item.id} className="py-3 first:pt-0 last:pb-0">
                     <p className="rule-label">{item.label}</p>
-                    <p className="mt-0.5 text-sm font-medium text-ink">{item.title}</p>
-                    {item.detail && <p className="text-xs text-ink-soft">{item.detail}</p>}
                     {item.taskId ? (
                       <Link
                         to="/projects/$projectId/timeline"
                         params={{ projectId }}
                         search={{ task: item.taskId }}
-                        className="inline-flex min-h-11 items-center text-sm font-semibold text-gold-deep hover:underline"
+                        className="mt-0.5 block text-sm font-semibold text-ink hover:underline"
                       >
-                        Open the work item
+                        {item.title}
                       </Link>
                     ) : item.documentId ? (
                       <Link
                         to="/projects/$projectId/documents"
                         params={{ projectId }}
                         search={{ document: item.documentId }}
-                        className="inline-flex min-h-11 items-center text-sm font-semibold text-gold-deep hover:underline"
+                        className="mt-0.5 block text-sm font-semibold text-ink hover:underline"
                       >
-                        Open the document
+                        {item.title}
                       </Link>
                     ) : (
                       <Link
                         to="/projects/$projectId/timeline"
                         params={{ projectId }}
-                        className="inline-flex min-h-11 items-center text-sm font-semibold text-gold-deep hover:underline"
+                        className="mt-0.5 block text-sm font-semibold text-ink hover:underline"
                       >
-                        Open the schedule
+                        {item.title}
                       </Link>
                     )}
+                    {item.detail && <p className="text-xs text-ink-soft">{item.detail}</p>}
                   </li>
                 ))}
               </ul>
@@ -369,33 +368,33 @@ function DashboardTab() {
                         {formatDateTime(entry.created_at)}
                       </span>
                     </div>
-                    <p className="mt-0.5 pl-5 text-ink-soft italic">“{snippet(entry.body, 120)}”</p>
                     <div className="pl-5">
                       {entry.task ? (
                         <Link
                           to="/projects/$projectId/timeline"
                           params={{ projectId }}
                           search={{ task: entry.task.id, comment: entry.id }}
-                          className="inline-flex min-h-11 items-center text-xs font-semibold text-gold-deep hover:underline"
+                          className="text-ink-soft italic hover:underline"
                         >
-                          Open the conversation
+                          “{snippet(entry.body, 120)}”
                         </Link>
                       ) : entry.doc ? (
                         <Link
                           to="/projects/$projectId/documents"
                           params={{ projectId }}
                           search={{ document: entry.doc.id, comment: entry.id }}
-                          className="inline-flex min-h-11 items-center text-xs font-semibold text-gold-deep hover:underline"
+                          className="text-ink-soft italic hover:underline"
                         >
-                          Open the conversation
+                          “{snippet(entry.body, 120)}”
                         </Link>
                       ) : (
                         <Link
                           to="/projects/$projectId/discussions"
                           params={{ projectId }}
-                          className="inline-flex min-h-11 items-center text-xs font-semibold text-gold-deep hover:underline"
+                          search={{ comment: entry.id }}
+                          className="text-ink-soft italic hover:underline"
                         >
-                          Open the conversation
+                          “{snippet(entry.body, 120)}”
                         </Link>
                       )}
                     </div>

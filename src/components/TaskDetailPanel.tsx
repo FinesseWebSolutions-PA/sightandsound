@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, FileText, Link2, MessageSquare, Users, X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { Discussion } from "@/components/Discussion";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -33,6 +33,8 @@ export function TaskDetailPanel({
 }) {
   const { tasks, documents, milestones, scenes, can, setTaskStatus, isClosed } = useStore();
   const task = tasks.find((t) => t.id === taskId);
+  // An "Ask <Department>" prefill is used once: after the message is sent it is gone.
+  const [askUsed, setAskUsed] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -54,7 +56,8 @@ export function TaskDetailPanel({
   const attached = documents.filter((d) => d.task_id === task.id);
   const taskTitle = (id: string) => tasks.find((t) => t.id === id)?.title ?? id;
 
-  const askDept = askDepartmentId ? departments.find((d) => d.id === askDepartmentId) : undefined;
+  const askDept =
+    askDepartmentId && !askUsed ? departments.find((d) => d.id === askDepartmentId) : undefined;
   const draft = askDept ? `@${askDept.name} ` : "";
 
   return (
@@ -208,6 +211,7 @@ export function TaskDetailPanel({
                 taskId={task.id}
                 initialDraft={draft}
                 autoFocusComposer={Boolean(askDept)}
+                onSent={() => setAskUsed(true)}
                 {...(highlightCommentId ? { highlightCommentId } : {})}
               />
             </div>

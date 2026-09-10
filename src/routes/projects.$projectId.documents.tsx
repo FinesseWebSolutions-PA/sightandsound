@@ -374,14 +374,22 @@ function DocumentsTab() {
 
       {selected && <div id="document-discussion" />}
       {selected && (
-        <Discussion
-          projectId={projectId}
-          contextType="document"
-          documentId={selected.id}
-          heading={`Conversation on ${selected.title}`}
-
-          {...(search.comment ? { highlightCommentId: search.comment } : {})}
-        />
+        <div className="space-y-2">
+          <p className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-cream-soft px-3 py-2 text-xs text-ink-soft">
+            <span className="code-id">v{selected.current_version}</span>
+            <span>
+              is the current revision of {selected.title}. Messages here cover the document as a
+              whole, not one revision.
+            </span>
+          </p>
+          <Discussion
+            projectId={projectId}
+            contextType="document"
+            documentId={selected.id}
+            heading={`Conversation on ${selected.title}`}
+            {...(search.comment ? { highlightCommentId: search.comment } : {})}
+          />
+        </div>
       )}
     </div>
   );
