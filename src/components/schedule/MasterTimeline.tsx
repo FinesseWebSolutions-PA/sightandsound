@@ -735,7 +735,7 @@ export function MasterTimeline({
       )}
 
       <div className="surface-card overflow-hidden">
-        <div ref={scrollRef} className="overflow-x-auto">
+        <div ref={scrollRef} onScroll={onChartScroll} className="overflow-x-auto">
           <div ref={wrapRef} className="relative" style={wide ? { width: NAME_COL + chartWidth } : undefined}>
             {/* axis */}
             {wide && (
