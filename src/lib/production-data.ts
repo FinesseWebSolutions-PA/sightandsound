@@ -657,7 +657,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     } else if (scoped.some((t) => t.status !== "complete" && t.due_date && t.due_date < today)) {
       readiness = "at_risk";
     }
-    const headAssignment = (assignmentRows ?? []).find(
+    const headAssignment = projectAssignments.find(
       (a) => a.project_id === pd.project_id && a.department_id === pd.department_id && a.is_head,
     );
     const globalOwner = departments.find((d) => d.id === pd.department_id)?.owner_id ?? "";
