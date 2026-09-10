@@ -183,6 +183,8 @@ export function DocumentBrowser({
   }, [openDocumentId]);
 
   const [note, setNote] = useState("");
+  /** A decision is only recorded once the reviewer signs it with their own name. */
+  const [signature, setSignature] = useState("");
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"list" | "grid">("list");
   const [pane, setPane] = useState<"details" | "conversation">("details");
