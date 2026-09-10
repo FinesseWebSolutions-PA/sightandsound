@@ -301,8 +301,8 @@ export function TaskDetailPanel({
                   <input
                     value={subTitle}
                     onChange={(e) => setSubTitle(e.target.value)}
-                    placeholder="Add a sub-item"
-                    aria-label={`Add a sub-item to ${task.title}`}
+                    placeholder="Add a sub-task"
+                    aria-label={`Add a sub-task to ${task.title}`}
                     className="min-h-11 min-w-0 flex-1 rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
                   />
                   <button
