@@ -628,12 +628,34 @@ export async function loadProductionData(): Promise<ProductionData> {
     const mineFloat = tasks
       .filter((t) => t.milestone_id === m.id && t.total_float_hours !== null)
       .map((t) => t.total_float_hours as number);
+    // A milestone reports what its own work items actually say, so a heading can
+    // never read "Complete" while the work underneath is still open.
+    const mineTasks = tasks.filter((t) => t.milestone_id === m.id);
+    const stored = asMilestoneStatus(m.status);
+    const today = new Date().toISOString().slice(0, 10);
+    let status = stored;
+    if (mineTasks.length > 0) {
+      const done = mineTasks.filter((t) => t.status === "complete").length;
+      if (done === mineTasks.length) {
+        status = "complete";
+      } else if (
+        mineTasks.some((t) => t.status === "blocked") ||
+        (dateOnly(m.forecast_date) || dateOnly(m.due_date)) > dateOnly(m.due_date) ||
+        mineTasks.some((t) => t.status !== "complete" && t.due_date && t.due_date < today)
+      ) {
+        status = "at_risk";
+      } else if (mineTasks.some((t) => t.status !== "not_started")) {
+        status = "in_progress";
+      } else {
+        status = "not_started";
+      }
+    }
     return {
       id: m.id,
       project_id: m.project_id,
       name: m.name,
       due_date: dateOnly(m.due_date),
-      status: asMilestoneStatus(m.status),
+      status,
       owner_id: first?.assignee_id || project?.owner_id || "",
       department_id: first?.department_id ?? "",
       is_core: true,
