@@ -3,7 +3,13 @@ import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronRight,
+  FileText,
   FileUp,
+  Folder,
+  LayoutGrid,
+  List,
+  Search,
   History,
   MessageSquare,
   Send,
@@ -147,6 +153,25 @@ function DocumentsTab() {
   }, [search.document]);
   const selected = projectDocs.find((d) => d.id === selectedId) ?? projectDocs[0];
   const [note, setNote] = useState("");
+  const [folder, setFolder] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [view, setView] = useState<"list" | "grid">("list");
+
+  // Folder tiles, like Drive's top level.
+  const folderList = Array.from(
+    projectDocs.reduce((acc, d) => {
+      if (d.folder) acc.set(d.folder, (acc.get(d.folder) ?? 0) + 1);
+      return acc;
+    }, new Map<string, number>()),
+  )
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const q = query.trim().toLowerCase();
+  const visibleDocs = projectDocs.filter((d) => {
+    if (q) return d.title.toLowerCase().includes(q) || (d.folder ?? "").toLowerCase().includes(q);
+    return folder === null ? !d.folder : d.folder === folder;
+  });
 
   const [sending, setSending] = useState(false);
 
@@ -185,89 +210,244 @@ function DocumentsTab() {
 
       <div className="grid items-start gap-6 lg:grid-cols-[1.3fr_1fr]">
         <section className="surface-card overflow-hidden">
-          {/* Phones get full-width tappable rows instead of a table. */}
-          <ul className="row-list lg:hidden">
-            {projectDocs.map((doc) => (
-              <li key={doc.id}>
+          {/* Drive-style toolbar: where you are, what you're looking for, how you see it. */}
+          <div className="panel-header flex flex-wrap items-center gap-2 px-3 py-2.5">
+            <nav aria-label="Folder path" className="flex min-w-0 items-center gap-1 text-sm">
+              <button
+                type="button"
+                onClick={() => setFolder(null)}
+                className={cn(
+                  "min-h-9 rounded-md px-2 font-medium",
+                  folder === null ? "text-ink" : "text-ink-soft hover:bg-cream",
+                )}
+              >
+                All documents
+              </button>
+              {folder !== null && (
+                <>
+                  <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-soft" />
+                  <span className="truncate font-medium text-ink">{folder}</span>
+                </>
+              )}
+            </nav>
+            <div className="ml-auto flex items-center gap-2">
+              <label className="relative">
+                <Search
+                  aria-hidden
+                  className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-ink-soft"
+                />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  aria-label="Search documents"
+                  placeholder="Search documents"
+                  className="min-h-9 w-40 rounded-md border border-border bg-card pr-2 pl-8 text-sm text-ink sm:w-56"
+                />
+              </label>
+              <div className="flex overflow-hidden rounded-md border border-border">
                 <button
+                  type="button"
+                  aria-label="List view"
+                  aria-pressed={view === "list"}
+                  onClick={() => setView("list")}
+                  className={cn("min-h-9 px-2", view === "list" ? "bg-cream-soft" : "bg-card")}
+                >
+                  <List aria-hidden className="size-4 text-ink" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Grid view"
+                  aria-pressed={view === "grid"}
+                  onClick={() => setView("grid")}
+                  className={cn(
+                    "min-h-9 border-l border-border px-2",
+                    view === "grid" ? "bg-cream-soft" : "bg-card",
+                  )}
+                >
+                  <LayoutGrid aria-hidden className="size-4 text-ink" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Folders, shown as tiles you can open — only at the top level. */}
+          {folder === null && !query.trim() && folderList.length > 0 && (
+            <div className="border-b border-border px-3 py-3">
+              <p className="rule-label mb-2">Folders</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {folderList.map((f) => (
+                  <button
+                    key={f.name}
+                    type="button"
+                    onDoubleClick={() => setFolder(f.name)}
+                    onClick={() => setFolder(f.name)}
+                    className="flex min-h-14 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left hover:bg-cream-soft"
+                  >
+                    <Folder aria-hidden className="size-5 shrink-0 text-gold-deep" />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-ink">{f.name}</span>
+                      <span className="block text-xs text-ink-soft">
+                        {f.count} file{f.count === 1 ? "" : "s"}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {view === "grid" ? (
+            <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-3">
+              {visibleDocs.map((doc) => (
+                <button
+                  key={doc.id}
                   type="button"
                   onClick={() => setSelectedId(doc.id)}
                   aria-pressed={doc.id === selected?.id}
                   className={cn(
-                    "w-full px-4 py-4 text-left",
-                    doc.id === selected?.id ? "bg-cream-soft" : "",
+                    "rounded-lg border border-border p-3 text-left hover:bg-cream-soft",
+                    doc.id === selected?.id ? "bg-cream-soft ring-2 ring-gold-deep/40" : "bg-card",
                   )}
                 >
-                  <p className="text-sm font-medium text-ink">{doc.title}</p>
-                  <p className="mt-0.5 text-xs text-ink-soft">
-                    {doc.kind} · {departments.find((d) => d.id === doc.department_id)?.name} ·
-                    updated {formatDate(doc.updated_at)}
+                  <FileText aria-hidden className="size-6 text-ink-soft" />
+                  <p className="mt-2 truncate text-sm font-medium text-ink">{doc.title}</p>
+                  <p className="mt-0.5 truncate text-xs text-ink-soft">
+                    v{doc.current_version} · updated {formatDate(doc.updated_at)}
                   </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span className="code-id">v{doc.current_version}</span>
+                  <div className="mt-2">
                     <StatusBadge meta={approvalStateMeta[doc.approval_state]} size="sm" />
-                    <span className="inline-flex items-center gap-1 text-xs text-ink-soft">
-                      <MessageSquare aria-hidden className="size-3.5" />
-                      {activityFor(threads, comments, { projectId, documentId: doc.id }).count}
-                    </span>
                   </div>
                 </button>
-              </li>
-            ))}
-          </ul>
-
-          <div className="hidden overflow-x-auto lg:block">
-            <table className="w-full min-w-[34rem] text-sm">
-              <thead>
-                <tr className="panel-header text-left">
-                  <th className="rule-label px-4 py-2.5">Document</th>
-                  <th className="rule-label px-4 py-2.5">Department</th>
-                  <th className="rule-label px-4 py-2.5">Ver.</th>
-                  <th className="rule-label px-4 py-2.5">Review</th>
-                  <th className="rule-label px-4 py-2.5">Comments</th>
-                </tr>
-              </thead>
-              <tbody className="row-list">
-                {projectDocs.map((doc) => (
-                  <tr
-                    key={doc.id}
-                    className={
-                      doc.id === selected?.id
-                        ? "cursor-pointer bg-cream-soft"
-                        : "cursor-pointer hover:bg-cream-soft"
-                    }
-                    onClick={() => setSelectedId(doc.id)}
-                  >
-                    <td className="px-4 py-3">
-                      <button type="button" className="text-left font-medium text-ink">
-                        {doc.title}
-                      </button>
-                      <span className="block text-xs text-ink-soft">
-                        {doc.folder ? `${doc.folder} · ` : ""}
-                        {doc.kind} · updated {formatDate(doc.updated_at)}
+              ))}
+              {visibleDocs.length === 0 && (
+                <p className="col-span-full px-1 py-6 text-sm text-ink-soft">
+                  Nothing here yet.
+                </p>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Phones get full-width tappable rows instead of a table. */}
+              <ul className="row-list lg:hidden">
+                {visibleDocs.map((doc) => (
+                  <li key={doc.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(doc.id)}
+                      aria-pressed={doc.id === selected?.id}
+                      className={cn(
+                        "flex w-full items-start gap-3 px-4 py-4 text-left",
+                        doc.id === selected?.id ? "bg-cream-soft" : "",
+                      )}
+                    >
+                      <FileText aria-hidden className="mt-0.5 size-5 shrink-0 text-ink-soft" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-medium text-ink">{doc.title}</span>
+                        <span className="mt-0.5 block text-xs text-ink-soft">
+                          {doc.kind} · {departments.find((d) => d.id === doc.department_id)?.name} ·
+                          updated {formatDate(doc.updated_at)}
+                        </span>
+                        <span className="mt-2 flex flex-wrap items-center gap-2">
+                          <span className="code-id">v{doc.current_version}</span>
+                          <StatusBadge meta={approvalStateMeta[doc.approval_state]} size="sm" />
+                          <span className="inline-flex items-center gap-1 text-xs text-ink-soft">
+                            <MessageSquare aria-hidden className="size-3.5" />
+                            {activityFor(threads, comments, { projectId, documentId: doc.id }).count}
+                          </span>
+                        </span>
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-ink-soft">
-                      {departments.find((d) => d.id === doc.department_id)?.name}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="code-id">v{doc.current_version}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge meta={approvalStateMeta[doc.approval_state]} size="sm" />
-                    </td>
-                    <td className="px-4 py-3 text-ink-soft">
-                      <span className="inline-flex items-center gap-1 text-xs">
-                        <MessageSquare aria-hidden className="size-3.5" />
-                        {activityFor(threads, comments, { projectId, documentId: doc.id }).count}
-                      </span>
-                    </td>
-                  </tr>
+                    </button>
+                  </li>
                 ))}
-              </tbody>
-            </table>
-          </div>
+                {visibleDocs.length === 0 && (
+                  <li className="px-4 py-6 text-sm text-ink-soft">Nothing here yet.</li>
+                )}
+              </ul>
+
+              <div className="hidden overflow-x-auto lg:block">
+                <table className="w-full min-w-[34rem] text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left">
+                      <th className="rule-label px-4 py-2.5">Name</th>
+                      <th className="rule-label px-4 py-2.5">Folder</th>
+                      <th className="rule-label px-4 py-2.5">Department</th>
+                      <th className="rule-label px-4 py-2.5">Ver.</th>
+                      <th className="rule-label px-4 py-2.5">Review</th>
+                      <th className="rule-label px-4 py-2.5">Comments</th>
+                    </tr>
+                  </thead>
+                  <tbody className="row-list">
+                    {visibleDocs.map((doc) => (
+                      <tr
+                        key={doc.id}
+                        className={
+                          doc.id === selected?.id
+                            ? "cursor-pointer bg-cream-soft"
+                            : "cursor-pointer hover:bg-cream-soft"
+                        }
+                        onClick={() => setSelectedId(doc.id)}
+                      >
+                        <td className="px-4 py-3">
+                          <span className="flex items-start gap-2">
+                            <FileText aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-soft" />
+                            <span className="min-w-0">
+                              <button type="button" className="text-left font-medium text-ink">
+                                {doc.title}
+                              </button>
+                              <span className="block text-xs text-ink-soft">
+                                {doc.kind} · updated {formatDate(doc.updated_at)}
+                              </span>
+                            </span>
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-ink-soft">
+                          {doc.folder ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFolder(doc.folder);
+                              }}
+                              className="inline-flex items-center gap-1 text-ink-soft hover:text-ink"
+                            >
+                              <Folder aria-hidden className="size-3.5" />
+                              {doc.folder}
+                            </button>
+                          ) : (
+                            "Not filed"
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-ink-soft">
+                          {departments.find((d) => d.id === doc.department_id)?.name}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="code-id">v{doc.current_version}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <StatusBadge meta={approvalStateMeta[doc.approval_state]} size="sm" />
+                        </td>
+                        <td className="px-4 py-3 text-ink-soft">
+                          <span className="inline-flex items-center gap-1 text-xs">
+                            <MessageSquare aria-hidden className="size-3.5" />
+                            {activityFor(threads, comments, { projectId, documentId: doc.id }).count}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {visibleDocs.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-6 text-sm text-ink-soft">
+                          Nothing here yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </section>
+
 
         {selected && (
           <section className="space-y-4">
