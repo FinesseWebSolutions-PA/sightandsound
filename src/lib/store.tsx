@@ -658,6 +658,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [allowed, run],
   );
 
+  const deleteDocument = useCallback(
+    (documentId: string) => {
+      if (!allowed(projectOfDocument(documentId), "contribute")) return;
+      run(() => removeDocument(documentId, currentUserIdRef.current));
+    },
+    [allowed, run],
+  );
+
   /* ------------------------------------------------------------- staffing */
 
   const adminGlobal = () => roleRef.current === "admin";
