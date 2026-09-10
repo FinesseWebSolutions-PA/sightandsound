@@ -92,7 +92,7 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
       <div className="surface-card overflow-hidden">
         <div className="hidden panel-header lg:block">
           <div className="flex">
-            <div className="w-[22rem] shrink-0 px-4 py-2">
+            <div className="w-[22rem] shrink-0 border-r border-border-strong px-4 py-2">
               <span className="rule-label">Work item</span>
             </div>
             <div className="relative flex-1 px-3 py-2">
@@ -100,7 +100,7 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
                 <span
                   key={t.left}
                   style={{ left: t.left }}
-                  className="absolute top-2 -translate-x-1/2 text-xs text-ink-soft"
+                  className="rule-label absolute top-2 -translate-x-1/2"
                 >
                   {t.label}
                 </span>
@@ -110,7 +110,7 @@ export function MasterTimeline({ projectId }: { projectId: string }) {
           </div>
         </div>
 
-        <div className="divide-y divide-border">
+        <div>
           {groups.map((group) => {
             const key = group.milestone?.id ?? "unscheduled";
             const isCollapsed = collapsed[key] === true;
