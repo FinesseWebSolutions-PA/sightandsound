@@ -579,6 +579,18 @@ function SetDetail({
           />
         </section>
       )}
+
+      {canEdit && (
+        <div className="border-t border-border pt-4">
+          <button
+            type="button"
+            onClick={() => void deleteScene(set.id, projectId)}
+            className="min-h-11 rounded-md border border-border px-3 text-sm font-medium text-danger hover:bg-cream"
+          >
+            Remove set
+          </button>
+        </div>
+      )}
     </div>
   );
 }
