@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
+import { SetDialog } from "@/components/SetDialog";
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, personById, taskDependencies, useStore } from "@/lib/store";
 import {
@@ -107,6 +108,7 @@ export function MasterTimeline({
   } = useStore();
   const readOnly = isClosed(projectId) || !can.editCoreTimeline;
   const wide = useWideScreen();
+  const [openSetId, setOpenSetId] = useState<string | null>(null);
 
 
   const projectTasks = useMemo(
@@ -731,17 +733,16 @@ export function MasterTimeline({
                           "flex shrink-0 items-start gap-2 px-4 py-2.5 text-left lg:sticky lg:left-0 lg:z-10 lg:bg-band";
                         const shellStyle = wide ? { width: NAME_COL } : undefined;
                         return setsOnly ? (
-                          <Link
-                            to="/projects/$projectId/sets"
-                            params={{ projectId }}
-                            search={{ set: s.id }}
+                          <button
+                            type="button"
+                            onClick={() => setOpenSetId(s.id)}
                             onMouseEnter={() => wide && setHoveredScene(s.id)}
                             onMouseLeave={() => wide && setHoveredScene(null)}
                             className={shellClass}
                             style={shellStyle}
                           >
                             {inner}
-                          </Link>
+                          </button>
                         ) : (
                           <button
                             type="button"
@@ -788,11 +789,13 @@ export function MasterTimeline({
                             />
                           )}
                           {/* committed plan: the bar people read */}
-                          <span
+                          <button
+                            type="button"
                             ref={(el) => {
                               if (el) barRefs.current.set(`set-${s.id}`, el);
                               else barRefs.current.delete(`set-${s.id}`);
                             }}
+                            onClick={() => setOpenSetId(s.id)}
                             onMouseEnter={() => setHoveredScene(s.id)}
                             onMouseLeave={() => setHoveredScene(null)}
                             style={{ left: setPlanned.left, width: setPlanned.width }}
@@ -802,7 +805,7 @@ export function MasterTimeline({
                             }`}
                           >
                             {setPlanned.width > 84 ? s.name : ""}
-                          </span>
+                          </button>
                           {/* slip past the committed finish, drawn as an overhang */}
                           {slip > 0 && (
                             <span
@@ -1047,6 +1050,14 @@ export function MasterTimeline({
         <p className="text-xs text-ink-soft">
           {formatDate(span.start)} – {formatDate(span.end)} · {totalDays} days
         </p>
+      )}
+
+      {openSetId && (
+        <SetDialog
+          setId={openSetId}
+          projectId={projectId}
+          onClose={() => setOpenSetId(null)}
+        />
       )}
     </div>
   );
