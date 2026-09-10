@@ -13,6 +13,7 @@ import {
   personById,
   useStore,
 } from "@/lib/store";
+import { addDays } from "@/lib/schedule";
 import { formatDate, setStatusMeta } from "@/lib/status";
 import type { Scene, SetStatus } from "@/lib/production-data";
 
