@@ -680,6 +680,7 @@ export async function loadProductionData(): Promise<ProductionData> {
       owner_id: d.created_by ?? "",
       approval_state: documentApprovalState(d.status, d.id),
       current_version: latest || 1,
+      folder: d.folder ?? "",
       updated_at: mine.length > 0 ? mine[mine.length - 1]!.uploaded_at : dateOnly(d.created_at),
     };
   });
@@ -717,6 +718,19 @@ export async function loadProductionData(): Promise<ProductionData> {
       body: c.body,
       created_at: c.created_at,
     }));
+
+  const commentAttachments: CommentAttachment[] = (attachmentsRes.data ?? []).map((a) => ({
+    id: a.id,
+    comment_id: a.comment_id,
+    storage_key: a.storage_key,
+    file_name: a.file_name,
+    mime_type: a.mime_type ?? "",
+    byte_size: Number(a.byte_size ?? 0),
+    uploaded_by_id: a.uploaded_by ?? "",
+    saved_document_id: a.saved_document_id ?? null,
+    created_at: a.created_at,
+  }));
+
 
   const discussionThreads: DiscussionThread[] = (threadsRes.data ?? []).map((t) => {
     const opener = comments.find((c) => c.thread_id === t.id);
@@ -842,6 +856,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     approvals,
     discussionThreads,
     comments,
+    commentAttachments,
     mentions,
     notifications,
     auditLog,
