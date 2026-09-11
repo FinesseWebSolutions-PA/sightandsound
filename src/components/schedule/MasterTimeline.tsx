@@ -78,7 +78,8 @@ function edgeClasses(task: Task): string {
 }
 
 const todayISO = new Date().toISOString().slice(0, 10);
-const NAME_COL = 352; // 22rem — the fixed work-item column
+const NAME_COL_DESKTOP = 352; // 22rem — the fixed work-item column at desktop widths
+const NAME_COL_TABLET = 220; // narrower label column so the chart keeps its room on a tablet
 const ROW_H = 80;
 
 type Row = { task: Task; isChild: boolean };
@@ -105,6 +106,19 @@ function useWideScreen(): boolean {
     return () => mql.removeEventListener("change", sync);
   }, []);
   return wide;
+}
+
+/** Tablet (1024–1279) gets a narrower label column so the chart keeps its room. */
+function useDesktopScreen(): boolean {
+  const [desktop, setDesktop] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 1280px)");
+    const sync = () => setDesktop(mql.matches);
+    sync();
+    mql.addEventListener("change", sync);
+    return () => mql.removeEventListener("change", sync);
+  }, []);
+  return desktop;
 }
 
 export function MasterTimeline({
