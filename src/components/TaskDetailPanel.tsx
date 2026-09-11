@@ -102,6 +102,8 @@ export function TaskDetailPanel({
   const parent = task.parent_task_id ? tasks.find((t) => t.id === task.parent_task_id) : undefined;
   const canAddSub = can.editCoreTimeline && !locked && !task.parent_task_id;
   const subDone = subItems.filter((t) => t.status === "complete").length;
+  const health = scheduleHealth(task);
+
 
   /** Files attach straight to this work item — no folders to choose. */
   async function addFiles(files: File[], requiresApproval: boolean) {
