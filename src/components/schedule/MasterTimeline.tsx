@@ -1140,19 +1140,27 @@ export function MasterTimeline({
                                   }}
                                   onMouseEnter={() => setHoveredScene(s.id)}
                                   onMouseLeave={() => setHoveredScene(null)}
-                                  style={{ left, width: Math.max(pxPerDay, width) }}
+                                  style={{
+                                    left,
+                                    width: Math.max(pxPerDay, width),
+                                    ...(health?.blocked ? BLOCKED_HATCH : {}),
+                                  }}
                                   title={`${s.name} · ${formatDate(s.start_date)} – ${formatDate(s.due_date)}${
-                                    canDragSets ? " · drag the bar or its ends to reschedule" : ""
-                                  }`}
-                                  className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-md border border-ink bg-ink px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm ${
-                                    setDimmed ? "opacity-30" : ""
-                                  } ${canDragSets ? "cursor-grab" : "cursor-pointer"} ${
-                                    dragging ? "ring-2 ring-gold" : ""
-                                  }`}
+                                    health ? ` · ${health.meta.label}` : ""
+                                  }${canDragSets ? " · drag the bar or its ends to reschedule" : ""}`}
+                                  className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center gap-1 overflow-hidden rounded-md border px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm ${
+                                    health ? toneBarClasses[health.tone] : "border-ink bg-ink"
+                                  } ${setDimmed ? "opacity-30" : ""} ${
+                                    canDragSets ? "cursor-grab" : "cursor-pointer"
+                                  } ${dragging ? "ring-2 ring-gold" : ""}`}
                                 >
+                                  {health && (
+                                    <health.meta.Icon aria-hidden className="size-3 shrink-0" />
+                                  )}
                                   {Math.max(pxPerDay, width) > 84
                                     ? `${formatDate(s.start_date)} – ${formatDate(s.due_date)}${slip > 0 ? ` · ${slip}d late` : ""}`
                                     : ""}
+
                                   {canDragSets && (
                                     <>
                                       <span
