@@ -11,7 +11,7 @@ import { MasterTimeline } from "@/components/schedule/MasterTimeline";
 import { ProductionCalendar } from "@/components/schedule/ProductionCalendar";
 import { SceneReadinessMatrix } from "@/components/schedule/SceneReadinessMatrix";
 import { departments, personById, taskDependencies, useStore } from "@/lib/store";
-import { formatDate, formatDateTime, taskStatusMeta } from "@/lib/status";
+import { byDateAsc, formatDate, formatDateTime, taskStatusMeta } from "@/lib/status";
 import { activityFor, snippet } from "@/lib/threads";
 import type { Task, TaskStatus } from "@/lib/production-data";
 

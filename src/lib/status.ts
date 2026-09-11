@@ -65,6 +65,15 @@ export const readinessMeta: Record<ProjectDepartment["readiness"], StatusMeta> =
   complete: { label: "Complete", tone: "neutral", Icon: CheckCircle2 },
 };
 
+/** Cell states for the set readiness matrix; a superset of readinessMeta with an explicit "not started". */
+export const cellReadinessMeta = {
+  not_started: { label: "Not started", tone: "neutral", Icon: CircleDashed },
+  on_track: readinessMeta.on_track,
+  at_risk: readinessMeta.at_risk,
+  blocked: readinessMeta.blocked,
+  complete: readinessMeta.complete,
+} satisfies Record<string, StatusMeta>;
+
 /** Where a set stands as a whole; rolled up from the work tied to it. */
 export const setStatusMeta = {
   not_started: { label: "Not started", tone: "neutral", Icon: CircleDashed },
