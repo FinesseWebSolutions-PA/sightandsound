@@ -244,7 +244,7 @@ export function MasterTimeline({
     const ro = new ResizeObserver(sync);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [wide]);
+  }, [wide, NAME_COL]);
 
   const baseDays = Math.max(1, daysBetween(baseSpan.start, baseSpan.end));
   const fitZoom = Math.max(ZOOM_MIN, viewportWidth / baseDays);
@@ -304,7 +304,7 @@ export function MasterTimeline({
         return clamped;
       });
     },
-    [],
+    [NAME_COL],
   );
 
   const zoomRef = useRef(pxPerDay);
@@ -331,7 +331,7 @@ export function MasterTimeline({
       if (!el) return;
       el.scrollLeft = Math.max(0, xAt(span, date, pxPerDay) - (el.clientWidth - NAME_COL) / 2);
     },
-    [span, pxPerDay],
+    [span, pxPerDay, NAME_COL],
   );
 
   const ticks = useMemo(() => axisTicks(span, pxPerDay), [span, pxPerDay]);
@@ -882,6 +882,47 @@ export function MasterTimeline({
               </div>
             )}
 
+            {/* milestones: diamond markers on the axis when the store has milestone data */}
+            {wide && setsOnly && projectMilestones.length > 0 && (
+              <div className="relative border-b border-border-strong bg-cream-soft/60" style={{ height: 28 }}>
+                <div
+                  className="sticky left-0 z-10 flex h-full shrink-0 items-center border-r border-border-strong bg-cream-soft/60 px-4"
+                  style={{ width: NAME_COL, position: "absolute" }}
+                >
+                  <span className="rule-label">Milestones</span>
+                </div>
+                <div className="relative h-full" style={{ marginLeft: NAME_COL, width: chartWidth }}>
+                  {projectMilestones.map((m) => {
+                    const date = m.forecast_date || m.due_date;
+                    if (!date || date < span.start || date > span.end) return null;
+                    const x = xAt(span, date, pxPerDay);
+                    const meta = milestoneStatusMeta[m.status];
+                    return (
+                      <span
+                        key={m.id}
+                        style={{ left: x, top: "50%" }}
+                        title={`${m.name} · ${meta.label} · ${formatDate(date)}`}
+                        className="absolute -translate-x-1/2 -translate-y-1/2"
+                      >
+                        <Diamond
+                          aria-hidden
+                          className={`size-3.5 fill-current ${
+                            meta.tone === "danger"
+                              ? "text-danger"
+                              : meta.tone === "warning"
+                                ? "text-warning"
+                                : meta.tone === "success"
+                                  ? "text-success"
+                                  : "text-ink-soft"
+                          }`}
+                        />
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* dependency arrows */}
             {wide && arrows.length > 0 && (
               <svg
@@ -1077,7 +1118,9 @@ export function MasterTimeline({
                                     dragging ? "ring-2 ring-gold" : ""
                                   }`}
                                 >
-                                  {Math.max(pxPerDay, width) > 84 ? s.name : ""}
+                                  {Math.max(pxPerDay, width) > 84
+                                    ? `${formatDate(s.start_date)} – ${formatDate(s.due_date)}${slip > 0 ? ` · ${slip}d late` : ""}`
+                                    : ""}
                                   {canDragSets && (
                                     <>
                                       <span

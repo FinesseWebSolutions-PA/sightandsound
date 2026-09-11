@@ -115,8 +115,33 @@ function ProjectWorkspace() {
             </dl>
           </div>
 
+          <div className="relative mt-5 sm:hidden">
+            <nav
+              className="-mx-4 flex snap-x gap-1 overflow-x-auto px-4"
+              aria-label="Project sections"
+            >
+              {tabs.map((tab) => (
+                <Link
+                  key={tab.label}
+                  to={tab.to}
+                  params={{ projectId }}
+                  activeOptions={{ exact: tab.exact }}
+                  className="flex min-h-11 shrink-0 snap-start items-center rounded-t-md border border-transparent border-b-2 px-4 text-sm font-medium whitespace-nowrap text-ink-soft transition-colors hover:bg-cream hover:text-ink"
+                  activeProps={{
+                    className:
+                      "flex min-h-11 shrink-0 snap-start items-center rounded-t-md border border-border border-b-2 border-b-gold bg-card px-4 text-sm font-semibold whitespace-nowrap text-ink shadow-sm",
+                  }}
+                >
+                  {tab.label}
+                </Link>
+              ))}
+            </nav>
+            {/* Edge fades make the scrollable tab strip discoverable on narrow screens. */}
+            <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-card to-transparent" />
+            <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-card to-transparent" />
+          </div>
           <nav
-            className="-mx-4 mt-5 flex snap-x gap-1 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0"
+            className="mt-5 hidden flex-wrap gap-1 sm:flex"
             aria-label="Project sections"
           >
             {tabs.map((tab) => (

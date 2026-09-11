@@ -20,6 +20,7 @@ const views = [
   {
     id: "master",
     label: "Gantt",
+    mobileLabel: "Schedule",
     blurb: "Set by set, with their dates and the chain between them",
   },
   {
@@ -37,6 +38,19 @@ const views = [
 ] as const;
 
 type ViewId = (typeof views)[number]["id"];
+
+/** On a phone the Gantt renders as a plain list, so the switcher should say so. */
+function useIsMobile(): boolean {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 639px)");
+    const sync = () => setMobile(mql.matches);
+    sync();
+    mql.addEventListener("change", sync);
+    return () => mql.removeEventListener("change", sync);
+  }, []);
+  return mobile;
+}
 
 const comingSoon = [
   { label: "Capacity Heat Map", blurb: "Where crew hours are over-committed, week by week" },
@@ -392,6 +406,7 @@ function TimelineTab() {
   const [view, setView] = useState<ViewId>(initialView);
 
   const activeView = views.find((v) => v.id === view) ?? views[0];
+  const isMobile = useIsMobile();
 
   return (
     <div className="space-y-6">
@@ -437,7 +452,7 @@ function TimelineTab() {
               }`}
 
             >
-              {v.label}
+              {isMobile && "mobileLabel" in v && v.mobileLabel ? v.mobileLabel : v.label}
             </button>
           ))}
         </div>

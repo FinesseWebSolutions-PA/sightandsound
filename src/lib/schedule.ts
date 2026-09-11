@@ -141,7 +141,7 @@ export function axisTicks(span: Span, pxPerDay: number): AxisTick[] {
         key: iso,
         label: weekly
           ? cursor.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
-          : cursor.toLocaleDateString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" }),
+          : cursor.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" }),
         left: xAt(span, iso, pxPerDay),
         major: weekly ? isMonthStart : true,
       });

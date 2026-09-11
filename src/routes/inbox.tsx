@@ -330,7 +330,17 @@ function MyWorkPage() {
       });
     }
 
-    return out.sort(
+    // Collapse identical entries (e.g. the same approval/decision recorded twice)
+    // so the feed reads as one story per event, not a duplicated audit trail.
+    const seen = new Set<string>();
+    const deduped = out.filter((item) => {
+      const key = `${item.bucket}|${item.projectId}|${item.title}|${item.detail ?? ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    return deduped.sort(
       (x, y) => Number(x.read) - Number(y.read) || y.created_at.localeCompare(x.created_at),
     );
   }, [
