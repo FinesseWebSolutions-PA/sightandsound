@@ -71,6 +71,8 @@ function DashboardTab() {
     tasks,
     documents,
     notifications,
+    currentUserId,
+
     threads,
     comments,
     can,
