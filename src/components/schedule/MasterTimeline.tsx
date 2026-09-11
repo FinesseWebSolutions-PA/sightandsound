@@ -1011,9 +1011,13 @@ export function MasterTimeline({
                 const s = group.scene;
                 const slip = slipDays(s.due_date, s.forecast_finish);
                 const setPlanned = placePx(span, s.start_date, s.due_date, pxPerDay);
-                
+
                 const setDimmed = setChain ? !setChain.has(s.id) : false;
                 const follows = projectScenes.find((o) => o.id === s.depends_on_scene_id);
+                const health = setHealth(
+                  projectTasks.filter((t) => t.scene_id === s.id),
+                  slip,
+                );
                 return (
                   <section key={group.key}>
                     <header className="group-header flex items-stretch">
@@ -1028,7 +1032,9 @@ export function MasterTimeline({
                                 </span>
                               )}
                               {!clean && <StatusBadge meta={setStatusMeta[s.status]} size="sm" />}
+                              {!clean && health && <StatusBadge meta={health.meta} size="sm" />}
                             </span>
+
                             <span className="mt-1 block text-xs text-ink-soft">
                               {s.start_date ? formatDate(s.start_date) : "No start"} –{" "}
                               {s.due_date ? formatDate(s.due_date) : "No finish"}
