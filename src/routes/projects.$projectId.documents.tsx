@@ -6,9 +6,10 @@ import { useStore } from "@/lib/store";
 export const Route = createFileRoute("/projects/$projectId/documents")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { document?: string; comment?: string; folder?: string } => ({
+  ): { document?: string; comment?: string; folder?: string; version?: string } => ({
     ...(typeof search["document"] === "string" ? { document: search["document"] } : {}),
     ...(typeof search["comment"] === "string" ? { comment: search["comment"] } : {}),
+    ...(typeof search["version"] === "string" ? { version: search["version"] } : {}),
     ...(typeof search["folder"] === "string" ? { folder: search["folder"] } : {}),
   }),
   head: () => ({
@@ -56,11 +57,14 @@ function DocumentsTab() {
       <h2 className="font-display text-2xl text-ink sm:text-3xl">Documents</h2>
       <DocumentBrowser
         projectId={projectId}
+        initialVersionId={search.version}
         {...(search.document ? { openDocumentId: search.document } : {})}
         {...(search.folder ? { openFolder: search.folder } : {})}
         {...(search.comment ? { highlightCommentId: search.comment } : {})}
-        onOpenDocument={(documentId) => setSearch({ document: documentId })}
-        onCloseDocument={() => setSearch({ document: undefined, comment: undefined })}
+        onOpenDocument={(documentId) => setSearch({ document: documentId, version: undefined })}
+        onCloseDocument={() =>
+          setSearch({ document: undefined, comment: undefined, version: undefined })
+        }
         onPlaceChange={(encoded) => setSearch({ folder: encoded || undefined })}
       />
     </div>

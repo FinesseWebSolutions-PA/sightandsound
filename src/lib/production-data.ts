@@ -68,6 +68,7 @@ export type ProjectAssignment = {
   department_id: string;
   job_title: string;
   is_head: boolean;
+  accepted_at?: string | null;
   scene_id: string;
 };
 
@@ -583,6 +584,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     department_id: a.department_id,
     job_title: a.job_title ?? "",
     is_head: a.is_head ?? false,
+    accepted_at: a.accepted_at,
     scene_id: a.scene_id ?? "",
   }));
 

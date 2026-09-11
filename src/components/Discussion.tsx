@@ -1,3 +1,5 @@
+import { canEditMessage, MESSAGE_EDIT_WINDOW_MS } from "@/lib/workspace-rules";
+import { MessageRecordTools } from "./workspace/MessageRecordTools";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AtSign,
@@ -319,6 +321,16 @@ function Message({
   const message = comments.find((c) => c.id === id);
   const quoted = comments.find((c) => c.id === message?.reply_to_id);
   const [editing, setEditing] = useState(false);
+  const [withinWindow, setWithinWindow] = useState(() => canEditMessage(createdAt));
+  useEffect(() => {
+    setWithinWindow(canEditMessage(createdAt));
+    const remaining = Date.parse(createdAt) + MESSAGE_EDIT_WINDOW_MS - Date.now();
+    const timer = window.setTimeout(
+      () => setWithinWindow(false),
+      Math.max(0, Math.min(remaining, MESSAGE_EDIT_WINDOW_MS)),
+    );
+    return () => window.clearTimeout(timer);
+  }, [createdAt]);
   const [editBody, setEditBody] = useState(body);
   const [savingEdit, setSavingEdit] = useState(false);
   const author = personById(authorId);
@@ -373,7 +385,7 @@ function Message({
               />
               <button
                 type="button"
-                disabled={savingEdit || !editBody.trim()}
+                disabled={savingEdit || !editBody.trim() || !withinWindow}
                 onClick={async () => {
                   setSavingEdit(true);
                   try {
@@ -403,6 +415,10 @@ function Message({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <MessageReactions commentId={id} readOnly={readOnly} />
+          <MessageRecordTools id={id} projectId={projectId} readOnly={readOnly} />
+          {mine && !readOnly && !withinWindow && (
+            <span className="text-xs text-ink-soft">Editing closed · reply to correct</span>
+          )}
           {!readOnly && (
             <button
               type="button"
@@ -413,7 +429,7 @@ function Message({
               Reply
             </button>
           )}
-          {mine && !readOnly && (
+          {mine && !readOnly && withinWindow && (
             <button
               type="button"
               onClick={() => {

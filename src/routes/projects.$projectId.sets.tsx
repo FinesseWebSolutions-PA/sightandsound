@@ -1,3 +1,4 @@
+import { SetWorkspace } from "@/components/workspace/SetWorkspace";
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Crown, ExternalLink, Link2, Plus, X } from "lucide-react";
@@ -9,20 +10,27 @@ import { ProductionCalendar } from "@/components/schedule/ProductionCalendar";
 import { PersonPicker } from "@/components/PersonPicker";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SetTasksPanel } from "@/components/SetTasksPanel";
-import {
-  departmentJobTitles,
-  departments,
-  people,
-  personById,
-  useStore,
-} from "@/lib/store";
+import { departmentJobTitles, departments, people, personById, useStore } from "@/lib/store";
 import { addDays } from "@/lib/schedule";
 import { formatDate, setStatusMeta } from "@/lib/status";
 import type { Scene, SetStatus } from "@/lib/production-data";
 
 export const Route = createFileRoute("/projects/$projectId/sets")({
-  validateSearch: (search: Record<string, unknown>): { set?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { set?: string; section?: string } => ({
     ...(typeof search["set"] === "string" ? { set: search["set"] } : {}),
+    ...(typeof search["section"] === "string" &&
+    [
+      "overview",
+      "updates",
+      "planning",
+      "tasks",
+      "schedule",
+      "documents",
+      "conversation",
+      "team",
+    ].includes(search["section"])
+      ? { section: search["section"] }
+      : {}),
   }),
   head: () => ({
     meta: [
@@ -54,7 +62,9 @@ function SetsTab() {
   const canEdit = can.adminConfig && !isClosed(projectId);
   const [newName, setNewName] = useState("");
   const [newPortal, setNewPortal] = useState("");
-  const [selectedId, setSelectedId] = useState(search.set ?? "");
+  const navigate = Route.useNavigate();
+  const selectedId = search.set ?? "";
+  const setSelectedId = (id: string) => void navigate({ search: { set: id, section: "overview" } });
   const [adding, setAdding] = useState(false);
   const { createScene } = useStore();
 
@@ -86,9 +96,9 @@ function SetsTab() {
         <div>
           <h2 className="font-display text-2xl text-ink sm:text-3xl">Sets</h2>
           <p className="mt-1 max-w-2xl text-sm text-ink-soft">
-            Each set is its own unit of work inside this production. A set has a lead, its own dates,
-            its own team and its own conversation — and it can follow another set, so a slip on one
-            pushes everything behind it.{" "}
+            Each set is its own unit of work inside this production. A set has a lead, its own
+            dates, its own team and its own conversation — and it can follow another set, so a slip
+            on one pushes everything behind it.{" "}
             <Link
               to="/projects/$projectId/timeline"
               params={{ projectId }}
@@ -192,6 +202,10 @@ function SetsTab() {
               order={projectSets}
               projectId={projectId}
               canEdit={canEdit}
+              section={search.section}
+              onSectionChange={(section) =>
+                void navigate({ search: { set: selected.id, section } })
+              }
             />
           )}
         </div>
@@ -201,11 +215,15 @@ function SetsTab() {
 }
 
 function SetDetail({
+  section,
+  onSectionChange,
   set,
   order,
   projectId,
   canEdit,
 }: {
+  section?: string | undefined;
+  onSectionChange: (section: string) => void;
   set: Scene;
   order: Scene[];
   projectId: string;
@@ -222,9 +240,8 @@ function SetDetail({
     saving,
   } = useStore();
   const [nameDraft, setNameDraft] = useState(set.name);
-  const [tab, setTab] = useState<
-    "tasks" | "schedule" | "documents" | "conversation" | "team"
-  >("tasks");
+  const tab = section || "overview";
+  const setTab = onSectionChange;
   const [scheduleMode, setScheduleMode] = useState<"gantt" | "calendar">("gantt");
 
   const index = order.findIndex((s) => s.id === set.id);
@@ -232,9 +249,10 @@ function SetDetail({
   const setTasks = tasks.filter((t) => t.scene_id === set.id);
 
   // Departments with work on this set are the ones worth staffing here.
-  const involved = departments.filter((d) =>
-    setTasks.some((t) => t.department_id === d.id) ||
-    projectAssignments.some((a) => a.scene_id === set.id && a.department_id === d.id),
+  const involved = departments.filter(
+    (d) =>
+      setTasks.some((t) => t.department_id === d.id) ||
+      projectAssignments.some((a) => a.scene_id === set.id && a.department_id === d.id),
   );
   const shown = involved.length > 0 ? involved : departments;
 
@@ -282,10 +300,6 @@ function SetDetail({
           </div>
           <StatusBadge meta={setStatusMeta[set.status]} size="sm" />
         </header>
-
-
-
-
 
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
@@ -372,7 +386,9 @@ function SetDetail({
                   type="date"
                   aria-label="Committed finish"
                   value={set.due_date}
-                  onChange={(e) => void updateScene(set.id, projectId, { due_date: e.target.value })}
+                  onChange={(e) =>
+                    void updateScene(set.id, projectId, { due_date: e.target.value })
+                  }
                   className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
                 />
               ) : (
@@ -489,6 +505,9 @@ function SetDetail({
       >
         {(
           [
+            { id: "overview", label: "Overview" },
+            { id: "updates", label: "Updates & decisions" },
+            { id: "planning", label: "Planning" },
             { id: "tasks", label: "Tasks" },
             { id: "schedule", label: "Schedule" },
             { id: "documents", label: "Documents" },
@@ -511,96 +530,97 @@ function SetDetail({
         ))}
       </div>
 
+      {(tab === "overview" || tab === "updates" || tab === "planning") && (
+        <SetWorkspace key={set.id} set={set} view={tab} />
+      )}
       {tab === "tasks" && (
         <SetTasksPanel projectId={projectId} sceneId={set.id} canEdit={canEdit} />
       )}
 
       {tab === "team" && (
-      <section className="surface-card overflow-hidden">
-        <header className="panel-header px-4 py-3">
-          <h4 className="text-sm font-semibold text-ink">Who is on this set</h4>
-          <p className="mt-0.5 text-xs text-ink-soft">
-            The designer responsible per department. Anyone not named here falls back to the
-            production&apos;s default team.
-          </p>
-        </header>
-        <ul className="row-list">
-          {shown.map((dept) => {
-            const setPeople = projectAssignments.filter(
-              (a) => a.scene_id === set.id && a.department_id === dept.id,
-            );
-            const fallback = projectAssignments.filter(
-              (a) => !a.scene_id && a.project_id === projectId && a.department_id === dept.id,
-            );
-            const presets = departmentJobTitles.filter((t) => t.department_id === dept.id);
-            return (
-              <li key={dept.id} className="px-4 py-3">
-                <p className="rule-label">{dept.name}</p>
-                {setPeople.length > 0 ? (
-                  <ul className="mt-1 space-y-2">
-                    {setPeople.map((a) => (
-                      <li key={a.id} className="flex flex-wrap items-center gap-2 text-sm">
-                        <span className="min-w-0 flex-1 text-ink">
-                          {personById(a.person_id)?.full_name ?? "Unknown team member"}
-                          {a.job_title && (
-                            <span className="text-ink-soft"> — {a.job_title}</span>
+        <section className="surface-card overflow-hidden">
+          <header className="panel-header px-4 py-3">
+            <h4 className="text-sm font-semibold text-ink">Who is on this set</h4>
+            <p className="mt-0.5 text-xs text-ink-soft">
+              Name the people responsible for this set. Production contacts provide oversight until
+              a set owner is assigned.
+            </p>
+          </header>
+          <ul className="row-list">
+            {shown.map((dept) => {
+              const setPeople = projectAssignments.filter(
+                (a) => a.scene_id === set.id && a.department_id === dept.id,
+              );
+              const fallback = projectAssignments.filter(
+                (a) => !a.scene_id && a.project_id === projectId && a.department_id === dept.id,
+              );
+              const presets = departmentJobTitles.filter((t) => t.department_id === dept.id);
+              return (
+                <li key={dept.id} className="px-4 py-3">
+                  <p className="rule-label">{dept.name}</p>
+                  {setPeople.length > 0 ? (
+                    <ul className="mt-1 space-y-2">
+                      {setPeople.map((a) => (
+                        <li key={a.id} className="flex flex-wrap items-center gap-2 text-sm">
+                          <span className="min-w-0 flex-1 text-ink">
+                            {personById(a.person_id)?.full_name ?? "Unknown team member"}
+                            {a.job_title && <span className="text-ink-soft"> — {a.job_title}</span>}
+                          </span>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => unassignPerson(a.id, projectId)}
+                              aria-label={`Take ${
+                                personById(a.person_id)?.full_name ?? "team member"
+                              } off ${set.name} for ${dept.name}`}
+                              className="flex size-11 items-center justify-center rounded-md text-ink-soft hover:bg-muted hover:text-ink"
+                            >
+                              <X aria-hidden className="size-4" />
+                            </button>
                           )}
-                        </span>
-                        {canEdit && (
-                          <button
-                            type="button"
-                            onClick={() => unassignPerson(a.id, projectId)}
-                            aria-label={`Take ${
-                              personById(a.person_id)?.full_name ?? "team member"
-                            } off ${set.name} for ${dept.name}`}
-                            className="flex size-11 items-center justify-center rounded-md text-ink-soft hover:bg-muted hover:text-ink"
-                          >
-                            <X aria-hidden className="size-4" />
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-0.5 text-sm text-ink-soft">
-                    {fallback.length > 0 ? (
-                      <>
-                        <Crown aria-hidden className="mr-1 inline size-3.5 text-gold" />
-                        Using the production team:{" "}
-                        {fallback
-                          .map((a) => personById(a.person_id)?.full_name ?? "team member")
-                          .join(", ")}
-                      </>
-                    ) : (
-                      "Nobody named for this department yet"
-                    )}
-                  </p>
-                )}
-                {canEdit && (
-                  <AddToSet
-                    departmentName={dept.name}
-                    setName={set.name}
-                    presets={presets.map((t) => t.title)}
-                    excludeIds={setPeople.map((a) => a.person_id)}
-                    suggestedIds={people
-                      .filter((p) => p.primary_department_id === dept.id)
-                      .map((p) => p.id)}
-                    onAdd={(personId, jobTitle) =>
-                      assignPerson({
-                        projectId,
-                        personId,
-                        departmentId: dept.id,
-                        jobTitle,
-                        sceneId: set.id,
-                      })
-                    }
-                  />
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-0.5 text-sm text-ink-soft">
+                      {fallback.length > 0 ? (
+                        <>
+                          <Crown aria-hidden className="mr-1 inline size-3.5 text-gold" />
+                          No set owner assigned. Production contacts:{" "}
+                          {fallback
+                            .map((a) => personById(a.person_id)?.full_name ?? "team member")
+                            .join(", ")}
+                        </>
+                      ) : (
+                        "Nobody named for this department yet"
+                      )}
+                    </p>
+                  )}
+                  {canEdit && (
+                    <AddToSet
+                      departmentName={dept.name}
+                      setName={set.name}
+                      presets={presets.map((t) => t.title)}
+                      excludeIds={setPeople.map((a) => a.person_id)}
+                      suggestedIds={people
+                        .filter((p) => p.primary_department_id === dept.id)
+                        .map((p) => p.id)}
+                      onAdd={(personId, jobTitle) =>
+                        assignPerson({
+                          projectId,
+                          personId,
+                          departmentId: dept.id,
+                          jobTitle,
+                          sceneId: set.id,
+                        })
+                      }
+                    />
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
 
       {tab === "schedule" && (

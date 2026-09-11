@@ -113,3 +113,9 @@ Implemented: discoverable emoji controls and reactions, replies/editing, per-con
 Validation includes native test cases, TypeScript/build, isolated PostgreSQL regression scenarios, and desktop/mobile browser checks. Existing documents, versions, conversations, and their stored objects were preserved. The browser check exposed an existing DELETE-policy gap for reactions; the migration adds an explicit demo DELETE policy and client removal now checks that a row was removed.
 
 Remaining: replace demo identity selection with verified sign-in/project membership; synchronize drafts/read markers across devices; add resumable percentage-based uploads for larger files (current uploads show queued/uploading/succeeded/failed status and retry). Existing schedule-function security advisor notices remain documented above.
+
+### Set workspace coordination
+
+Implemented the set Overview, explicit responsibility acceptance and department oversight, automatic set-member following and optional followers, important updates with recipient previews and acknowledgement records, message-to-decision records, exact-version links, current-approved-file filtering, and completed-set handover checks. Message editing has a server-enforced two-hour window and retained edit history.
+
+Added named timeline-owner review of contributor date requests, current-impact checks, accepted/declined/withdrawn history and notifications, plus per-department crew/space allocations with overlap warnings and outsourcing ownership/dates. Existing administrator date editors remain available. The pilot walkthrough and unresolved organizational questions are documented in `docs/set-workspace-demo.md`.

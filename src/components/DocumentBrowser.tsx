@@ -74,6 +74,7 @@ export function DocumentBrowser({
   projectId,
   sceneId,
   openDocumentId = "",
+  initialVersionId,
   openFolder = "",
   highlightCommentId,
   onOpenDocument,
@@ -83,6 +84,7 @@ export function DocumentBrowser({
   projectId: string;
   sceneId?: string;
   openDocumentId?: string;
+  initialVersionId?: string | undefined;
   openFolder?: string;
   highlightCommentId?: string;
   onOpenDocument?: (id: string) => void;
@@ -108,6 +110,7 @@ export function DocumentBrowser({
   const [location, setLocation] = useState(openFolder);
   const [openedId, setOpenedId] = useState(openDocumentId);
   const [query, setQuery] = useState("");
+  const [fileState, setFileState] = useState("all");
   const [grid, setGrid] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [action, setAction] = useState<Action | null>(null);
@@ -155,6 +158,15 @@ export function DocumentBrowser({
     documentStars.filter((s) => s.person_id === currentUserId).map((s) => s.document_id),
   );
   const visibleDocs = projectDocs
+    .filter(
+      (d) =>
+        fileState === "all" ||
+        (fileState === "approved"
+          ? d.approval_state === "approved"
+          : fileState === "reference"
+            ? !d.requires_approval
+            : d.requires_approval && d.approval_state !== "approved"),
+    )
     .filter((d) => {
       if (query.trim())
         return `${d.title} ${folderLabel(folders, d.folder_id ?? null)}`
@@ -475,6 +487,22 @@ export function DocumentBrowser({
                 {grid ? <List className="size-4" /> : <LayoutGrid className="size-4" />}
               </button>
             </div>
+            <label className="block text-xs text-ink-soft">
+              File status
+              <select
+                className="mt-1 min-h-10 w-full rounded border border-border bg-card px-2 text-sm"
+                value={fileState}
+                onChange={(e) => {
+                  setFileState(e.target.value);
+                  setSelected([]);
+                }}
+              >
+                <option value="all">All files</option>
+                <option value="approved">Current approved files</option>
+                <option value="draft">Drafts and files needing approval</option>
+                <option value="reference">Reference files</option>
+              </select>
+            </label>
           </header>
           {selected.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 border-b bg-cream p-2 text-sm">
@@ -789,7 +817,8 @@ export function DocumentBrowser({
       </Dialog>
       {opened && (
         <FileViewer
-          key={opened.id}
+          initialVersionId={initialVersionId}
+          key={`${opened.id}:${initialVersionId || "latest"}`}
           doc={opened}
           onClose={closeFile}
           {...(highlightCommentId ? { highlightCommentId } : {})}
@@ -800,10 +829,12 @@ export function DocumentBrowser({
 }
 
 function FileViewer({
+  initialVersionId,
   doc,
   onClose,
   highlightCommentId,
 }: {
+  initialVersionId?: string | undefined;
   doc: Document;
   onClose: () => void;
   highlightCommentId?: string;
@@ -822,7 +853,7 @@ function FileViewer({
   const versions = documentVersions
     .filter((v) => v.document_id === doc.id)
     .sort((a, b) => b.version - a.version);
-  const [versionId, setVersionId] = useState(versions[0]?.id ?? "");
+  const [versionId, setVersionId] = useState(initialVersionId || versions[0]?.id || "");
   const version = versions.find((v) => v.id === versionId);
   const latest = versions[0];
   const [pane, setPane] = useState<"review" | "conversation">(
@@ -1227,7 +1258,11 @@ function FileViewer({
                           v.id === versionId && "bg-cream",
                         )}
                       >
-                        <strong>v{v.version}</strong> · {personById(v.uploaded_by_id)?.full_name}
+                        <strong>
+                          v{v.version} ·{" "}
+                          {v.id === latest?.id ? "Current version" : "Superseded version"}
+                        </strong>{" "}
+                        · {personById(v.uploaded_by_id)?.full_name}
                         <span className="block text-xs text-ink-soft">
                           {formatDateTime(v.uploaded_at)}
                         </span>

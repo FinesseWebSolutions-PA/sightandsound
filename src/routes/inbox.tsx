@@ -222,6 +222,18 @@ function MyWorkPage() {
         >
           {humanTitle}
         </Link>
+      ) : n.source_entity_type === "scene" && n.source_entity_id ? (
+        <Link
+          className={linkClass}
+          to="/projects/$projectId/sets"
+          params={{ projectId: n.project_id }}
+          search={{
+            set: n.source_entity_id,
+            section: n.summary.toLowerCase().includes("schedule") ? "planning" : "updates",
+          }}
+        >
+          {humanTitle}
+        </Link>
       ) : (
         <Link
           to="/projects/$projectId/discussions"

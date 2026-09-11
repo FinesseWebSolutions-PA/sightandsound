@@ -69,3 +69,9 @@ Approval requests select a reviewer. Decisions use the exact displayed version, 
 The app still uses its existing shared **demo identities**. The account menu can select any demo team member so assigned-review workflows can be evaluated. This is not verified user authentication; production identity and per-project authorization remain separate work. New database functions use SECURITY INVOKER and new tables have RLS matching the existing demo access model.
 
 Run `npm test`, `npm run typecheck`, and `npm run build`. Database regression SQL is in `supabase/tests/collaboration_regression.sql`; run it only against an isolated database after applying the migrations. It rolls back its synthetic fixtures and never uploads storage objects.
+
+## Set coordination
+
+Set Overview now brings together responsibility, blockers, dates, review owners, and decisions. Planning supports contributor schedule-change requests with a designated timeline owner, plus explicit department capacity allocations and outsourcing. Important updates save their recipient list and optional acknowledgements. Recorded decisions retain their original message snapshot and exact linked file version. Message edits expire two hours after sending and retain revision history from this release onward.
+
+See [the set workspace walkthrough](docs/set-workspace-demo.md) for a complete pilot demonstration, validation instructions, and current demo limitations.
