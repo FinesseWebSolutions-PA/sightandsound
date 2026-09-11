@@ -584,10 +584,12 @@ function SetDetail({
           <option value="team">Team</option>
         </select>
       </nav>
-      {(tab === "overview" || tab === "documents") && <SetInstructions key={set.id} set={set} />}
+      {(tab === "overview" || tab === "documents") && (
+        <SetInstructions key={`instructions-${set.id}`} set={set} />
+      )}
 
       {(tab === "overview" || tab === "updates" || tab === "planning") && (
-        <SetWorkspace key={set.id} set={set} view={tab} />
+        <SetWorkspace key={`workspace-${set.id}`} set={set} view={tab} />
       )}
       {tab === "tasks" && (
         <SetTasksPanel projectId={projectId} sceneId={set.id} canEdit={canEdit} />
