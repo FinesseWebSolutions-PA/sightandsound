@@ -63,6 +63,32 @@ function barLook(task: Task) {
   return { health, className: toneBarClasses[health.meta.tone] };
 }
 
+/**
+ * A set reads as blocked or late when its own work does. Same shared
+ * calculation as the work items, so the chart and the queue always agree.
+ */
+function setHealth(tasks: Task[], slip: number) {
+  const healths = tasks.map((t) => scheduleHealth(t));
+  if (healths.some((h) => h.meta.label === taskStatusMeta.blocked.label)) {
+    return { meta: taskStatusMeta.blocked, blocked: true, tone: "danger" as Tone };
+  }
+  const late = healths.filter((h) => h.lateDays > 0);
+  if (late.length > 0 || slip > 0) {
+    const worst = Math.max(slip, ...late.map((h) => h.lateDays));
+    return {
+      meta: {
+        label: `Late by ${worst} day${worst === 1 ? "" : "s"}`,
+        tone: "danger" as Tone,
+        Icon: AlertTriangle,
+      },
+      blocked: false,
+      tone: "danger" as Tone,
+    };
+  }
+  return null;
+}
+
+
 /** The coloured edge on a row carries the same computed schedule health. */
 function edgeClasses(task: Task): string {
   const tone = scheduleHealth(task).meta.tone;
