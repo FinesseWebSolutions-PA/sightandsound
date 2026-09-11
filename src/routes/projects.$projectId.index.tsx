@@ -124,7 +124,11 @@ function DashboardTab() {
   const activity = [...commentFeed, ...auditFeed].sort((a, b) =>
     b.created_at.localeCompare(a.created_at),
   );
-  const notices = notifications.filter((n) => n.project_id === projectId);
+  // Only ever the signed-in person's own notices — never somebody else's "mentioned you".
+  const myNotices = notifications.filter(
+    (n) => n.project_id === projectId && n.recipient_id === currentUserId,
+  );
+
   const pendingReview = documents.filter(
     (d) => d.project_id === projectId && d.approval_state === "in_review",
   );
