@@ -132,6 +132,7 @@ export function MasterTimeline({
   const {
     tasks,
     scenes,
+    milestones,
     can,
     isClosed,
     previewReschedule,
@@ -140,7 +141,13 @@ export function MasterTimeline({
   } = useStore();
   const readOnly = isClosed(projectId) || !can.editCoreTimeline;
   const wide = useWideScreen();
+  const desktop = useDesktopScreen();
+  const NAME_COL = desktop ? NAME_COL_DESKTOP : NAME_COL_TABLET;
   const [openSetId, setOpenSetId] = useState<string | null>(null);
+  const projectMilestones = useMemo(
+    () => milestones.filter((m) => m.project_id === projectId),
+    [milestones, projectId],
+  );
 
 
   const projectTasks = useMemo(
