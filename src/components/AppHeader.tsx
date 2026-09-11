@@ -15,7 +15,7 @@ import {
 const roles: Role[] = ["admin", "contributor", "viewer"];
 
 export function AppHeader() {
-  const { role, setRole, currentUserId, notifications } = useStore();
+  const { role, setRole, setViewingPerson, currentUserId, notifications } = useStore();
   const person = people.find((p) => p.id === currentUserId);
   // One count everywhere: what is unread for the person you are viewing as.
   const myUnread = notifications.filter((n) => !n.read && n.recipient_id === currentUserId).length;
@@ -117,9 +117,7 @@ export function AppHeader() {
               <p className="px-2 pb-2 text-xs text-muted-foreground">{person?.title}</p>
 
               <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-[0.6875rem] ">
-                Viewing as
-              </DropdownMenuLabel>
+              <DropdownMenuLabel className="text-[0.6875rem] ">Viewing as (demo)</DropdownMenuLabel>
               {roles.map((r) => (
                 <DropdownMenuItem key={r} onSelect={() => setRole(r)} className="justify-between">
                   {roleLabels[r]}
@@ -127,6 +125,16 @@ export function AppHeader() {
                 </DropdownMenuItem>
               ))}
 
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Team member</DropdownMenuLabel>
+              <div className="max-h-64 overflow-y-auto">
+                {people.map((p) => (
+                  <DropdownMenuItem key={p.id} onSelect={() => setViewingPerson(p.id)}>
+                    {p.full_name}
+                    {currentUserId === p.id && <Check className="ml-auto size-4" />}
+                  </DropdownMenuItem>
+                ))}
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

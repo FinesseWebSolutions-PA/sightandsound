@@ -12,9 +12,8 @@ const tabBase =
 const tabActive =
   "relative flex min-h-[52px] min-w-[64px] flex-1 flex-col items-center justify-center gap-1 px-2 pt-1 text-[11px] font-semibold text-gold transition-colors after:absolute after:inset-x-3 after:top-0 after:h-0.5 after:bg-gold";
 
-
 export function BottomTabBar() {
-  const { role, setRole, currentUserId, notifications } = useStore();
+  const { role, setRole, setViewingPerson, currentUserId, notifications } = useStore();
   const person = people.find((p) => p.id === currentUserId);
   const myUnread = notifications.filter((n) => !n.read && n.recipient_id === currentUserId).length;
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -99,7 +98,22 @@ export function BottomTabBar() {
               Team &amp; Roles
             </Link>
 
-            <p className="rule-label mt-4 mb-2">Viewing as</p>
+            <label className="block text-sm">
+              Team member
+              <select
+                aria-label="View as team member"
+                value={currentUserId}
+                onChange={(e) => setViewingPerson(e.target.value)}
+                className="mt-1 min-h-11 w-full rounded border bg-card px-3"
+              >
+                {people.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.full_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="rule-label mt-4 mb-2">Viewing as (demo)</p>
             <div className="grid gap-2">
               {roles.map((r) => (
                 <button

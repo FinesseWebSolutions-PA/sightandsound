@@ -194,6 +194,8 @@ export type Document = {
   current_version: number;
   /** Optional grouping label inside the production's documents. */
   folder: string;
+  folder_id?: string | null;
+  deleted_at?: string | null;
   updated_at: string;
 };
 
@@ -207,7 +209,6 @@ export type DocumentVersion = {
   file_label: string;
   /** Where the actual file lives, when this revision has one. */
   storage_key: string | null;
-
 };
 
 export type Approval = {
@@ -217,6 +218,8 @@ export type Approval = {
   decision: "requested" | "approved" | "changes_requested" | "rejected";
   actor_id: string;
   requested_by_id: string;
+  reviewer_id?: string | null;
+  document_version_id?: string;
   decided_by_id: string;
   created_at: string;
   note: string;
@@ -242,6 +245,8 @@ export type Comment = {
   thread_id: string;
   author_id: string;
   body: string;
+  reply_to_id?: string | null;
+  edited_at?: string | null;
   created_at: string;
 };
 
@@ -307,7 +312,19 @@ export type AuditEntry = {
   created_at: string;
 };
 
+export type DocumentFolder = {
+  id: string;
+  project_id: string;
+  parent_id: string | null;
+  scene_id: string | null;
+  name: string;
+  deleted_at: string | null;
+};
+
 export type ProductionData = {
+  documentFolders: DocumentFolder[];
+  trashedDocuments: Document[];
+  documentStars: { document_id: string; person_id: string }[];
   departments: Department[];
   people: Person[];
   projects: Project[];
@@ -494,6 +511,8 @@ export async function loadProductionData(): Promise<ProductionData> {
     documentsRes,
     versionsRes,
     approvalsRes,
+    foldersRes,
+    starsRes,
     threadsRes,
     commentsRes,
     reactionsRes,
@@ -513,9 +532,11 @@ export async function loadProductionData(): Promise<ProductionData> {
     supabase.from("milestones").select("*").order("sort_order"),
     supabase.from("tasks").select("*").order("sort_order"),
     supabase.from("task_dependencies").select("*"),
-    supabase.from("documents").select("*").is("deleted_at", null).order("created_at"),
+    supabase.from("documents").select("*").order("created_at"),
     supabase.from("document_versions").select("*").order("version_number"),
     supabase.from("approvals").select("*").order("requested_at"),
+    supabase.from("document_folders").select("*").order("name"),
+    supabase.from("document_stars").select("*"),
     supabase.from("discussion_threads").select("*").order("created_at"),
     supabase.from("comments").select("*").order("created_at"),
     supabase.from("comment_reactions").select("*").order("created_at"),
@@ -540,6 +561,8 @@ export async function loadProductionData(): Promise<ProductionData> {
     documentsRes,
     versionsRes,
     approvalsRes,
+    foldersRes,
+    starsRes,
     threadsRes,
     commentsRes,
     reactionsRes,
@@ -763,10 +786,14 @@ export async function loadProductionData(): Promise<ProductionData> {
     uploaded_by_id: v.uploaded_by ?? "",
     uploaded_at: dateOnly(v.uploaded_at),
     note: v.change_note ?? "",
-    file_label: (v.storage_key ?? "").split("/").pop() || `version-${v.version_number}`,
+    file_label:
+      (v.storage_key ?? "")
+        .split("/")
+        .pop()
+        ?.replace(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i, "") ||
+      `version-${v.version_number}`,
     storage_key: v.storage_key ?? null,
   }));
-
 
   const versionInfoEarly = new Map(versionRows.map((v) => [v.id, v]));
   const latestApprovalByDocument = new Map<string, { status: string; version: number }>();
@@ -816,6 +843,8 @@ export async function loadProductionData(): Promise<ProductionData> {
       requires_approval: d.requires_approval ?? true,
       current_version: latest || 1,
       folder: d.folder ?? "",
+      folder_id: d.folder_id,
+      deleted_at: d.deleted_at,
       updated_at: mine.length > 0 ? mine[mine.length - 1]!.uploaded_at : dateOnly(d.created_at),
     };
   });
@@ -835,8 +864,10 @@ export async function loadProductionData(): Promise<ProductionData> {
       decision,
       actor_id: a.decided_by ?? a.requested_by ?? "",
       requested_by_id: a.requested_by ?? "",
+      reviewer_id: a.reviewer_id,
+      document_version_id: a.document_version_id,
       decided_by_id: a.decided_by ?? "",
-      created_at: dateOnly(a.decided_at ?? a.requested_at),
+      created_at: a.decided_at ?? a.requested_at,
       note: a.decision_note ?? "",
     };
   });
@@ -850,6 +881,8 @@ export async function loadProductionData(): Promise<ProductionData> {
       thread_id: c.thread_id,
       author_id: c.author_id ?? "",
       body: c.body,
+      reply_to_id: c.reply_to_id,
+      edited_at: c.edited_at,
       created_at: c.created_at,
     }))
     .sort((a, b) => a.created_at.localeCompare(b.created_at));
@@ -873,7 +906,6 @@ export async function loadProductionData(): Promise<ProductionData> {
     emoji: r.emoji,
     created_at: r.created_at,
   }));
-
 
   const discussionThreads: DiscussionThread[] = (threadsRes.data ?? []).map((t) => {
     const opener = comments.find((c) => c.thread_id === t.id);
@@ -1007,7 +1039,10 @@ export async function loadProductionData(): Promise<ProductionData> {
       lag_hours: Number(d.lag_hours ?? 0),
       hard_constraint: d.hard_constraint ?? true,
     })),
-    documents,
+    documents: documents.filter((d) => !d.deleted_at),
+    trashedDocuments: documents.filter((d) => d.deleted_at),
+    documentFolders: foldersRes.data ?? [],
+    documentStars: starsRes.data ?? [],
     documentVersions,
     approvals,
     discussionThreads,
@@ -1161,7 +1196,6 @@ export async function writeProductionSettings(
   await recordAudit("project", projectId, actorId, "production_updated", changes);
 }
 
-
 export async function writeDocumentVersion(
   documentId: string,
   documentTitle: string,
@@ -1238,7 +1272,8 @@ export async function writeDocumentVersionFile(
     .eq("document_id", documentId)
     .order("version_number", { ascending: false })
     .limit(1);
-  const nextVersion = (versions && versions.length > 0 ? versions[0]?.version_number ?? 0 : 0) + 1;
+  const nextVersion =
+    (versions && versions.length > 0 ? (versions[0]?.version_number ?? 0) : 0) + 1;
   const uploaded = await uploadDocumentVersion(file, doc.project_id, documentId);
   const { data, error } = await supabase
     .from("document_versions")
@@ -1252,11 +1287,6 @@ export async function writeDocumentVersionFile(
     .select("id")
     .single();
   if (error) throw new Error(error.message);
-  const { error: docError } = await supabase
-    .from("documents")
-    .update({ status: "draft" })
-    .eq("id", documentId);
-  if (docError) throw new Error(docError.message);
   await recordAudit("document_version", data.id, actorId, "version_uploaded", {
     version_number: nextVersion,
     file_name: uploaded.file_name,
@@ -1269,75 +1299,18 @@ export async function writeApproval(
   decision: Approval["decision"],
   note: string,
   actorId: string,
-  documentOwnerId: string,
-  projectId: string,
+  versionId: string,
+  reviewerId?: string,
 ) {
-  const { data: versions, error: versionError } = await supabase
-    .from("document_versions")
-    .select("id, version_number")
-    .eq("document_id", documentId)
-    .order("version_number", { ascending: false })
-    .limit(1);
-  if (versionError) throw new Error(versionError.message);
-  const versionId = versions?.[0]?.id;
-  if (!versionId) throw new Error("This document has no versions to review yet.");
-
-  // The documents table accepts draft / in_review / approved / rejected / superseded.
-  const documentStatus =
-    decision === "requested" ? "in_review" : decision === "changes_requested" ? "draft" : decision;
-
-  if (decision === "requested") {
-    const { error } = await supabase.from("approvals").insert({
-      document_version_id: versionId,
-      requested_by: actorId,
-      status: "pending",
-      decision_note: note || null,
-    });
-    if (error) throw new Error(error.message);
-  } else {
-    const { data: pending } = await supabase
-      .from("approvals")
-      .select("id")
-      .eq("document_version_id", versionId)
-      .eq("status", "pending")
-      .order("requested_at", { ascending: false })
-      .limit(1);
-    const payload = {
-      status: decision,
-      decided_by: actorId,
-      decided_at: new Date().toISOString(),
-      decision_note: note || null,
-    };
-    if (pending?.[0]) {
-      const { error } = await supabase.from("approvals").update(payload).eq("id", pending[0].id);
-      if (error) throw new Error(error.message);
-    } else {
-      const { error } = await supabase.from("approvals").insert({
-        document_version_id: versionId,
-        requested_by: actorId,
-        ...payload,
-      });
-      if (error) throw new Error(error.message);
-    }
-  }
-
-  const { error: docError } = await supabase
-    .from("documents")
-    .update({ status: documentStatus })
-    .eq("id", documentId);
-  if (docError) throw new Error(docError.message);
-
-  if (documentOwnerId && documentOwnerId !== actorId) {
-    await supabase.from("notifications").insert({
-      person_id: documentOwnerId,
-      type: decision === "requested" ? "review_requested" : `approval_${decision}`,
-      project_id: projectId || null,
-      source_entity_type: "document",
-      source_entity_id: documentId,
-    });
-  }
-
-  await recordAudit("document", documentId, actorId, `approval_${decision}`, { note });
+  const { error } = await callRpc("review_document", {
+    p_document: documentId,
+    p_version: versionId,
+    p_decision: decision,
+    p_note: note,
+    p_actor: actorId,
+    p_reviewer: reviewerId || null,
+  });
+  if (error) throw new Error(error.message);
 }
 
 /** Inserts mention rows plus notifications for the people a comment reaches. */
@@ -1416,9 +1389,9 @@ async function notifyPeople(input: {
 }) {
   const excluded = new Set(input.exclude ?? []);
   excluded.add(input.actorId);
-  const recipients = [...new Set(input.recipients.filter((id): id is string => Boolean(id)))].filter(
-    (id) => !excluded.has(id),
-  );
+  const recipients = [
+    ...new Set(input.recipients.filter((id): id is string => Boolean(id))),
+  ].filter((id) => !excluded.has(id));
   if (recipients.length === 0) return;
   await supabase.from("notifications").insert(
     recipients.map((person_id) => ({
@@ -1476,10 +1449,16 @@ export async function writeComment(input: {
   departments: Department[];
   people: Person[];
   attachments?: StagedAttachment[];
+  replyToId?: string | null;
 }) {
   const { data, error } = await supabase
     .from("comments")
-    .insert({ thread_id: input.threadId, author_id: input.authorId, body: input.body })
+    .insert({
+      thread_id: input.threadId,
+      author_id: input.authorId,
+      body: input.body,
+      reply_to_id: input.replyToId || null,
+    })
     .select("id")
     .single();
   if (error) throw new Error(error.message);
@@ -1582,11 +1561,7 @@ export async function writeThread(input: {
 }
 
 /** Adds a reaction to a chat message. */
-export async function writeCommentReaction(
-  commentId: string,
-  emoji: string,
-  personId: string,
-) {
+export async function writeCommentReaction(commentId: string, emoji: string, personId: string) {
   const { error } = await supabase
     .from("comment_reactions")
     .insert({ comment_id: commentId, emoji, person_id: personId });
@@ -1594,9 +1569,15 @@ export async function writeCommentReaction(
 }
 
 /** Removes one of the current user's reactions from a chat message. */
-export async function removeCommentReaction(reactionId: string) {
-  const { error } = await supabase.from("comment_reactions").delete().eq("id", reactionId);
+export async function removeCommentReaction(reactionId: string, actorId: string) {
+  const { data, error } = await supabase
+    .from("comment_reactions")
+    .delete()
+    .eq("id", reactionId)
+    .eq("person_id", actorId)
+    .select("id");
   if (error) throw new Error(error.message);
+  if (!data.length) throw new Error("The reaction could not be removed. Refresh and try again.");
 }
 
 /** Marks personal Inbox items read (or unread again). */
@@ -1612,7 +1593,7 @@ const CHAT_BUCKET = "chat-attachments";
 export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 
 function safeFileName(name: string) {
-  return name.replace(/[^\w.\-]+/g, "-").slice(-80) || "file";
+  return name.replace(/[^\w.-]+/g, "-").slice(-80) || "file";
 }
 
 /** Uploads one file for a conversation and returns what the message should carry. */
@@ -1641,9 +1622,7 @@ export async function uploadChatAttachment(
 /** Signed links so a private file can be shown or downloaded in the browser. */
 export async function attachmentUrls(keys: string[]): Promise<Record<string, string>> {
   if (keys.length === 0) return {};
-  const { data, error } = await supabase.storage
-    .from(CHAT_BUCKET)
-    .createSignedUrls(keys, 60 * 60);
+  const { data, error } = await supabase.storage.from(CHAT_BUCKET).createSignedUrls(keys, 60 * 60);
   if (error) throw new Error(error.message);
   const out: Record<string, string> = {};
   for (const row of data ?? []) {
@@ -1686,41 +1665,15 @@ export async function saveAttachmentToDocs(input: {
   requiresApproval: boolean;
   actorId: string;
 }) {
-  const { data: doc, error } = await supabase
-    .from("documents")
-    .insert({
-      project_id: input.projectId,
-      task_id: input.taskId,
-      title: input.title || input.fileName,
-      folder: input.folder || null,
-      requires_approval: input.requiresApproval,
-      status: "draft",
-      created_by: input.actorId,
-    })
-    .select("id")
-    .single();
+  const { data, error } = await callRpc("file_conversation_attachment", {
+    p_attachment: input.attachmentId,
+    p_folder: input.folder || null,
+    p_title: input.title || input.fileName,
+    p_actor: input.actorId,
+    p_requires_approval: input.requiresApproval,
+  });
   if (error) throw new Error(error.message);
-
-  const { error: versionError } = await supabase.from("document_versions").insert({
-    document_id: doc.id,
-    version_number: 1,
-    storage_key: input.storageKey,
-    uploaded_by: input.actorId,
-    change_note: "Saved from a conversation",
-  });
-  if (versionError) throw new Error(versionError.message);
-
-  const { error: linkError } = await supabase
-    .from("comment_attachments")
-    .update({ saved_document_id: doc.id })
-    .eq("id", input.attachmentId);
-  if (linkError) throw new Error(linkError.message);
-
-  await recordAudit("document", doc.id, input.actorId, "saved_from_conversation", {
-    folder: input.folder || null,
-    file_name: input.fileName,
-  });
-  return doc.id;
+  return data as string;
 }
 
 /**
@@ -1731,6 +1684,7 @@ export async function writeNewDocument(input: {
   file: File;
   projectId: string;
   folder: string | null;
+  folderId?: string | null;
   sceneId: string | null;
   taskId?: string | null;
   requiresApproval: boolean;
@@ -1833,11 +1787,12 @@ export async function writeDepartmentOnProject(
   actorId: string,
 ) {
   if (onProduction) {
-    const { error } = await supabase
-      .from("project_departments")
-      .upsert({ project_id: projectId, department_id: departmentId }, {
+    const { error } = await supabase.from("project_departments").upsert(
+      { project_id: projectId, department_id: departmentId },
+      {
         onConflict: "project_id,department_id",
-      });
+      },
+    );
     if (error) throw new Error(error.message);
   } else {
     const removals = await Promise.all([
@@ -1916,14 +1871,12 @@ export async function writeAssignmentJobTitle(
     .update({ job_title: jobTitle })
     .eq("id", assignmentId);
   if (error) throw new Error(error.message);
-  await recordAudit("project", projectId, actorId, "assignment_job_changed", { job_title: jobTitle });
+  await recordAudit("project", projectId, actorId, "assignment_job_changed", {
+    job_title: jobTitle,
+  });
 }
 
-export async function removeAssignment(
-  assignmentId: string,
-  projectId: string,
-  actorId: string,
-) {
+export async function removeAssignment(assignmentId: string, projectId: string, actorId: string) {
   const { error } = await supabase.from("project_assignments").delete().eq("id", assignmentId);
   if (error) throw new Error(error.message);
   await recordAudit("project", projectId, actorId, "person_unassigned", {
@@ -1958,16 +1911,14 @@ export async function writeProjectDepartmentHead(
     if (upsert.error) throw new Error(upsert.error.message);
   }
 
-  const pd = await supabase
-    .from("project_departments")
-    .upsert(
-      {
-        project_id: projectId,
-        department_id: departmentId,
-        default_owner_id: personId || null,
-      },
-      { onConflict: "project_id,department_id" },
-    );
+  const pd = await supabase.from("project_departments").upsert(
+    {
+      project_id: projectId,
+      department_id: departmentId,
+      default_owner_id: personId || null,
+    },
+    { onConflict: "project_id,department_id" },
+  );
   if (pd.error) throw new Error(pd.error.message);
 
   await recordAudit("project", projectId, actorId, "department_head_changed", {
@@ -1991,10 +1942,7 @@ export async function writePersonDepartment(
   isLead: boolean,
   actorId: string,
 ) {
-  const clear = await supabase
-    .from("department_memberships")
-    .delete()
-    .eq("person_id", personId);
+  const clear = await supabase.from("department_memberships").delete().eq("person_id", personId);
   if (clear.error) throw new Error(clear.error.message);
   if (departmentId) {
     const { error } = await supabase
@@ -2029,11 +1977,12 @@ export async function writeJobTitlePreset(
   sortOrder: number,
   actorId: string,
 ) {
-  const { error } = await supabase
-    .from("department_job_titles")
-    .upsert({ department_id: departmentId, title, sort_order: sortOrder }, {
+  const { error } = await supabase.from("department_job_titles").upsert(
+    { department_id: departmentId, title, sort_order: sortOrder },
+    {
       onConflict: "department_id,title",
-    });
+    },
+  );
   if (error) throw new Error(error.message);
   await recordAudit("department", departmentId, actorId, "job_title_added", { title });
 }
@@ -2238,7 +2187,6 @@ export type NewProductionInput = {
   actorId: string;
 };
 
-
 /** Every production in this build is Lancaster; venue stays in the schema only. */
 const LANCASTER = "Lancaster, PA";
 
@@ -2351,10 +2299,7 @@ export async function writeSceneName(
   name: string,
   actorId: string,
 ) {
-  const { error } = await supabase
-    .from("scenes")
-    .update({ name: name.trim() })
-    .eq("id", sceneId);
+  const { error } = await supabase.from("scenes").update({ name: name.trim() }).eq("id", sceneId);
   if (error) throw new Error(error.message);
   await recordAudit("project", projectId, actorId, "scene_renamed", { name: name.trim() });
 }
@@ -2413,21 +2358,24 @@ export async function writeSceneFields(
     lag_days?: number;
     portal_link_url?: string | null;
   } = {};
-  if ("owner_id" in fields) patch['owner_id'] = fields.owner_id || null;
-  if (fields.status) patch['status'] = fields.status;
-  if ("start_date" in fields) patch['start_date'] = fields.start_date || null;
-  if ("due_date" in fields) patch['due_date'] = fields.due_date || null;
+  if ("owner_id" in fields) patch["owner_id"] = fields.owner_id || null;
+  if (fields.status) patch["status"] = fields.status;
+  if ("start_date" in fields) patch["start_date"] = fields.start_date || null;
+  if ("due_date" in fields) patch["due_date"] = fields.due_date || null;
   if ("depends_on_scene_id" in fields)
-    patch['depends_on_scene_id'] = fields.depends_on_scene_id || null;
-  if (typeof fields.lag_days === "number") patch['lag_days'] = fields.lag_days;
+    patch["depends_on_scene_id"] = fields.depends_on_scene_id || null;
+  if (typeof fields.lag_days === "number") patch["lag_days"] = fields.lag_days;
   if ("portal_link_url" in fields)
-    patch['portal_link_url'] = fields.portal_link_url?.trim() || null;
+    patch["portal_link_url"] = fields.portal_link_url?.trim() || null;
   if (Object.keys(patch).length === 0) return;
 
   const { error } = await supabase.from("scenes").update(patch).eq("id", sceneId);
   if (error) throw new Error(error.message);
   await refreshSchedule([projectId]);
-  await recordAudit("project", projectId, actorId, "scene_updated", { scene_id: sceneId, ...patch });
+  await recordAudit("project", projectId, actorId, "scene_updated", {
+    scene_id: sceneId,
+    ...patch,
+  });
 }
 
 /** Moves a set up or down in the running order by swapping with its neighbour. */
@@ -2451,4 +2399,77 @@ export async function writeSceneOrder(
   ]);
   for (const u of updates) if (u.error) throw new Error(u.error.message);
   await recordAudit("project", projectId, actorId, "scene_reordered", { scene_id: sceneId });
+}
+
+export async function writeLibraryFolder(
+  input: { projectId: string; parentId: string | null; name: string },
+  actorId: string,
+) {
+  const { error } = await supabase.from("document_folders").insert({
+    project_id: input.projectId,
+    parent_id: input.parentId,
+    name: input.name.trim(),
+    created_by: actorId,
+  });
+  if (error) throw new Error(error.message);
+}
+export async function changeLibraryFolder(
+  id: string,
+  action: string,
+  actorId: string,
+  name?: string,
+  parentId?: string | null,
+) {
+  const { error } = await callRpc("library_folder_action", {
+    p_folder: id,
+    p_action: action,
+    p_actor: actorId,
+    p_name: name || null,
+    p_parent: parentId || null,
+  });
+  if (error) throw new Error(error.message);
+}
+export async function changeLibraryDocuments(
+  ids: string[],
+  action: "move" | "rename" | "trash" | "restore",
+  value?: string | null,
+) {
+  if (!ids.length) return;
+  const patch =
+    action === "move"
+      ? { folder_id: value || null, folder: null, scene_id: null }
+      : action === "rename"
+        ? { title: value?.trim() || "Untitled" }
+        : { deleted_at: action === "trash" ? new Date().toISOString() : null };
+  const { data, error } = await supabase.from("documents").update(patch).in("id", ids).select("id");
+  if (error) throw new Error(error.message);
+  if (data.length !== ids.length)
+    throw new Error("Some files could not be changed. Refresh and try again.");
+}
+export async function writeDocumentStar(documentId: string, actorId: string, starred: boolean) {
+  const result = starred
+    ? await supabase
+        .from("document_stars")
+        .upsert(
+          { document_id: documentId, person_id: actorId },
+          { onConflict: "document_id,person_id", ignoreDuplicates: true },
+        )
+    : await supabase
+        .from("document_stars")
+        .delete()
+        .eq("document_id", documentId)
+        .eq("person_id", actorId);
+  if (result.error) throw new Error(result.error.message);
+}
+export async function writeCommentEdit(id: string, body: string, actorId: string) {
+  if (!body.trim()) throw new Error("Write a message before saving.");
+  const { data, error } = await supabase
+    .from("comments")
+    .update({ body: body.trim(), edited_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("author_id", actorId)
+    .is("deleted_at", null)
+    .select("id")
+    .single();
+  if (error || !data) throw new Error(error?.message || "This message could not be edited.");
 }

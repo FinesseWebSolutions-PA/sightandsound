@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -16,6 +16,7 @@ import { ConversationView, NewProjectConversation } from "@/components/Discussio
 import { personById, useStore } from "@/lib/store";
 import { formatDateTime } from "@/lib/status";
 import { groupThreadsBySet, snippet, type ThreadRow } from "@/lib/threads";
+import { lastRead } from "@/lib/conversation-read";
 import { cn } from "@/lib/utils";
 
 const kindIcon = {
@@ -105,7 +106,6 @@ export function ConversationRail({
             activeId && picked ? "hidden md:flex" : "flex",
           )}
         >
-
           <header className="panel-header flex items-center justify-between gap-2 px-3 py-2">
             <h2 className="text-sm font-semibold text-ink">{listTitle}</h2>
             {canStart && (
@@ -137,34 +137,37 @@ export function ConversationRail({
                 <section key={section.key}>
                   {/* Inside one set the list is already that set's, so its name is not repeated. */}
                   {!sceneId && (
-                  <div className="group-header flex items-center gap-1.5 px-3 py-1.5">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setClosedSections((prev) => ({ ...prev, [section.key]: !isClosedSection }))
-                      }
-                      aria-expanded={!isClosedSection}
-                      className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs font-semibold text-ink-soft"
-                    >
-                      {isClosedSection ? (
-                        <ChevronRight aria-hidden className="size-3.5 shrink-0" />
-                      ) : (
-                        <ChevronDown aria-hidden className="size-3.5 shrink-0" />
-                      )}
-                      <span className="truncate">{section.title}</span>
-                      <span className="shrink-0">({section.rows.length})</span>
-                    </button>
-                    {section.sceneId && !sceneId && (
-                      <Link
-                        to="/projects/$projectId/sets"
-                        params={{ projectId }}
-                        search={{ set: section.sceneId }}
-                        className="shrink-0 text-[0.6875rem] font-medium text-gold-deep underline"
+                    <div className="group-header flex items-center gap-1.5 px-3 py-1.5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setClosedSections((prev) => ({
+                            ...prev,
+                            [section.key]: !isClosedSection,
+                          }))
+                        }
+                        aria-expanded={!isClosedSection}
+                        className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs font-semibold text-ink-soft"
                       >
-                        Open set
-                      </Link>
-                    )}
-                  </div>
+                        {isClosedSection ? (
+                          <ChevronRight aria-hidden className="size-3.5 shrink-0" />
+                        ) : (
+                          <ChevronDown aria-hidden className="size-3.5 shrink-0" />
+                        )}
+                        <span className="truncate">{section.title}</span>
+                        <span className="shrink-0">({section.rows.length})</span>
+                      </button>
+                      {section.sceneId && !sceneId && (
+                        <Link
+                          to="/projects/$projectId/sets"
+                          params={{ projectId }}
+                          search={{ set: section.sceneId }}
+                          className="shrink-0 text-[0.6875rem] font-medium text-gold-deep underline"
+                        >
+                          Open set
+                        </Link>
+                      )}
+                    </div>
                   )}
                   {(!isClosedSection || sceneId) && (
                     <ul className="row-list">
@@ -192,7 +195,6 @@ export function ConversationRail({
               onClick={() => setPicked(null)}
               className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-sm font-medium text-ink transition-colors hover:bg-cream md:hidden"
             >
-
               <ArrowLeft aria-hidden className="size-4" />
               All conversations
             </button>
@@ -217,16 +219,21 @@ export function ConversationRail({
   );
 }
 
-function RailRow({
-  row,
-  active,
-  onPick,
-}: {
-  row: ThreadRow;
-  active: boolean;
-  onPick: () => void;
-}) {
+function RailRow({ row, active, onPick }: { row: ThreadRow; active: boolean; onPick: () => void }) {
   const Icon = kindIcon[row.kind];
+  const { currentUserId, comments } = useStore();
+  const [, redraw] = useState(0);
+  useEffect(() => {
+    const refresh = () => redraw((n) => n + 1);
+    window.addEventListener("conversation-read", refresh);
+    return () => window.removeEventListener("conversation-read", refresh);
+  }, []);
+  const unread = comments.filter(
+    (c) =>
+      c.thread_id === row.id &&
+      c.author_id !== currentUserId &&
+      c.created_at > lastRead(currentUserId, row.id),
+  ).length;
   return (
     <button
       type="button"
@@ -242,7 +249,9 @@ function RailRow({
           <Icon aria-hidden className="size-3.5 shrink-0 translate-y-0.5 text-ink-soft" />
           <span className="truncate text-sm font-semibold text-ink">{row.name}</span>
         </span>
-        <span className="shrink-0 text-[0.6875rem] text-ink-soft">{row.count} msg</span>
+        <span className="shrink-0 text-[0.6875rem] text-ink-soft">
+          {unread > 0 ? `${unread} unread` : `${row.count} msg`}
+        </span>
       </span>
       {row.name !== row.context && (
         <span className="mt-0.5 block truncate text-[0.6875rem] text-ink-soft">{row.context}</span>

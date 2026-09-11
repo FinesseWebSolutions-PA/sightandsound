@@ -1,11 +1,5 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 
 import { StoreContext } from "./store-context";
@@ -13,6 +7,12 @@ export { useStore } from "./store-context";
 
 import {
   loadProductionData,
+  writeLibraryFolder,
+  changeLibraryFolder,
+  changeLibraryDocuments,
+  writeDocumentStar,
+  writeCommentEdit,
+  type DocumentFolder,
   previewTaskReschedule,
   saveAttachmentToDocs,
   writeDocumentApprovalRequirement,
@@ -101,6 +101,7 @@ export const roleDescriptions: Record<Role, string> = {
 export type Store = {
   role: Role;
   setRole: (role: Role) => void;
+  setViewingPerson: (id: string) => void;
   currentUserId: string;
   can: {
     editCoreTimeline: boolean;
@@ -117,6 +118,24 @@ export type Store = {
   tasks: Task[];
   milestones: Milestone[];
   documents: Document[];
+  documentFolders: DocumentFolder[];
+  trashedDocuments: Document[];
+  documentStars: { document_id: string; person_id: string }[];
+  libraryAction: (projectId: string, action: () => Promise<unknown>) => Promise<boolean>;
+  createFolder: (projectId: string, parentId: string | null, name: string) => Promise<boolean>;
+  changeFolder: (
+    id: string,
+    action: string,
+    name?: string,
+    parentId?: string | null,
+  ) => Promise<boolean>;
+  changeDocuments: (
+    ids: string[],
+    action: "move" | "rename" | "trash" | "restore",
+    value?: string | null,
+  ) => Promise<boolean>;
+  starDocument: (id: string, starred: boolean) => Promise<boolean>;
+  editComment: (id: string, body: string) => Promise<boolean>;
   documentVersions: DocumentVersion[];
   approvals: Approval[];
   threads: DiscussionThread[];
@@ -145,12 +164,19 @@ export type Store = {
     projectId: string;
     file: File;
     folder: string | null;
+    folderId?: string | null;
     sceneId: string | null;
     /** Attaches the file to one work item, so it shows on that task. */
     taskId?: string | null;
     requiresApproval: boolean;
   }) => Promise<boolean>;
-  recordApproval: (documentId: string, decision: Approval["decision"], note: string) => void;
+  recordApproval: (
+    documentId: string,
+    decision: Approval["decision"],
+    note: string,
+    versionId: string,
+    reviewerId?: string,
+  ) => Promise<boolean>;
   /**
    * Posts a message into an existing conversation. Chat is flat: no parent id.
    * Resolves true when the message was saved.
@@ -159,15 +185,12 @@ export type Store = {
     threadId: string,
     body: string,
     attachments?: StagedAttachment[],
+    replyToId?: string | null,
   ) => Promise<boolean>;
   /** Adds or removes an emoji reaction to a chat message. */
   toggleReaction: (commentId: string, emoji: string) => Promise<boolean>;
   /** Uploads a file for a conversation before the message is posted. */
-  uploadAttachment: (
-    file: File,
-    projectId: string,
-    threadKey: string,
-  ) => Promise<StagedAttachment>;
+  uploadAttachment: (file: File, projectId: string, threadKey: string) => Promise<StagedAttachment>;
   /** Files a shared file into the production's documents, inside a folder. */
   saveAttachmentToDocuments: (input: {
     attachmentId: string;
@@ -289,6 +312,7 @@ const isRole = (v: string | null): v is Role =>
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [role, setRoleState] = useState<Role>("admin");
+  const [viewingPerson, setViewingPersonState] = useState("");
   const [data, setData] = useState<ProductionData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingSaves, setPendingSaves] = useState(0);
@@ -305,10 +329,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const stored = window.localStorage.getItem(ROLE_KEY);
     if (isRole(stored)) setRoleState(stored);
+    setViewingPersonState(window.localStorage.getItem("ss-demo-person") ?? "");
   }, []);
 
   const setRole = useCallback((next: Role) => {
     setRoleState(next);
+    setViewingPersonState("");
+    window.localStorage.removeItem("ss-demo-person");
     window.localStorage.setItem(ROLE_KEY, next);
   }, []);
 
@@ -339,7 +366,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // A newer read may have superseded this one without applying its result.
       return request === latestRefresh.current;
     } catch {
-      setError("Your change was saved, but the latest data could not be loaded. Try refreshing the data.");
+      setError(
+        "Your change was saved, but the latest data could not be loaded. Try refreshing the data.",
+      );
       return false;
     }
   }, [refresh]);
@@ -360,7 +389,81 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const currentUserId = data ? personForRole(data.people, role) : "";
+  useEffect(() => {
+    let stopped = false,
+      timer: ReturnType<typeof setTimeout> | undefined,
+      busy = false,
+      queued = false;
+    const update = async () => {
+      if (stopped || document.hidden) return;
+      if (busy) {
+        queued = true;
+        return;
+      }
+      busy = true;
+      try {
+        await refresh();
+      } catch {
+        /* Keep readable data while reconnecting. */
+      } finally {
+        busy = false;
+        if (queued && !stopped) {
+          queued = false;
+          schedule();
+        }
+      }
+    };
+    const schedule = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => void update(), 350);
+    };
+    let channel = supabase.channel("production-collaboration");
+    for (const table of [
+      "comments",
+      "discussion_threads",
+      "comment_reactions",
+      "comment_attachments",
+      "documents",
+      "document_versions",
+      "approvals",
+      "document_folders",
+      "document_stars",
+      "notifications",
+    ]) {
+      channel = channel.on("postgres_changes", { event: "*", schema: "public", table }, schedule);
+    }
+    channel.subscribe((status) => {
+      if (status === "SUBSCRIBED") schedule();
+    });
+    const onFocus = () => schedule();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    const recovery = setInterval(() => void update(), 30000);
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      clearInterval(recovery);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+      void supabase.removeChannel(channel);
+    };
+  }, [refresh]);
+
+  const currentUserId = data
+    ? (data.people.find((p) => p.id === viewingPerson && p.role === role)?.id ??
+      personForRole(data.people, role))
+    : "";
+  const setViewingPerson = useCallback(
+    (id: string) => {
+      const person = data?.people.find((p) => p.id === id);
+      if (!person) return;
+      setViewingPersonState(id);
+      setRoleState(person.role);
+      window.localStorage.setItem("ss-demo-person", id);
+      window.localStorage.setItem(ROLE_KEY, person.role);
+    },
+    [data],
+  );
   currentUserIdRef.current = currentUserId;
 
   const dataRef = useRef<ProductionData | null>(null);
@@ -538,6 +641,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       projectId: string;
       file: File;
       folder: string | null;
+      folderId?: string | null;
       sceneId: string | null;
       taskId?: string | null;
       requiresApproval: boolean;
@@ -558,26 +662,85 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [allowed, refreshAfterSave, setSaving],
   );
 
-  const recordApproval = useCallback(
-    (documentId: string, decision: Approval["decision"], note: string) => {
-      const doc = data?.documents.find((d) => d.id === documentId);
-      if (!doc || !allowed(projectOfDocument(documentId), "contribute")) return;
-      run(() =>
-        writeApproval(
-          documentId,
-          decision,
-          note,
-          currentUserIdRef.current,
-          doc.owner_id,
-          doc.project_id,
-        ),
+  const recordApproval = useCallback<Store["recordApproval"]>(
+    async (documentId, decision, note, versionId, reviewerId) => {
+      const doc = dataRef.current?.documents.find((d) => d.id === documentId);
+      if (!doc || !allowed(doc.project_id, "contribute")) return false;
+      return runAsync(() =>
+        writeApproval(documentId, decision, note, currentUserIdRef.current, versionId, reviewerId),
       );
     },
-    [allowed, data, run],
+    [allowed, runAsync],
+  );
+
+  const libraryAction = useCallback<Store["libraryAction"]>(
+    async (projectId, action) => {
+      if (!allowed(projectId, "contribute")) return false;
+      return runAsync(action);
+    },
+    [allowed, runAsync],
+  );
+  const createFolder = useCallback<Store["createFolder"]>(
+    (projectId, parentId, name) =>
+      libraryAction(projectId, () =>
+        writeLibraryFolder({ projectId, parentId, name }, currentUserIdRef.current),
+      ),
+    [libraryAction],
+  );
+  const changeFolder = useCallback<Store["changeFolder"]>(
+    async (id, action, name, parentId) => {
+      const folder = dataRef.current?.documentFolders.find((f) => f.id === id);
+      return folder
+        ? libraryAction(folder.project_id, () =>
+            changeLibraryFolder(id, action, currentUserIdRef.current, name, parentId),
+          )
+        : false;
+    },
+    [libraryAction],
+  );
+  const changeDocuments = useCallback<Store["changeDocuments"]>(
+    async (ids, action, value) => {
+      const all = [
+        ...(dataRef.current?.documents ?? []),
+        ...(dataRef.current?.trashedDocuments ?? []),
+      ];
+      if (
+        !ids.length ||
+        ids.some((id) => !all.some((d) => d.id === id && allowed(d.project_id, "contribute")))
+      )
+        return false;
+      return runAsync(() => changeLibraryDocuments(ids, action, value));
+    },
+    [allowed, runAsync],
+  );
+  const starDocument = useCallback<Store["starDocument"]>(
+    async (id, starred) => {
+      const doc = dataRef.current?.documents.find((d) => d.id === id);
+      return doc
+        ? libraryAction(doc.project_id, () =>
+            writeDocumentStar(id, currentUserIdRef.current, starred),
+          )
+        : false;
+    },
+    [libraryAction],
+  );
+  const editComment = useCallback<Store["editComment"]>(
+    async (id, body) => {
+      const comment = dataRef.current?.comments.find(
+        (c) => c.id === id && c.author_id === currentUserIdRef.current,
+      );
+      const thread = dataRef.current?.discussionThreads.find((t) => t.id === comment?.thread_id);
+      return thread
+        ? libraryAction(thread.project_id, () =>
+            writeCommentEdit(id, body, currentUserIdRef.current),
+          )
+        : false;
+    },
+    [libraryAction],
   );
 
   const addComment = useCallback<Store["addComment"]>(
-    async (threadId, body, attachments) => {
+    async (threadId, body, attachments, replyToId) => {
       const thread = dataRef.current?.discussionThreads.find((t) => t.id === threadId);
       if (!thread || !allowed(projectOfThread(threadId), "contribute")) return false;
       if (!body.trim() && !(attachments && attachments.length > 0)) return false;
@@ -585,6 +748,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         writeComment({
           threadId,
           body,
+          replyToId: replyToId || null,
           authorId: currentUserIdRef.current,
           projectId: thread.project_id,
           sourceEntityType: thread.context_type,
@@ -602,11 +766,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     async (commentId: string, emoji: string): Promise<boolean> => {
       if (!dataRef.current) return false;
       const existing = dataRef.current.commentReactions.find(
-        (r) => r.comment_id === commentId && r.person_id === currentUserIdRef.current && r.emoji === emoji,
+        (r) =>
+          r.comment_id === commentId &&
+          r.person_id === currentUserIdRef.current &&
+          r.emoji === emoji,
       );
       return await runAsync(async () => {
         if (existing) {
-          await removeCommentReaction(existing.id);
+          await removeCommentReaction(existing.id, currentUserIdRef.current);
         } else {
           await writeCommentReaction(commentId, emoji, currentUserIdRef.current);
         }
@@ -765,9 +932,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const setDepartmentOnProject = useCallback(
     (projectId: string, departmentId: string, on: boolean) => {
       if (!allowed(projectId, "admin")) return;
-      run(() =>
-        writeDepartmentOnProject(projectId, departmentId, on, currentUserIdRef.current),
-      );
+      run(() => writeDepartmentOnProject(projectId, departmentId, on, currentUserIdRef.current));
     },
     [allowed, run],
   );
@@ -972,7 +1137,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [refreshAfterSave, setSaving],
   );
 
-
   const updateProduction = useCallback<Store["updateProduction"]>(
     async (projectId, input) => {
       if (!adminGlobal()) return false;
@@ -1016,6 +1180,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         ? {
             role,
             setRole,
+            setViewingPerson,
             currentUserId,
             can: {
               editCoreTimeline: role === "admin",
@@ -1031,6 +1196,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             tasks: data.tasks,
             milestones: data.milestones,
             documents: data.documents,
+            documentFolders: data.documentFolders,
+            trashedDocuments: data.trashedDocuments,
+            documentStars: data.documentStars,
+            libraryAction,
+            createFolder,
+            changeFolder,
+            changeDocuments,
+            starDocument,
+            editComment,
             documentVersions: data.documentVersions,
             approvals: data.approvals,
             threads: data.discussionThreads,
@@ -1086,6 +1260,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         : {
             role,
             setRole,
+            setViewingPerson,
             currentUserId: "",
             can: {
               editCoreTimeline: role === "admin",
@@ -1101,6 +1276,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             tasks: [],
             milestones: [],
             documents: [],
+            documentFolders: [],
+            trashedDocuments: [],
+            documentStars: [],
+            libraryAction,
+            createFolder,
+            changeFolder,
+            changeDocuments,
+            starDocument,
+            editComment,
             documentVersions: [],
             approvals: [],
             threads: [],
@@ -1118,7 +1302,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             setPortalUrl: () => {},
             addDocumentVersion: async () => false,
             uploadDocument: async () => false,
-            recordApproval: () => {},
+            recordApproval: async () => false,
             addComment: async () => false,
             toggleReaction: async () => false,
             uploadAttachment: async () => {
@@ -1157,6 +1341,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           },
     [
       role,
+      toggleReaction,
+      setViewingPerson,
       setRole,
       isClosed,
 
@@ -1169,6 +1355,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       previewReschedule,
       setMilestoneDate,
       setPortalUrl,
+      libraryAction,
+      createFolder,
+      changeFolder,
+      changeDocuments,
+      starDocument,
+      editComment,
       addDocumentVersion,
       uploadDocument,
       recordApproval,
@@ -1234,7 +1426,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           <h1 className="font-display text-2xl text-ink">
             The production data could not be loaded
           </h1>
-          <p className="mt-2 text-sm text-ink-soft" role="alert">{error}</p>
+          <p className="mt-2 text-sm text-ink-soft" role="alert">
+            {error}
+          </p>
           <button
             type="button"
             onClick={() => void retryLoad()}

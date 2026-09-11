@@ -61,7 +61,7 @@ function DocumentsTab() {
         {...(search.comment ? { highlightCommentId: search.comment } : {})}
         onOpenDocument={(documentId) => setSearch({ document: documentId })}
         onCloseDocument={() => setSearch({ document: undefined, comment: undefined })}
-        onPlaceChange={(encoded) => setSearch({ folder: encoded || undefined }, true)}
+        onPlaceChange={(encoded) => setSearch({ folder: encoded || undefined })}
       />
     </div>
   );

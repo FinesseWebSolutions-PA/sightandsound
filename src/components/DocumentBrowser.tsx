@@ -1,139 +1,78 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertTriangle,
-  CheckCircle2,
-  ChevronRight,
   FileText,
-  FileUp,
   Folder,
-  LayoutGrid,
-  List,
-  MoreVertical,
+  FolderPlus,
+  Upload,
   Search,
-  History,
-  MessageSquare,
-  Send,
-  ThumbsDown,
+  Star,
   Trash2,
+  RotateCcw,
+  MoreHorizontal,
   X,
-  XCircle,
+  Check,
+  ChevronRight,
+  List,
+  LayoutGrid,
+  MessageSquare,
+  Clock,
+  CheckCircle2,
 } from "lucide-react";
-
-import { Discussion } from "@/components/Discussion";
-import { DocumentPreview } from "@/components/DocumentPreview";
-
-import { MentionInput } from "@/components/MentionInput";
-import { StatusBadge } from "@/components/StatusBadge";
-import { departments, personById, useStore } from "@/lib/store";
-import { approvalStateMeta, formatDate } from "@/lib/status";
-import { activityFor } from "@/lib/threads";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Discussion } from "./Discussion";
+import { DocumentPreview } from "./DocumentPreview";
+import { AttachmentList } from "./AttachmentList";
+import { FolderSelect } from "./FolderSelect";
+import { MentionInput } from "./MentionInput";
+import { MentionText } from "./MentionText";
+import { people, personById, useStore } from "@/lib/store";
+import {
+  folderTrail,
+  folderLabel,
+  isFolderDescendant,
+  approvedDocumentVersions,
+} from "@/lib/document-library";
+import { formatDateTime } from "@/lib/status";
 import { cn } from "@/lib/utils";
+import type { Document, DocumentFolder } from "@/lib/production-data";
 
-/**
- * Files a document either into a set's own folder (every set has one) or into a
- * custom folder someone made up for this production.
- */
-function FilingControl({
-  projectId,
-  documentId,
-  currentFolder,
-  currentSceneId,
-}: {
-  projectId: string;
-  documentId: string;
-  currentFolder: string;
-  currentSceneId: string;
-}) {
-  const { documents, scenes, setDocumentFolder, setDocumentSet } = useStore();
-  const [creating, setCreating] = useState(false);
-  const [name, setName] = useState("");
-  const projectScenes = scenes
-    .filter((sc) => sc.project_id === projectId)
-    .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
-  const folders = Array.from(
-    new Set(
-      documents
-        .filter((d) => d.project_id === projectId && d.folder && !d.scene_id)
-        .map((d) => d.folder),
-    ),
-  ).sort((a, b) => a.localeCompare(b));
-
-  if (creating) {
-    return (
-      <span className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
-        <input
-          value={name}
-          autoFocus
-          onChange={(e) => setName(e.target.value)}
-          aria-label="New folder name"
-          placeholder="Folder name"
-          className="min-h-11 w-full rounded-md border border-border bg-card px-3 text-base text-ink sm:w-48 sm:text-sm"
-        />
-        <button
-          type="button"
-          onClick={() => {
-            if (name.trim()) {
-              if (currentSceneId) setDocumentSet(documentId, null);
-              setDocumentFolder(documentId, name.trim());
-            }
-            setCreating(false);
-            setName("");
-          }}
-          className="min-h-11 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream"
-        >
-          Save
-        </button>
-      </span>
-    );
-  }
-
-  const value = currentSceneId ? `set:${currentSceneId}` : currentFolder ? `folder:${currentFolder}` : "";
-
-  return (
-    <select
-      aria-label="Document folder"
-      value={value}
-      onChange={(e) => {
-        const v = e.target.value;
-        if (v === "__new") {
-          setCreating(true);
-          return;
-        }
-        if (v.startsWith("set:")) {
-          setDocumentSet(documentId, v.slice(4));
-          return;
-        }
-        if (currentSceneId) setDocumentSet(documentId, null);
-        setDocumentFolder(documentId, v.startsWith("folder:") ? v.slice(7) : "");
-      }}
-      className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:w-56 sm:text-sm"
-    >
-      <option value="">Not filed</option>
-      {projectScenes.map((sc) => (
-        <option key={sc.id} value={`set:${sc.id}`}>
-          {sc.name} (set)
-        </option>
-      ))}
-      {folders.map((f) => (
-        <option key={f} value={`folder:${f}`}>
-          {f}
-        </option>
-      ))}
-      <option value="__new">New folder…</option>
-    </select>
-  );
-}
-
-const decisionLabel: Record<"requested" | "approved" | "changes_requested" | "rejected", string> = {
-  requested: "Review requested",
+const button =
+  "inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium hover:bg-cream disabled:opacity-50";
+const states = {
+  draft: "Draft",
+  in_review: "Awaiting approval",
   approved: "Approved",
   changes_requested: "Changes requested",
-  rejected: "Rejected",
+  rejected: "Changes requested",
+};
+type View = "files" | "recent" | "starred" | "review" | "shared" | "trash";
+type Action = {
+  type: "new" | "rename" | "move" | "trash" | "restore";
+  folder?: DocumentFolder;
+  ids?: string[];
+};
+type Queued = {
+  id: string;
+  file: File;
+  folderId: string | null;
+  state: "queued" | "uploading" | "done" | "failed";
 };
 
 export function DocumentBrowser({
   projectId,
-  sceneId: pinnedSceneId,
+  sceneId,
   openDocumentId = "",
   openFolder = "",
   highlightCommentId,
@@ -142,1126 +81,1166 @@ export function DocumentBrowser({
   onPlaceChange,
 }: {
   projectId: string;
-  /** When given, only this set's folder is shown — used inside a set workspace. */
   sceneId?: string;
-  /** Deep-linked document id, driven by the route's `document` search param. */
   openDocumentId?: string;
-  /** Deep-linked folder, driven by the route's `folder` search param (e.g. "set:abc" or "folder:Props"). */
   openFolder?: string;
   highlightCommentId?: string;
-  /** Called when the viewer should reflect an opened document in the URL. */
-  onOpenDocument?: (documentId: string) => void;
-  /** Called when the viewer closes, so the URL can drop the `document` param. */
+  onOpenDocument?: (id: string) => void;
   onCloseDocument?: () => void;
-  /** Called when the current folder changes, so the URL can reflect it. */
-  onPlaceChange?: (encoded: string) => void;
+  onPlaceChange?: (value: string) => void;
 }) {
+  const store = useStore();
   const {
-    projects,
-    scenes,
     documents,
+    trashedDocuments,
+    documentFolders,
+    documentStars,
     documentVersions,
     approvals,
-    can,
-    recordApproval,
-    setDocumentApprovalRequirement,
-    addDocumentVersion,
-    uploadDocument,
-    deleteDocument,
-    isClosed,
-    threads,
-    comments,
-    createThread,
     currentUserId,
-  } = useStore();
-  const project = projects.find((p) => p.id === projectId);
-  if (!project) return null;
-
-  const locked = isClosed(projectId);
-  const canReview = can.decideApproval && !locked;
-  const canUpload = can.upload && !locked;
-
-  const projectDocs = documents.filter(
-    (d) => d.project_id === projectId && (!pinnedSceneId || d.scene_id === pinnedSceneId),
-  );
-
-  /** Highlighted row (single click) vs. opened file (double click / Enter). */
-  const [activeId, setActiveId] = useState("");
+    commentAttachments,
+    comments,
+    threads,
+    can,
+    isClosed,
+  } = store;
+  const folders = documentFolders.filter((f) => f.project_id === projectId);
+  const [location, setLocation] = useState(openFolder);
   const [openedId, setOpenedId] = useState(openDocumentId);
-  // The URL (Inbox, Dashboard links, or the browser's own Back/Forward) is the
-  // source of truth whenever this browser is deep-linkable, so keep the local
-  // "is a file open" state mirroring it exactly — including closing it.
-  useEffect(() => {
-    setOpenedId(openDocumentId);
-    if (openDocumentId) setActiveId(openDocumentId);
-  }, [openDocumentId]);
-
-  const [note, setNote] = useState("");
-  /** A decision is only recorded once the reviewer signs it with their own name. */
-  const [signature, setSignature] = useState("");
   const [query, setQuery] = useState("");
-  const [view, setView] = useState<"list" | "grid">("list");
-  const [pane, setPane] = useState<"details" | "conversation">("details");
-
-  const projectScenes = useMemo(
-    () =>
-      scenes
-        .filter((sc) => sc.project_id === projectId)
-        .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)),
-    [scenes, projectId],
-  );
-
-  /** Where you are: a set's folder, a custom folder, or the top level. */
-  type Place = { kind: "set"; id: string; name: string } | { kind: "custom"; name: string } | null;
-  const pinnedPlace: Place = pinnedSceneId
-    ? {
-        kind: "set",
-        id: pinnedSceneId,
-        name: projectScenes.find((sc) => sc.id === pinnedSceneId)?.name ?? "Set",
-      }
-    : null;
-  const [place, setPlace] = useState<Place>(() => {
-    if (pinnedSceneId) return pinnedPlace;
-    if (openFolder.startsWith("set:")) {
-      const sc = scenes.find((s) => s.project_id === projectId && s.id === openFolder.slice(4));
-      if (sc) return { kind: "set", id: sc.id, name: sc.name };
-    } else if (openFolder.startsWith("folder:")) {
-      return { kind: "custom", name: openFolder.slice(7) };
-    }
-    return pinnedPlace;
-  });
-  /** Navigating to a folder/set also updates the URL, so it's shareable and Back works. */
-  const goPlace = (next: Place) => {
-    setPlace(next);
-    onPlaceChange?.(next ? (next.kind === "set" ? `set:${next.id}` : `folder:${next.name}`) : "");
+  const [grid, setGrid] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [action, setAction] = useState<Action | null>(null);
+  const [name, setName] = useState("");
+  const [destination, setDestination] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [queue, setQueue] = useState<Queued[]>([]);
+  const uploading = useRef(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+  useEffect(() => setLocation(openFolder), [openFolder]);
+  useEffect(() => setOpenedId(openDocumentId), [openDocumentId]);
+  const view: View = location.startsWith("view:") ? (location.slice(5) as View) : "files";
+  const pinned = sceneId ? folders.find((f) => f.scene_id === sceneId) : null;
+  const requestedFolderId =
+    (location.startsWith("folder:")
+      ? folders.find((f) => f.id === location.slice(7) || f.name === location.slice(7))?.id
+      : location.startsWith("set:")
+        ? folders.find((f) => f.scene_id === location.slice(4))?.id
+        : pinned?.id) ?? null;
+  const folderId =
+    pinned && (!requestedFolderId || !isFolderDescendant(folders, requestedFolderId, pinned.id))
+      ? pinned.id
+      : requestedFolderId;
+  const currentFolder = folders.find((f) => f.id === folderId);
+  const writable = can.upload && !isClosed(projectId);
+  const navigate = (next: string) => {
+    setLocation(next);
+    setSelected([]);
+    setQuery("");
+    onPlaceChange?.(next);
   };
-  /** Opening a file updates the URL (deep-link); closing it drops that param. */
-  const openDoc = (id: string) => {
-    setActiveId(id);
+  const openFile = (id: string) => {
     setOpenedId(id);
     onOpenDocument?.(id);
   };
-  const closeDoc = () => {
+  const closeFile = () => {
     setOpenedId("");
     onCloseDocument?.();
   };
-
-  // Every set is automatically a folder, even before anything is filed in it.
-  const folderList =
-    pinnedSceneId || place !== null || query.trim()
-      ? []
-      : [
-          ...projectScenes.map((sc) => ({
-            key: `set:${sc.id}`,
-            name: sc.name,
-            isSet: true,
-            count: projectDocs.filter((d) => d.scene_id === sc.id).length,
-            place: { kind: "set" as const, id: sc.id, name: sc.name },
-          })),
-          ...Array.from(
-            projectDocs.reduce((acc, d) => {
-              if (d.folder && !d.scene_id) acc.set(d.folder, (acc.get(d.folder) ?? 0) + 1);
-              return acc;
-            }, new Map<string, number>()),
-          )
-            .sort((a, b) => a[0].localeCompare(b[0]))
-            .map(([name, count]) => ({
-              key: `folder:${name}`,
-              name,
-              isSet: false,
-              count,
-              place: { kind: "custom" as const, name },
-            })),
-        ];
-
-  const q = query.trim().toLowerCase();
-  const visibleDocs = projectDocs.filter((d) => {
-    if (q) return d.title.toLowerCase().includes(q) || (d.folder ?? "").toLowerCase().includes(q);
-    if (place === null) return !d.folder && !d.scene_id;
-    if (place.kind === "set") return d.scene_id === place.id;
-    return d.folder === place.name && !d.scene_id;
+  const projectDocs = (view === "trash" ? trashedDocuments : documents).filter(
+    (d) => d.project_id === projectId && (!sceneId || d.scene_id === sceneId),
+  );
+  const stars = new Set(
+    documentStars.filter((s) => s.person_id === currentUserId).map((s) => s.document_id),
+  );
+  const visibleDocs = projectDocs
+    .filter((d) => {
+      if (query.trim())
+        return `${d.title} ${folderLabel(folders, d.folder_id ?? null)}`
+          .toLowerCase()
+          .includes(query.toLowerCase().trim());
+      if (view === "starred") return stars.has(d.id);
+      if (view === "review") return d.approval_state === "in_review";
+      if (view === "shared") return false;
+      if (view === "recent" || view === "trash") return true;
+      return (
+        (d.folder_id ?? null) === folderId || (!!sceneId && !d.folder_id && d.scene_id === sceneId)
+      );
+    })
+    .sort((a, b) =>
+      view === "recent" ? b.updated_at.localeCompare(a.updated_at) : a.title.localeCompare(b.title),
+    );
+  const visibleFolders = folders.filter((f) =>
+    query.trim()
+      ? (view === "files" || view === "trash") &&
+        (view === "trash" ? !!f.deleted_at : !f.deleted_at) &&
+        f.name.toLowerCase().includes(query.toLowerCase())
+      : view === "trash"
+        ? !!f.deleted_at && !folders.some((p) => p.id === f.parent_id && p.deleted_at)
+        : view === "files" && !f.deleted_at && f.parent_id === folderId,
+  );
+  const shared = commentAttachments.filter((a) => {
+    const thread = threads.find(
+      (t) => t.id === comments.find((c) => c.id === a.comment_id)?.thread_id,
+    );
+    return (
+      thread?.project_id === projectId &&
+      (!sceneId ||
+        thread.scene_id === sceneId ||
+        documents.some((d) => d.id === thread.document_id && d.scene_id === sceneId) ||
+        store.tasks.some((t) => t.id === thread.task_id && t.scene_id === sceneId)) &&
+      (!query || a.file_name.toLowerCase().includes(query.toLowerCase()))
+    );
   });
-
-  /** The file open in the Drive-style viewer. */
   const opened = documents.find((d) => d.id === openedId && d.project_id === projectId);
-  const currentVersion = opened
-    ? documentVersions
-        .filter((v) => v.document_id === opened.id)
-        .sort((a, b) => b.version - a.version)[0]
-    : undefined;
-  const hasPreviewFile = !!currentVersion?.storage_key;
-
-  /** Uploading a file straight into wherever you're standing. */
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const versionFileInputRef = useRef<HTMLInputElement>(null);
-  const [versionFile, setVersionFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const addFiles = async (files: File[]) => {
-    if (files.length === 0 || uploading) return;
-    setUploading(true);
+  const startAction = (next: Action) => {
+    setAction(next);
+    setName(next.folder?.name ?? documents.find((d) => d.id === next.ids?.[0])?.title ?? "");
+    setDestination(folderId ?? "");
+    setActionError("");
+  };
+  const finishAction = async () => {
+    if (!action) return;
+    setBusy(true);
+    setActionError("");
     try {
-      for (const file of files) {
-        await uploadDocument({
-          projectId,
+      const ok =
+        action.type === "new"
+          ? await store.createFolder(projectId, folderId, name)
+          : action.folder
+            ? await store.changeFolder(action.folder.id, action.type, name, destination || null)
+            : await store.changeDocuments(
+                action.ids ?? [],
+                action.type as "move" | "rename" | "trash" | "restore",
+                action.type === "rename" ? name : destination || null,
+              );
+      if (ok) {
+        setAction(null);
+        setSelected([]);
+      } else setActionError("Could not save this change. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const uploadFiles = async (files: File[], retry?: Queued) => {
+    if (uploading.current || !writable || view === "trash") return;
+    uploading.current = true;
+    const items = retry
+      ? [{ ...retry, state: "queued" as const }]
+      : files.map((file) => ({
+          id: crypto.randomUUID(),
           file,
-          folder: place?.kind === "custom" ? place.name : null,
-          sceneId: place?.kind === "set" ? place.id : null,
-          requiresApproval: true,
+          folderId,
+          state: "queued" as const,
+        }));
+    setQueue((prev) =>
+      retry ? prev.map((q) => (q.id === retry.id ? items[0]! : q)) : [...prev, ...items],
+    );
+    try {
+      for (const item of items) {
+        setQueue((prev) => prev.map((q) => (q.id === item.id ? { ...q, state: "uploading" } : q)));
+        const ok = await store.uploadDocument({
+          projectId,
+          file: item.file,
+          folder: null,
+          folderId: item.folderId,
+          sceneId: null,
+          requiresApproval: false,
         });
+        setQueue((prev) =>
+          prev.map((q) => (q.id === item.id ? { ...q, state: ok ? "done" : "failed" } : q)),
+        );
       }
     } finally {
-      setUploading(false);
+      uploading.current = false;
     }
   };
-
-  const [sending, setSending] = useState(false);
-  /** Which action row in the viewer menu is open; only one at a time. */
-  type MenuAction =
-    | null
-    | "folder"
-    | "requested"
-    | "approved"
-    | "changes_requested"
-    | "rejected"
-    | "version";
-  const [menuAction, setMenuAction] = useState<MenuAction>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    setMenuAction(null);
-    setMenuOpen(false);
-    setNote("");
-    setSignature("");
-    setVersionFile(null);
-    setPane("details");
-  }, [openedId]);
-  useEffect(() => {
-    setSignature("");
-  }, [menuAction]);
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
-    };
-    const onClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
-    };
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("mousedown", onClick);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("mousedown", onClick);
-    };
-  }, [menuOpen]);
-
-  // Esc closes the viewer, just like Drive.
-  useEffect(() => {
-    if (!openedId) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !menuOpen) closeDoc();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [openedId, menuOpen]);
-
-  /**
-   * A review note behaves like a chat message: it lands in this document's
-   * conversation too, so any @mentions in it actually reach people.
-   */
-  const postNoteToConversation = async (prefix: string) => {
-    if (!opened || !note.trim()) return;
-    await createThread({
-      projectId,
-      contextType: "document",
-      documentId: opened.id,
-      subject: opened.title,
-      body: `${prefix} ${note.trim()}`,
-    });
-  };
-
-  /** Who is signing, and whether what they typed matches their own name. */
-  const signerName = personById(currentUserId)?.full_name ?? "";
-  const needsSignature = (decision: string) => decision !== "requested";
-  const signatureOk =
-    signature.trim().toLowerCase() === signerName.trim().toLowerCase() && signerName !== "";
-
-  const act = async (decision: "requested" | "approved" | "changes_requested" | "rejected") => {
-    if (!opened || sending) return;
-    if (needsSignature(decision) && !signatureOk) return;
-    const signedLine = needsSignature(decision) ? ` Signed: ${signerName}.` : "";
-    setSending(true);
-    try {
-      recordApproval(opened.id, decision, `${note || "No note added."}${signedLine}`);
-      await postNoteToConversation(`${decisionLabel[decision]} —`);
-      setNote("");
-      setSignature("");
-    } finally {
-      setSending(false);
+  const drop = (e: React.DragEvent, target: string | null) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!writable || view === "trash") return;
+    const ids = e.dataTransfer.getData("application/sight-sound-files");
+    if (ids) {
+      try {
+        const list = JSON.parse(ids);
+        if (
+          Array.isArray(list) &&
+          list.every((id) => documents.some((d) => d.id === id && d.project_id === projectId))
+        )
+          void store.changeDocuments(list, "move", target);
+      } catch {
+        /* Ignore unrelated drag payloads. */
+      }
+      return;
+    }
+    const files = Array.from(e.dataTransfer.files);
+    if (target === folderId) void uploadFiles(files);
+    else {
+      // Preserve the drop destination even when the current folder is different.
+      if (uploading.current) return;
+      uploading.current = true;
+      const items = files.map((file) => ({
+        id: crypto.randomUUID(),
+        file,
+        folderId: target,
+        state: "queued" as const,
+      }));
+      setQueue((p) => [...p, ...items]);
+      void (async () => {
+        try {
+          for (const item of items) {
+            setQueue((p) => p.map((q) => (q.id === item.id ? { ...q, state: "uploading" } : q)));
+            const ok = await store.uploadDocument({
+              projectId,
+              file: item.file,
+              folder: null,
+              folderId: target,
+              sceneId: null,
+              requiresApproval: false,
+            });
+            setQueue((p) =>
+              p.map((q) => (q.id === item.id ? { ...q, state: ok ? "done" : "failed" } : q)),
+            );
+          }
+        } finally {
+          uploading.current = false;
+        }
+      })();
     }
   };
-
-  const reviewCell = (doc: (typeof projectDocs)[number], size: "sm" | "md" = "sm") =>
-    doc.requires_approval ? (
-      <StatusBadge meta={approvalStateMeta[doc.approval_state]} size={size} />
-    ) : (
-      <span className="text-xs text-ink-soft">No approval needed</span>
-    );
-
+  const fileMenu = (doc: Document) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Actions for ${doc.title}`}
+          className="grid size-10 place-items-center rounded hover:bg-cream"
+        >
+          <MoreHorizontal className="size-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {view !== "trash" && (
+          <DropdownMenuItem onSelect={() => openFile(doc.id)}>Open file</DropdownMenuItem>
+        )}
+        {writable &&
+          (view === "trash" ? (
+            <DropdownMenuItem onSelect={() => startAction({ type: "restore", ids: [doc.id] })}>
+              Restore
+            </DropdownMenuItem>
+          ) : (
+            <>
+              <DropdownMenuItem onSelect={() => startAction({ type: "rename", ids: [doc.id] })}>
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => startAction({ type: "move", ids: [doc.id] })}>
+                Move to folder
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => startAction({ type: "trash", ids: [doc.id] })}>
+                Move to Trash
+              </DropdownMenuItem>
+            </>
+          ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
   return (
-    <div className="space-y-6">
-      <section className="surface-card overflow-hidden">
-        {/* Drive-style toolbar: where you are, what you're looking for, how you see it. */}
-        <div className="panel-header flex flex-wrap items-center gap-2 px-3 py-2.5">
-          <nav aria-label="Folder path" className="flex min-w-0 items-center gap-1 text-sm">
+    <div className="space-y-4">
+      <div className="surface-card overflow-hidden md:grid md:grid-cols-[180px_minmax(0,1fr)]">
+        <nav
+          aria-label="Document library"
+          className="flex gap-1 overflow-x-auto border-b border-border bg-cream-soft p-2 md:flex-col md:border-b-0 md:border-r"
+        >
+          {(
+            [
+              ["files", "Files", Folder],
+              ["recent", "Recent", Clock],
+              ["starred", "Starred", Star],
+              ["review", "Awaiting approval", CheckCircle2],
+              ["shared", "Shared in conversations", MessageSquare],
+              ["trash", "Trash", Trash2],
+            ] as const
+          ).map(([key, label, Icon]) => (
             <button
+              key={key}
               type="button"
-              disabled={!!pinnedSceneId}
-              onClick={() => goPlace(null)}
+              onClick={() => navigate(key === "files" ? "" : `view:${key}`)}
               className={cn(
-                "min-h-9 rounded-md px-2 font-medium",
-                place === null ? "text-ink" : "text-ink-soft hover:bg-cream",
-                pinnedSceneId ? "cursor-default" : "",
+                "flex min-h-11 shrink-0 items-center gap-2 rounded px-3 text-left text-sm",
+                view === key ? "bg-gold-tint font-semibold" : "hover:bg-cream",
               )}
             >
-              {pinnedSceneId ? "This set" : "All documents"}
+              <Icon className="size-4 shrink-0" />
+              {label}
             </button>
-            {place !== null && !pinnedSceneId && (
-              <>
-                <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-soft" />
-                <span className="truncate font-medium text-ink">{place.name}</span>
-              </>
-            )}
-          </nav>
-          <div className="ml-auto flex items-center gap-2">
-            {canUpload && (
-              <>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files ?? []);
-                    e.target.value = "";
-                    void addFiles(files);
-                  }}
-                />
-                <button
-                  type="button"
-                  disabled={uploading}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="btn-primary min-h-9 shrink-0 gap-1.5 whitespace-nowrap px-3 text-sm"
-                >
-                  <FileUp aria-hidden className="size-4" />
-                  {uploading ? "Uploading…" : "Add document"}
-                </button>
-              </>
-            )}
-            <label className="relative">
-              <Search
-                aria-hidden
-                className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-ink-soft"
-              />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                aria-label="Search documents"
-                placeholder="Search documents"
-                className="min-h-9 w-40 rounded-md border border-border bg-card pr-2 pl-8 text-sm text-ink sm:w-56"
-              />
-            </label>
-            <div className="flex overflow-hidden rounded-md border border-border">
+          ))}
+        </nav>
+        <section
+          className="min-w-0"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => drop(e, folderId)}
+        >
+          <header className="flex flex-wrap items-center gap-2 border-b border-border p-3">
+            <nav
+              aria-label="Folder path"
+              className="flex min-w-0 flex-wrap items-center gap-1 text-sm"
+            >
               <button
+                className="min-h-10 px-2 font-medium"
                 type="button"
-                aria-label="List view"
-                aria-pressed={view === "list"}
-                onClick={() => setView("list")}
-                className={cn("min-h-9 px-2", view === "list" ? "bg-cream-soft" : "bg-card")}
+                onClick={() => navigate("")}
               >
-                <List aria-hidden className="size-4 text-ink" />
+                {sceneId ? "This set" : "Files"}
               </button>
-              <button
-                type="button"
-                aria-label="Grid view"
-                aria-pressed={view === "grid"}
-                onClick={() => setView("grid")}
-                className={cn(
-                  "min-h-9 border-l border-border px-2",
-                  view === "grid" ? "bg-cream-soft" : "bg-card",
-                )}
-              >
-                <LayoutGrid aria-hidden className="size-4 text-ink" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {view === "grid" ? (
-          <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-3 xl:grid-cols-4">
-            {folderList.map((f) => (
-              <button
-                key={f.key}
-                type="button"
-                onDoubleClick={() => goPlace(f.place)}
-                onClick={() => goPlace(f.place)}
-                className="group flex min-h-14 items-center gap-3 rounded-lg border border-border bg-cream-soft px-3 py-3 text-left transition-colors hover:border-border-strong hover:bg-cream"
-              >
-                <Folder
-                  aria-hidden
-                  className="size-6 shrink-0 fill-gold-tint text-gold-deep transition-colors group-hover:fill-cream-deep"
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-ink">{f.name}</span>
-                  <span className="block text-xs text-ink-soft">
-                    {f.isSet ? "Set folder · " : ""}
-                    {f.count} file{f.count === 1 ? "" : "s"}
-                  </span>
-                </span>
-              </button>
-            ))}
-            {visibleDocs.map((doc) => (
-              <button
-                key={doc.id}
-                type="button"
-                onClick={() => setActiveId(doc.id)}
-                onDoubleClick={() => openDoc(doc.id)}
-                aria-pressed={doc.id === activeId}
-                className={cn(
-                  "rounded-lg border border-border p-3 text-left hover:bg-cream-soft",
-                  doc.id === activeId ? "bg-cream-soft ring-2 ring-gold-deep/40" : "bg-card",
-                )}
-              >
-                <FileText aria-hidden className="size-6 text-ink-soft" />
-                <p className="mt-2 truncate text-sm font-medium text-ink">{doc.title}</p>
-                <p className="mt-0.5 truncate text-xs text-ink-soft">
-                  v{doc.current_version} · updated {formatDate(doc.updated_at)}
-                </p>
-                <div className="mt-2">{reviewCell(doc)}</div>
-              </button>
-            ))}
-            {visibleDocs.length === 0 && folderList.length === 0 && (
-              <p className="col-span-full px-1 py-6 text-sm text-ink-soft">Nothing here yet.</p>
-            )}
-          </div>
-        ) : (
-          <>
-            {/* Phones get full-width tappable rows instead of a table. */}
-            <ul className="row-list lg:hidden">
-              {folderList.map((f) => (
-                <li key={f.key}>
-                  <button
-                    type="button"
-                    onClick={() => setPlace(f.place)}
-                    className="flex w-full items-center gap-3 px-4 py-4 text-left"
-                  >
-                    <Folder
-                      aria-hidden
-                      className="size-5 shrink-0 fill-gold-tint text-gold-deep"
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium text-ink">{f.name}</span>
-                      <span className="block text-xs text-ink-soft">
-                        {f.isSet ? "Set folder · " : ""}
-                        {f.count} file{f.count === 1 ? "" : "s"}
-                      </span>
-                    </span>
-                    <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-soft" />
-                  </button>
-                </li>
-              ))}
-              {visibleDocs.map((doc) => (
-                <li key={doc.id}>
-                  <button
-                    type="button"
-                    onClick={() => openDoc(doc.id)}
-                    className="flex w-full items-start gap-3 px-4 py-4 text-left"
-                  >
-                    <FileText aria-hidden className="mt-0.5 size-5 shrink-0 text-ink-soft" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium text-ink">{doc.title}</span>
-                      <span className="mt-0.5 block text-xs text-ink-soft">
-                        {doc.kind} · {departments.find((d) => d.id === doc.department_id)?.name} ·
-                        updated {formatDate(doc.updated_at)}
-                      </span>
-                      <span className="mt-2 flex flex-wrap items-center gap-2">
-                        <span className="code-id">v{doc.current_version}</span>
-                        {reviewCell(doc)}
-                        <span className="inline-flex items-center gap-1 text-xs text-ink-soft">
-                          <MessageSquare aria-hidden className="size-3.5" />
-                          {activityFor(threads, comments, { projectId, documentId: doc.id }).count}
-                        </span>
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              ))}
-              {visibleDocs.length === 0 && folderList.length === 0 && (
-                <li className="px-4 py-6 text-sm text-ink-soft">Nothing here yet.</li>
-              )}
-            </ul>
-
-            <div className="hidden overflow-x-auto lg:block">
-              <table className="w-full min-w-[40rem] text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left">
-                    <th className="rule-label px-4 py-2.5">Name</th>
-                    <th className="rule-label px-4 py-2.5">Folder</th>
-                    <th className="rule-label px-4 py-2.5">Department</th>
-                    <th className="rule-label px-4 py-2.5">Ver.</th>
-                    <th className="rule-label px-4 py-2.5">Review</th>
-                    <th className="rule-label px-4 py-2.5">Last updated</th>
-                    <th className="rule-label px-4 py-2.5 text-right">
-                      <span className="sr-only">Actions</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="row-list">
-                  {folderList.map((f) => (
-                    <tr
-                      key={f.key}
-                      className="cursor-pointer hover:bg-cream-soft"
-                      onClick={() => goPlace(f.place)}
+              {view === "files" ? (
+                folderTrail(folders, folderId).map((f) => (
+                  <span key={f.id} className="flex items-center">
+                    <ChevronRight className="size-3" />
+                    <button
+                      type="button"
+                      className="min-h-10 max-w-48 truncate px-2"
+                      onClick={() => navigate(`folder:${f.id}`)}
                     >
-                      <td className="px-4 py-3" colSpan={2}>
-                        <span className="flex items-center gap-2">
-                          <Folder
-                            aria-hidden
-                            className="size-4 shrink-0 fill-gold-tint text-gold-deep"
-                          />
-                          <span className="font-medium text-ink">{f.name}</span>
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-ink-soft" colSpan={4}>
-                        {f.isSet ? "Set folder · " : "Folder · "}
-                        {f.count} file{f.count === 1 ? "" : "s"}
-                      </td>
-                      <td className="px-4 py-3 text-right text-ink-soft">
-                        <ChevronRight aria-hidden className="ml-auto size-4" />
-                      </td>
-                    </tr>
-                  ))}
-                  {visibleDocs.map((doc) => (
-                    <tr
-                      key={doc.id}
-                      tabIndex={0}
-                      className={cn(
-                        "cursor-pointer",
-                        doc.id === activeId ? "bg-cream-soft" : "hover:bg-cream-soft",
-                      )}
-                      onClick={() => setActiveId(doc.id)}
-                      onDoubleClick={() => openDoc(doc.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") openDoc(doc.id);
+                      {f.name}
+                    </button>
+                  </span>
+                ))
+              ) : (
+                <span>
+                  /{" "}
+                  {view === "review"
+                    ? "Awaiting approval"
+                    : view === "shared"
+                      ? "Shared in conversations"
+                      : view[0]?.toUpperCase() + view.slice(1)}
+                </span>
+              )}
+            </nav>
+            <div className="ml-auto flex gap-2">
+              {writable && view !== "trash" && (
+                <>
+                  <button
+                    type="button"
+                    className={button}
+                    disabled={uploading.current}
+                    onClick={() => fileInput.current?.click()}
+                  >
+                    <Upload className="size-4" />
+                    Upload files
+                  </button>
+                  {view === "files" && (
+                    <button
+                      type="button"
+                      className={button}
+                      onClick={() => {
+                        startAction({ type: "new" });
+                        setName("");
                       }}
                     >
-                      <td className="px-4 py-3">
-                        <span className="flex items-start gap-2">
-                          <FileText aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-soft" />
-                          <span className="min-w-0">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openDoc(doc.id);
-                              }}
-                              className="text-left font-medium text-ink hover:underline"
-                            >
-                              {doc.title}
-                            </button>
-                            <span className="block text-xs text-ink-soft">{doc.kind}</span>
-                          </span>
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-ink-soft">
-                        {(() => {
-                          const set = projectScenes.find((sc) => sc.id === doc.scene_id);
-                          const label = set ? set.name : doc.folder;
-                          if (!label) return "Not filed";
-                          return (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                goPlace(
-                                  set
-                                    ? { kind: "set", id: set.id, name: set.name }
-                                    : { kind: "custom", name: label },
-                                );
-                              }}
-                              className="inline-flex items-center gap-1 text-ink-soft hover:text-ink"
-                            >
-                              <Folder aria-hidden className="size-3.5" />
-                              {label}
-                            </button>
-                          );
-                        })()}
-                      </td>
-                      <td className="px-4 py-3 text-ink-soft">
-                        {departments.find((d) => d.id === doc.department_id)?.name}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="code-id">v{doc.current_version}</span>
-                      </td>
-                      <td className="px-4 py-3">{reviewCell(doc)}</td>
-                      <td className="px-4 py-3 text-xs text-ink-soft">
-                        {formatDate(doc.updated_at)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          aria-label={`Open ${doc.title}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDoc(doc.id);
-                          }}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-soft hover:bg-cream"
-                        >
-                          <MoreVertical aria-hidden className="size-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {visibleDocs.length === 0 && folderList.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-6 text-sm text-ink-soft">
-                        Nothing here yet.
-                      </td>
-                    </tr>
+                      <FolderPlus className="size-4" />
+                      New folder
+                    </button>
                   )}
-                </tbody>
-              </table>
+                </>
+              )}
+              <input
+                ref={fileInput}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  void uploadFiles(Array.from(e.target.files ?? []));
+                  e.target.value = "";
+                }}
+              />
             </div>
-          </>
-        )}
-      </section>
-
-      {/* Drive-style viewer: the file fills the screen, details and chat sit beside it. */}
-      {opened && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={opened.title}
-          className="fixed inset-0 z-50 flex flex-col bg-ink/80 backdrop-blur-sm"
-        >
-          <header className="flex items-center gap-2 px-3 py-2.5 text-cream sm:px-4">
-            <FileText aria-hidden className="size-5 shrink-0 text-gold-tint" />
-            <h3 className="min-w-0 flex-1 truncate text-sm font-semibold sm:text-base">
-              {opened.title}
-            </h3>
-            <div ref={menuRef} className="relative">
+            <div className="flex w-full gap-2">
+              <label className="relative min-w-0 flex-1">
+                <Search className="absolute left-3 top-3 size-4 text-ink-soft" />
+                <input
+                  aria-label="Search documents"
+                  placeholder="Search files and folders…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="min-h-10 w-full rounded border border-border bg-card pl-9 pr-3 text-sm"
+                />
+              </label>
               <button
                 type="button"
-                aria-label="Document actions"
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-                disabled={locked}
-                onClick={() => setMenuOpen((v) => !v)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-md text-cream hover:bg-white/15 disabled:opacity-40"
+                aria-label={grid ? "List view" : "Grid view"}
+                className={button}
+                onClick={() => setGrid(!grid)}
               >
-                <MoreVertical aria-hidden className="size-5" />
+                {grid ? <List className="size-4" /> : <LayoutGrid className="size-4" />}
               </button>
-              {menuOpen && (
-                <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-lg border border-border bg-white shadow-lg">
-                  <ul role="menu" className="py-1">
-                    <li role="none">
-                      <button
-                        role="menuitem"
-                        type="button"
-                        onClick={() => {
-                          setPane("conversation");
-                          setMenuOpen(false);
-                        }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-cream"
-                      >
-                        <MessageSquare aria-hidden className="size-4 text-ink-soft" />
-                        <span className="flex-1">Open conversation</span>
-                        <span className="text-xs text-ink-soft">
-                          {(() => {
-                            const a = activityFor(threads, comments, {
-                              projectId,
-                              documentId: opened.id,
-                            });
-                            return a.count === 0 ? "None" : a.count;
-                          })()}
-                        </span>
-                      </button>
-                    </li>
-                    {canUpload && (
-                      <li role="none">
+            </div>
+          </header>
+          {selected.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 border-b bg-cream p-2 text-sm">
+              <span>{selected.length} selected</span>
+              {writable &&
+                (view === "trash" ? (
+                  <button
+                    className={button}
+                    onClick={() => startAction({ type: "restore", ids: selected })}
+                  >
+                    Restore
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      className={button}
+                      onClick={() => startAction({ type: "move", ids: selected })}
+                    >
+                      Move
+                    </button>
+                    <button
+                      className={button}
+                      onClick={() => startAction({ type: "trash", ids: selected })}
+                    >
+                      Trash
+                    </button>
+                  </>
+                ))}
+              <button className={button} onClick={() => setSelected([])}>
+                Clear
+              </button>
+            </div>
+          )}
+          {view === "shared" ? (
+            <div className="space-y-3 p-4">
+              {shared.length === 0 ? (
+                <p className="text-sm text-ink-soft">
+                  Files shared in conversations will appear here automatically.
+                </p>
+              ) : (
+                <AttachmentList attachments={shared} projectId={projectId} />
+              )}
+            </div>
+          ) : (
+            <div
+              className={
+                grid
+                  ? "grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3"
+                  : "divide-y divide-border"
+              }
+            >
+              {visibleFolders.map((f) => (
+                <div
+                  key={f.id}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => drop(e, f.id)}
+                  className={cn(
+                    "flex min-w-0 items-center gap-2 p-3",
+                    grid && "rounded-lg border border-border",
+                  )}
+                >
+                  <Folder className="size-6 shrink-0 fill-gold-tint text-gold-deep" />
+                  <button
+                    type="button"
+                    disabled={!!f.deleted_at}
+                    onClick={() => navigate(`folder:${f.id}`)}
+                    className="min-w-0 flex-1 text-left text-sm font-semibold"
+                  >
+                    <span className="block truncate">{f.name}</span>
+                    <span className="text-xs font-normal text-ink-soft">
+                      {f.scene_id ? "Set folder" : "Folder"}
+                    </span>
+                  </button>
+                  {writable && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
                         <button
-                          role="menuitem"
                           type="button"
-                          onClick={() => {
-                            setPane("details");
-                            setMenuAction("folder");
-                            setMenuOpen(false);
-                          }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-cream"
+                          aria-label={`Actions for folder ${f.name}`}
+                          className="grid size-10 place-items-center"
                         >
-                          <Folder aria-hidden className="size-4 text-ink-soft" />
-                          <span className="flex-1">Move to folder</span>
+                          <MoreHorizontal className="size-4" />
                         </button>
-                      </li>
-                    )}
-                    {/* Approve / Request review / Request changes are surfaced as
-                        primary buttons in the detail view; Reject stays here since it's
-                        the rarer, more consequential call. */}
-                    {canReview && opened.requires_approval && (
-                      <li role="none">
-                        <button
-                          role="menuitem"
-                          type="button"
-                          onClick={() => {
-                            setPane("details");
-                            setMenuAction("rejected");
-                            setMenuOpen(false);
-                          }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-cream"
-                        >
-                          <XCircle aria-hidden className="size-4 text-ink-soft" />
-                          <span className="flex-1">Reject</span>
-                        </button>
-                      </li>
-                    )}
-                    {canUpload && (
-                      <li role="none">
-                        <button
-                          role="menuitem"
-                          type="button"
-                          onClick={() => {
-                            setPane("details");
-                            setMenuAction("version");
-                            setMenuOpen(false);
-                          }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-cream"
-                        >
-                          <FileUp aria-hidden className="size-4 text-ink-soft" />
-                          <span className="flex-1">Upload new version</span>
-                          <span className="text-xs text-ink-soft">v{opened.current_version}</span>
-                        </button>
-                      </li>
-                    )}
-                    {canUpload && (
-                      <li role="none">
-                        <label className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-cream">
-                          <input
-                            type="checkbox"
-                            checked={!opened.requires_approval}
-                            onChange={(e) => {
-                              setDocumentApprovalRequirement(opened.id, !e.target.checked);
-                              setMenuOpen(false);
-                            }}
-                            className="size-4 rounded border-border"
-                          />
-                          <span className="flex-1">No approval needed</span>
-                        </label>
-                      </li>
-                    )}
-                    {canUpload && (
-                      <>
-                        <li role="separator" className="my-1 border-t border-border" />
-                        <li role="none">
-                          <button
-                            role="menuitem"
-                            type="button"
-                            onClick={() => {
-                              setMenuOpen(false);
-                              if (window.confirm(`Delete “${opened.title}”? It will be removed from the production's documents but any conversation history stays visible.`)) {
-                                deleteDocument(opened.id);
-                                closeDoc();
-                              }
-                            }}
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-danger hover:bg-danger-bg"
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {f.deleted_at ? (
+                          <DropdownMenuItem
+                            onSelect={() => startAction({ type: "restore", folder: f })}
                           >
-                            <Trash2 aria-hidden className="size-4" />
-                            <span className="flex-1">Delete document</span>
-                          </button>
-                        </li>
-                      </>
+                            Restore folder
+                          </DropdownMenuItem>
+                        ) : (
+                          <>
+                            <DropdownMenuItem
+                              onSelect={() => startAction({ type: "rename", folder: f })}
+                            >
+                              Rename
+                            </DropdownMenuItem>
+                            {!f.scene_id && (
+                              <>
+                                <DropdownMenuItem
+                                  onSelect={() => startAction({ type: "move", folder: f })}
+                                >
+                                  Move
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onSelect={() => startAction({ type: "trash", folder: f })}
+                                >
+                                  Move to Trash
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              ))}
+              {visibleDocs.map((doc) => (
+                <div
+                  key={doc.id}
+                  draggable={writable && view !== "trash"}
+                  onDragStart={(e) =>
+                    e.dataTransfer.setData(
+                      "application/sight-sound-files",
+                      JSON.stringify(selected.includes(doc.id) ? selected : [doc.id]),
+                    )
+                  }
+                  className={cn(
+                    "flex min-w-0 items-center gap-2 p-3",
+                    grid && "flex-wrap rounded-lg border border-border",
+                    selected.includes(doc.id) && "bg-gold-tint/40",
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${doc.title}`}
+                    checked={selected.includes(doc.id)}
+                    onChange={(e) =>
+                      setSelected((p) =>
+                        e.target.checked ? [...p, doc.id] : p.filter((id) => id !== doc.id),
+                      )
+                    }
+                  />
+                  <FileText className="size-5 shrink-0 text-ink-soft" />
+                  <button
+                    type="button"
+                    disabled={view === "trash"}
+                    onClick={() => openFile(doc.id)}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <span className="block truncate text-sm font-medium">{doc.title}</span>
+                    <span className="block text-xs text-ink-soft">
+                      v{doc.current_version} ·{" "}
+                      {doc.requires_approval ? states[doc.approval_state] : "Reference file"}
+                    </span>
+                    {view !== "files" && (
+                      <span className="block truncate text-xs text-ink-soft">
+                        {folderLabel(folders, doc.folder_id ?? null)}
+                      </span>
                     )}
-                  </ul>
+                  </button>
+                  {view !== "trash" && writable && (
+                    <button
+                      type="button"
+                      aria-label={`${stars.has(doc.id) ? "Unstar" : "Star"} ${doc.title}`}
+                      onClick={() => void store.starDocument(doc.id, !stars.has(doc.id))}
+                      className="grid size-10 place-items-center"
+                    >
+                      <Star
+                        className={cn(
+                          "size-4",
+                          stars.has(doc.id) ? "fill-gold text-gold-deep" : "text-ink-soft",
+                        )}
+                      />
+                    </button>
+                  )}{" "}
+                  {fileMenu(doc)}
+                </div>
+              ))}
+              {visibleDocs.length === 0 && visibleFolders.length === 0 && (
+                <div className="p-10 text-center text-sm text-ink-soft">
+                  {query
+                    ? "No matching files or folders."
+                    : view === "trash"
+                      ? "Trash is empty."
+                      : view === "review"
+                        ? "No files are waiting for approval."
+                        : view === "starred"
+                          ? "Star a file to keep it close at hand."
+                          : "This folder is empty. Drop files here or choose Upload files."}
                 </div>
               )}
             </div>
-            <button
-              type="button"
-              aria-label="Close file"
-              onClick={closeDoc}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-cream hover:bg-white/15"
-            >
-              <X aria-hidden className="size-5" />
-            </button>
-          </header>
-
-          <div
-            className={cn(
-              "flex min-h-0 flex-1 flex-col gap-0 overflow-y-auto px-3 pb-3 lg:grid lg:gap-3 lg:overflow-hidden sm:px-4 sm:pb-4",
-              hasPreviewFile ? "lg:grid-cols-[1.6fr_1fr]" : "lg:grid-cols-1",
+          )}
+        </section>
+      </div>
+      {queue.length > 0 && (
+        <section className="surface-card p-3" aria-label="Upload progress">
+          <div className="flex justify-between">
+            <h3 className="text-sm font-semibold">
+              Uploads · {queue.filter((q) => q.state === "done").length} of {queue.length} complete
+            </h3>
+            {!uploading.current && (
+              <button
+                type="button"
+                onClick={() => setQueue((p) => p.filter((q) => q.state === "failed"))}
+                className="text-xs underline"
+              >
+                Clear completed
+              </button>
             )}
-          >
-            {hasPreviewFile && (
-              <div className="surface-card min-h-0 overflow-y-auto">
-                <DocumentPreview
-                  storageKey={currentVersion?.storage_key ?? null}
-                  fileLabel={currentVersion?.file_label ?? opened.title}
-                />
-              </div>
-            )}
-
-            <aside className="surface-card mt-3 flex min-h-0 flex-col overflow-hidden lg:mt-0">
-              <div className="panel-header flex items-center gap-1 px-2 py-2">
-                {(
-                  [
-                    { key: "details", label: "Details" },
-                    { key: "conversation", label: "Conversation" },
-                  ] as const
-                ).map(({ key, label }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={pane === key}
-                    onClick={() => setPane(key)}
-                    className={cn(
-                      "min-h-9 rounded-md px-3 text-sm font-medium",
-                      pane === key ? "bg-cream text-ink" : "text-ink-soft hover:bg-cream-soft",
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                {pane === "details" ? (
-                  <div className="space-y-3 p-3">
-                    <dl className="grid grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <dt className="text-xs text-ink-soft">Revision</dt>
-                        <dd className="code-id">v{opened.current_version}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs text-ink-soft">Review</dt>
-                        <dd>{reviewCell(opened, "md")}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs text-ink-soft">Department</dt>
-                        <dd className="text-ink">
-                          {departments.find((d) => d.id === opened.department_id)?.name}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs text-ink-soft">Folder</dt>
-                        <dd className="text-ink">
-                          {projectScenes.find((sc) => sc.id === opened.scene_id)?.name ??
-                            opened.folder ??
-                            "Not filed"}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs text-ink-soft">Last updated</dt>
-                        <dd className="text-ink">{formatDate(opened.updated_at)}</dd>
-                      </div>
-                    </dl>
-
-                    {opened.requires_approval && opened.approval_state === "draft" && (
-                      <p className="rounded-md border border-border bg-cream-soft px-3 py-2.5 text-sm text-ink-soft">
-                        Draft — not yet sent for review.
-                      </p>
-                    )}
-
-                    {canReview && opened.requires_approval && menuAction === null && (
-                      <div className="flex flex-wrap gap-2">
-                        {(opened.approval_state === "draft" ||
-                          opened.approval_state === "changes_requested" ||
-                          opened.approval_state === "rejected") && (
-                          <button
-                            type="button"
-                            onClick={() => setMenuAction("requested")}
-                            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-ink-soft"
-                          >
-                            <Send aria-hidden className="size-4" /> Request review
-                          </button>
-                        )}
-                        {opened.approval_state === "in_review" && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => setMenuAction("approved")}
-                              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-ink-soft"
-                            >
-                              <CheckCircle2 aria-hidden className="size-4" /> Approve
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setMenuAction("changes_requested")}
-                              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream"
-                            >
-                              <ThumbsDown aria-hidden className="size-4" /> Request changes
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-
-                    {opened.requires_approval &&
-                      (() => {
-                        const approvedVersions = approvals
-                          .filter((a) => a.document_id === opened.id && a.decision === "approved")
-                          .map((a) => a.version);
-                        const lastApproved = approvedVersions.length
-                          ? Math.max(...approvedVersions)
-                          : null;
-                        const safe =
-                          opened.approval_state === "approved" &&
-                          lastApproved === opened.current_version;
-                        const message = safe
-                          ? `Revision v${opened.current_version} is approved — safe to build from.`
-                          : opened.approval_state === "in_review"
-                            ? `Revision v${opened.current_version} is still under review — do not build from it yet.`
-                            : lastApproved
-                              ? `Revision v${opened.current_version} is not approved. The last approved revision is v${lastApproved}.`
-                              : `No revision has been approved yet — do not build from this.`;
-                        return (
-                          <p
-                            className={cn(
-                              "flex items-start gap-2 rounded-md border px-3 py-2.5 text-sm font-medium",
-                              safe
-                                ? "border-success/30 bg-success-bg text-success"
-                                : "border-warning/30 bg-warning-bg text-warning",
-                            )}
-                          >
-                            {safe ? (
-                              <CheckCircle2 aria-hidden className="mt-0.5 size-4 shrink-0" />
-                            ) : (
-                              <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
-                            )}
-                            {message}
-                          </p>
-                        );
-                      })()}
-
-                    {menuAction === "folder" && canUpload && (
-                      <div className="rounded-md border border-border bg-cream-soft px-3 py-3">
-                        <p className="mb-2 text-xs font-medium text-ink-soft">Move to folder</p>
-                        <FilingControl
-                          projectId={projectId}
-                          documentId={opened.id}
-                          currentFolder={opened.folder}
-                          currentSceneId={opened.scene_id}
-                        />
-                      </div>
-                    )}
-
-                    {(() => {
-                      if (!menuAction || !canReview || !opened.requires_approval) return null;
-                      let decision:
-                        | "requested"
-                        | "approved"
-                        | "changes_requested"
-                        | "rejected"
-                        | null = null;
-                      let label = "";
-                      let Icon = Send;
-                      if (menuAction === "requested") {
-                        decision = "requested";
-                        label = "Request review";
-                        Icon = Send;
-                      } else if (menuAction === "approved") {
-                        decision = "approved";
-                        label = "Approve";
-                        Icon = CheckCircle2;
-                      } else if (menuAction === "changes_requested") {
-                        decision = "changes_requested";
-                        label = "Request changes";
-                        Icon = ThumbsDown;
-                      } else if (menuAction === "rejected") {
-                        decision = "rejected";
-                        label = "Reject";
-                        Icon = XCircle;
-                      }
-                      if (!decision) return null;
-                      return (
-                        <div className="space-y-2 rounded-md border border-border bg-cream-soft px-3 py-3">
-                          <p className="text-xs font-medium text-ink-soft">{label}</p>
-                          <MentionInput
-                            value={note}
-                            onChange={setNote}
-                            rows={2}
-                            ariaLabel="Review note"
-                            placeholder="What did you check, or what needs to change? Type @ to bring someone in"
-                          />
-                          {needsSignature(decision) && (
-                            <div>
-                              <label
-                                htmlFor="review-signature"
-                                className="text-xs font-medium text-ink-soft"
-                              >
-                                Sign this decision — type your full name
-                              </label>
-                              <input
-                                id="review-signature"
-                                value={signature}
-                                onChange={(e) => setSignature(e.target.value)}
-                                autoComplete="off"
-                                placeholder={signerName}
-                                className="mt-1 min-h-11 w-full rounded-md border border-border bg-card px-3 font-display text-lg text-ink"
-                              />
-                              <p className="mt-1 text-xs text-ink-soft">
-                                {signatureOk
-                                  ? `Signing as ${signerName} · ${formatDate(new Date().toISOString())}`
-                                  : `Type “${signerName}” exactly to sign. This name is recorded with the decision.`}
-                              </p>
-                            </div>
-                          )}
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              disabled={sending || (needsSignature(decision) && !signatureOk)}
-                              onClick={() => {
-                                void act(decision);
-                                setMenuAction(null);
-                              }}
-                              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-ink-soft disabled:opacity-60"
-                            >
-                              <Icon aria-hidden className="size-4" /> {label}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setMenuAction(null)}
-                              className="inline-flex min-h-11 items-center rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {menuAction === "version" && canUpload && (
-                      <div className="space-y-3 rounded-md border border-border bg-cream-soft px-3 py-3">
-                        <p className="text-xs font-medium text-ink-soft">Upload new version</p>
-                        <input
-                          ref={versionFileInputRef}
-                          type="file"
-                          className="sr-only"
-                          onChange={(e) => setVersionFile(e.target.files?.[0] ?? null)}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => versionFileInputRef.current?.click()}
-                          className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream"
-                        >
-                          <FileUp aria-hidden className="size-4" />
-                          {versionFile ? versionFile.name : "Choose file"}
-                        </button>
-                        <MentionInput
-                          value={note}
-                          onChange={setNote}
-                          rows={2}
-                          ariaLabel="What changed in this version"
-                          placeholder="What changed in this version? Type @ to bring someone in"
-                        />
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            disabled={sending || !versionFile}
-                            onClick={() => {
-                              if (!versionFile) return;
-                              setSending(true);
-                              addDocumentVersion(opened.id, versionFile, note)
-                                .then((ok) => {
-                                  if (ok) {
-                                    void postNoteToConversation("New version uploaded —");
-                                    setNote("");
-                                    setVersionFile(null);
-                                    setMenuAction(null);
-                                  }
-                                })
-                                .finally(() => setSending(false));
-                            }}
-                            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-ink-soft disabled:opacity-60"
-                          >
-                            <FileUp aria-hidden className="size-4" /> Upload version
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setMenuAction(null);
-                              setVersionFile(null);
-                            }}
-                            className="inline-flex min-h-11 items-center rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {!canReview && (
-                      <p className="text-xs text-ink-soft">
-                        {locked
-                          ? "This production is closed and archived — documents stay readable, but no new reviews or versions can be added."
-                          : "Viewers can read documents and their review history."}
-                      </p>
-                    )}
-
-                    {/* Revisions are part of the story of a document, so they stay visible. */}
-                    <section className="rounded-md border border-border">
-                      <h4 className="flex min-h-11 items-center gap-2 border-b border-border px-3 py-2.5 text-sm font-semibold text-ink">
-                        <History aria-hidden className="size-4 text-ink-soft" />
-                        Version history
-                        <span className="ml-auto text-xs font-normal text-ink-soft">
-                          {documentVersions.filter((v) => v.document_id === opened.id).length}{" "}
-                          revision
-                          {documentVersions.filter((v) => v.document_id === opened.id).length === 1
-                            ? ""
-                            : "s"}
-                        </span>
-                      </h4>
-
-                      <ul className="row-list">
-
-                        {documentVersions
-                          .filter((v) => v.document_id === opened.id)
-                          .sort((a, b) => b.version - a.version)
-                          .map((v) => (
-                            <li key={v.id} className="px-3 py-3 text-sm">
-                              <div className="flex flex-wrap items-baseline gap-2">
-                                <span className="code-id">v{v.version}</span>
-                                {v.version === opened.current_version && (
-                                  <span className="text-[11px] font-medium text-ink-soft">
-                                    Current
-                                  </span>
-                                )}
-                                <span className="ml-auto text-xs text-ink-soft">
-                                  {formatDate(v.uploaded_at)}
-                                </span>
-                              </div>
-                              <p className="mt-0.5 text-ink">{v.note}</p>
-                              <p className="text-xs text-ink-soft">
-                                {personById(v.uploaded_by_id)?.full_name} · {v.file_label}
-                              </p>
-                            </li>
-                          ))}
-                      </ul>
-                    </section>
-                  </div>
-                ) : (
-                  <div className="p-3">
-                    <Discussion
-                      inline
-                      projectId={projectId}
-                      contextType="document"
-                      documentId={opened.id}
-                      {...(highlightCommentId ? { highlightCommentId } : {})}
-                    />
-                  </div>
-                )}
-              </div>
-            </aside>
           </div>
-        </div>
+          <ul className="mt-2 space-y-2" aria-live="polite">
+            {queue.map((q) => (
+              <li key={q.id} className="flex items-center gap-2 text-sm">
+                <span className="min-w-0 flex-1 truncate">{q.file.name}</span>
+                <span>
+                  {q.state === "done"
+                    ? "Uploaded"
+                    : q.state === "failed"
+                      ? "Failed"
+                      : q.state === "uploading"
+                        ? "Uploading…"
+                        : "Queued"}
+                </span>
+                {q.state === "failed" && (
+                  <button
+                    type="button"
+                    disabled={uploading.current}
+                    onClick={() => void uploadFiles([], q)}
+                    className="underline"
+                  >
+                    Retry
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <Dialog
+        open={!!action}
+        onOpenChange={(open) => {
+          if (!open && !busy) setAction(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {action?.type === "new"
+                ? "New folder"
+                : action?.type === "trash"
+                  ? "Move to Trash"
+                  : action?.type === "restore"
+                    ? "Restore"
+                    : action?.type === "move"
+                      ? "Move to folder"
+                      : "Rename"}
+            </DialogTitle>
+            <DialogDescription>
+              {action?.type === "trash"
+                ? "Files and conversation history are kept. You can restore this from Trash."
+                : "Keep your production files organized."}
+            </DialogDescription>
+          </DialogHeader>
+          {(action?.type === "new" || action?.type === "rename") && (
+            <input
+              aria-label="Name"
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="min-h-11 rounded border px-3"
+              maxLength={120}
+            />
+          )}{" "}
+          {action?.type === "move" && (
+            <FolderSelect
+              folders={folders}
+              value={destination}
+              onChange={setDestination}
+              {...(action.folder ? { excludeId: action.folder.id } : {})}
+            />
+          )}{" "}
+          {actionError && (
+            <p role="alert" className="text-sm text-danger">
+              {actionError}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <button className={button} disabled={busy} onClick={() => setAction(null)}>
+              Cancel
+            </button>
+            <button
+              className="btn-primary min-h-10 px-4"
+              disabled={
+                busy || ((action?.type === "new" || action?.type === "rename") && !name.trim())
+              }
+              onClick={() => void finishAction()}
+            >
+              {busy
+                ? "Saving…"
+                : action?.type === "trash"
+                  ? "Move to Trash"
+                  : action?.type === "restore"
+                    ? "Restore"
+                    : "Save"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {opened && (
+        <FileViewer
+          key={opened.id}
+          doc={opened}
+          onClose={closeFile}
+          {...(highlightCommentId ? { highlightCommentId } : {})}
+        />
       )}
     </div>
+  );
+}
+
+function FileViewer({
+  doc,
+  onClose,
+  highlightCommentId,
+}: {
+  doc: Document;
+  onClose: () => void;
+  highlightCommentId?: string;
+}) {
+  const {
+    documentVersions,
+    approvals,
+    recordApproval,
+    addDocumentVersion,
+    can,
+    isClosed,
+    currentUserId,
+    setDocumentApprovalRequirement,
+    documentFolders,
+  } = useStore();
+  const versions = documentVersions
+    .filter((v) => v.document_id === doc.id)
+    .sort((a, b) => b.version - a.version);
+  const [versionId, setVersionId] = useState(versions[0]?.id ?? "");
+  const version = versions.find((v) => v.id === versionId);
+  const latest = versions[0];
+  const [pane, setPane] = useState<"review" | "conversation">(
+    highlightCommentId ? "conversation" : "review",
+  );
+  const [requesting, setRequesting] = useState(false);
+  const [changing, setChanging] = useState(false);
+  const [reviewer, setReviewer] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [uploadMode, setUploadMode] = useState(false);
+  const history = approvals
+    .filter((a) => a.document_id === doc.id && a.version === version?.version)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const pending = history[0]?.decision === "requested" ? history[0] : undefined;
+  const current = versionId === latest?.id;
+  const writable = can.upload && !isClosed(doc.project_id);
+  const mayDecide =
+    writable &&
+    current &&
+    pending &&
+    (!pending.reviewer_id || pending.reviewer_id === currentUserId);
+  const approvedVersions = approvedDocumentVersions(approvals, doc.id);
+  const approved = approvedVersions[0];
+  const decide = async (decision: "requested" | "approved" | "changes_requested") => {
+    if (!version || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const ok = await recordApproval(
+        doc.id,
+        decision,
+        decision === "approved" ? "" : note,
+        version.id,
+        reviewer,
+      );
+      if (ok) {
+        setRequesting(false);
+        setChanging(false);
+        setNote("");
+      } else setError("The decision was not saved. Review the message above and try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !busy) onClose();
+      }}
+    >
+      <DialogContent
+        className="flex h-[94dvh] w-[96vw] max-w-none flex-col overflow-hidden p-0 sm:max-w-[1400px]"
+        showCloseButton={false}
+      >
+        <DialogHeader className="flex-row items-center justify-between border-b px-4 py-3">
+          <div className="min-w-0">
+            <DialogTitle className="truncate pr-2 text-base">{doc.title}</DialogTitle>
+            <DialogDescription className="truncate">
+              {folderLabel(documentFolders, doc.folder_id ?? null)}
+            </DialogDescription>
+          </div>
+          <button
+            type="button"
+            aria-label="Close file"
+            disabled={busy}
+            onClick={onClose}
+            className="grid size-10 shrink-0 place-items-center"
+          >
+            <X className="size-5" />
+          </button>
+        </DialogHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1.6fr)_minmax(340px,1fr)]">
+          <section className="min-w-0 border-r border-border">
+            <div className="flex flex-wrap items-center gap-2 p-3">
+              <label className="text-sm">
+                Version{" "}
+                <select
+                  aria-label="File version"
+                  value={versionId}
+                  disabled={busy}
+                  onChange={(e) => {
+                    setVersionId(e.target.value);
+                    setRequesting(false);
+                    setChanging(false);
+                    setError("");
+                  }}
+                  className="ml-2 rounded border p-2"
+                >
+                  {versions.map((v) => (
+                    <option value={v.id} key={v.id}>
+                      v{v.version}
+                      {v.id === latest?.id ? " — latest" : ""}
+                      {approvedVersions.includes(v.version) ? " · approved" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {writable && (
+                <button
+                  type="button"
+                  className={button}
+                  disabled={busy}
+                  onClick={() => setUploadMode(!uploadMode)}
+                >
+                  <Upload className="size-4" />
+                  New version
+                </button>
+              )}
+            </div>
+            {!current && (
+              <div className="mx-3 mb-3 rounded border border-warning/30 bg-warning-bg p-3 text-sm">
+                You’re viewing v{version?.version}.{" "}
+                <button className="underline" onClick={() => setVersionId(latest?.id ?? "")}>
+                  Open latest version
+                </button>
+              </div>
+            )}
+            {uploadMode && (
+              <div className="m-3 space-y-3 rounded border p-3">
+                <label className="block text-sm">
+                  Choose updated file
+                  <input
+                    aria-label="New version file"
+                    type="file"
+                    disabled={busy}
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    className="mt-1 block w-full"
+                  />
+                </label>
+                <MentionInput
+                  value={note}
+                  onChange={setNote}
+                  rows={2}
+                  ariaLabel="Version changes"
+                  placeholder="What changed?"
+                />
+                <button
+                  className="btn-primary min-h-10 px-4"
+                  disabled={busy || !file}
+                  onClick={async () => {
+                    if (!file) return;
+                    setBusy(true);
+                    setError("");
+                    try {
+                      if (await addDocumentVersion(doc.id, file, note)) {
+                        setUploadMode(false);
+                        setFile(null);
+                        setNote("");
+                      } else setError("The version could not be uploaded. Please retry.");
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  {busy ? "Uploading…" : "Upload version"}
+                </button>
+                <p className="text-xs text-ink-soft">
+                  Existing approvals stay with their version. The new version needs a fresh review.
+                </p>
+              </div>
+            )}
+            <DocumentPreview
+              storageKey={version?.storage_key ?? null}
+              fileLabel={version?.file_label ?? doc.title}
+            />
+          </section>
+          <aside className="min-w-0">
+            <div className="flex gap-1 border-b p-2">
+              {(
+                [
+                  ["review", "Details & approval"],
+                  ["conversation", "Conversation"],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={cn(button, pane === key && "bg-cream font-semibold")}
+                  onClick={() => setPane(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="space-y-4 p-4">
+              {error && (
+                <p
+                  role="alert"
+                  className="rounded border border-danger/30 bg-danger-bg p-3 text-sm text-danger"
+                >
+                  {error}
+                </p>
+              )}
+              {pane === "conversation" ? (
+                <Discussion
+                  inline
+                  projectId={doc.project_id}
+                  contextType="document"
+                  documentId={doc.id}
+                  {...(highlightCommentId ? { highlightCommentId } : {})}
+                />
+              ) : (
+                <>
+                  <div className="rounded-lg border bg-cream-soft p-3">
+                    <p className="font-semibold">
+                      {current
+                        ? doc.requires_approval
+                          ? states[doc.approval_state]
+                          : "Reference file"
+                        : history[0]
+                          ? states[
+                              history[0].decision === "requested"
+                                ? "in_review"
+                                : history[0].decision
+                            ]
+                          : "No approval recorded"}
+                    </p>
+                    {pending && (
+                      <p className="mt-1 text-sm">
+                        Waiting for{" "}
+                        {personById(pending.reviewer_id ?? "")?.full_name ?? "a reviewer"} · v
+                        {version?.version}
+                      </p>
+                    )}
+                    {!pending && history[0]?.decided_by_id && (
+                      <p className="mt-1 text-sm">
+                        {personById(history[0].decided_by_id)?.full_name} ·{" "}
+                        {formatDateTime(history[0].created_at)}
+                      </p>
+                    )}
+                    {approved && approved !== version?.version && (
+                      <button
+                        className="mt-2 text-sm underline"
+                        onClick={() =>
+                          setVersionId(
+                            versions.find((v) => v.version === approved)?.id ?? versionId,
+                          )
+                        }
+                      >
+                        Open approved version v{approved}
+                      </button>
+                    )}
+                  </div>
+                  {writable && current && !pending && !requesting && !changing && (
+                    <button
+                      className="btn-primary min-h-11 w-full px-4"
+                      onClick={() => {
+                        setRequesting(true);
+                        setReviewer("");
+                        setNote("");
+                      }}
+                    >
+                      Request approval
+                    </button>
+                  )}
+                  {requesting && current && (
+                    <div className="space-y-3 rounded border p-3">
+                      <label className="block space-y-1 text-sm">
+                        <span>Reviewer</span>
+                        <select
+                          aria-label="Reviewer"
+                          value={reviewer}
+                          onChange={(e) => setReviewer(e.target.value)}
+                          className="min-h-11 w-full rounded border bg-card px-2"
+                        >
+                          <option value="">Choose a reviewer…</option>
+                          {people
+                            .filter((p) => p.role !== "viewer")
+                            .map((p) => (
+                              <option value={p.id} key={p.id}>
+                                {p.full_name}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                      <MentionInput
+                        value={note}
+                        onChange={setNote}
+                        ariaLabel="Review request note"
+                        rows={2}
+                        placeholder="Optional note for the reviewer"
+                      />
+                      <button
+                        className="btn-primary min-h-10 px-4"
+                        disabled={busy || !reviewer}
+                        onClick={() => void decide("requested")}
+                      >
+                        {busy ? "Sending…" : "Send request"}
+                      </button>
+                      <button
+                        className="ml-2 text-sm"
+                        disabled={busy}
+                        onClick={() => setRequesting(false)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                  {mayDecide && !changing && (
+                    <div className="flex gap-2">
+                      <button
+                        className="btn-primary min-h-11 flex-1 px-3"
+                        disabled={busy}
+                        onClick={() => {
+                          setNote("");
+                          void decide("approved");
+                        }}
+                      >
+                        <Check className="mr-1 inline size-4" />
+                        {busy ? "Saving…" : "Approve"}
+                      </button>
+                      <button
+                        className={button}
+                        disabled={busy}
+                        onClick={() => {
+                          setChanging(true);
+                          setNote("");
+                        }}
+                      >
+                        Request changes
+                      </button>
+                    </div>
+                  )}
+                  {changing && mayDecide && (
+                    <div className="space-y-3">
+                      <MentionInput
+                        value={note}
+                        onChange={setNote}
+                        rows={3}
+                        ariaLabel="Requested changes"
+                        placeholder="What needs to change?"
+                      />
+                      <button
+                        className="btn-primary min-h-11 px-4"
+                        disabled={busy || !note.trim()}
+                        onClick={() => void decide("changes_requested")}
+                      >
+                        {busy ? "Saving…" : "Request changes"}
+                      </button>
+                      <button
+                        className="ml-2 text-sm"
+                        disabled={busy}
+                        onClick={() => setChanging(false)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                  {writable &&
+                    current &&
+                    doc.requires_approval &&
+                    !pending &&
+                    doc.approval_state !== "approved" && (
+                      <button
+                        className="text-xs underline text-ink-soft"
+                        onClick={() => setDocumentApprovalRequirement(doc.id, false)}
+                      >
+                        Mark as reference — no approval needed
+                      </button>
+                    )}
+                  <section>
+                    <h3 className="mb-2 text-sm font-semibold">
+                      Review history · v{version?.version}
+                    </h3>
+                    {history.length === 0 ? (
+                      <p className="text-sm text-ink-soft">No review requested for this version.</p>
+                    ) : (
+                      history.map((a) => (
+                        <div key={a.id} className="mb-2 rounded border p-3 text-sm">
+                          <p className="font-medium">
+                            {a.decision === "requested"
+                              ? "Approval requested"
+                              : a.decision === "approved"
+                                ? "Approved"
+                                : "Changes requested"}
+                          </p>
+                          <p className="text-xs text-ink-soft">
+                            {personById(a.actor_id)?.full_name} · {formatDateTime(a.created_at)}
+                          </p>
+                          {a.note && (
+                            <div className="mt-2">
+                              <MentionText body={a.note} />
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </section>
+                  <section>
+                    <h3 className="text-sm font-semibold">Version history</h3>
+                    {versions.map((v) => (
+                      <button
+                        type="button"
+                        key={v.id}
+                        onClick={() => setVersionId(v.id)}
+                        className={cn(
+                          "mt-2 block w-full rounded border p-3 text-left text-sm",
+                          v.id === versionId && "bg-cream",
+                        )}
+                      >
+                        <strong>v{v.version}</strong> · {personById(v.uploaded_by_id)?.full_name}
+                        <span className="block text-xs text-ink-soft">
+                          {formatDateTime(v.uploaded_at)}
+                        </span>
+                        <span className="block">{v.note}</span>
+                      </button>
+                    ))}
+                  </section>
+                </>
+              )}
+            </div>
+          </aside>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

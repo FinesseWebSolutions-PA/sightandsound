@@ -14,8 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      document_stars: {
+        Row: {
+          document_id: string
+          person_id: string
+        }
+        Insert: {
+          document_id: string
+          person_id: string
+        }
+        Update: {
+          document_id?: string
+          person_id?: string
+        }
+        Relationships: []
+      }
+
+      document_folders: {
+        Row: {
+          id: string
+          project_id: string
+          parent_id: string | null
+          scene_id: string | null
+          name: string
+          created_by: string | null
+          created_at: string
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          parent_id?: string | null
+          scene_id?: string | null
+          name: string
+          created_by?: string | null
+          created_at?: string
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          parent_id?: string | null
+          scene_id?: string | null
+          name?: string
+          created_by?: string | null
+          created_at?: string
+          deleted_at?: string | null
+        }
+        Relationships: []
+      }
+
       approvals: {
         Row: {
+          reviewer_id: string | null
+
           decided_at: string | null
           decided_by: string | null
           decision_note: string | null
@@ -26,6 +78,8 @@ export type Database = {
           status: string
         }
         Insert: {
+          reviewer_id?: string | null
+
           decided_at?: string | null
           decided_by?: string | null
           decision_note?: string | null
@@ -36,6 +90,8 @@ export type Database = {
           status?: string
         }
         Update: {
+          reviewer_id?: string | null
+
           decided_at?: string | null
           decided_by?: string | null
           decision_note?: string | null
@@ -206,6 +262,8 @@ export type Database = {
       }
       comments: {
         Row: {
+          reply_to_id: string | null
+
           author_id: string | null
           body: string
           created_at: string
@@ -215,6 +273,8 @@ export type Database = {
           thread_id: string
         }
         Insert: {
+          reply_to_id?: string | null
+
           author_id?: string | null
           body: string
           created_at?: string
@@ -224,6 +284,8 @@ export type Database = {
           thread_id: string
         }
         Update: {
+          reply_to_id?: string | null
+
           author_id?: string | null
           body?: string
           created_at?: string
@@ -466,6 +528,8 @@ export type Database = {
       }
       documents: {
         Row: {
+          folder_id: string | null
+
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -479,6 +543,8 @@ export type Database = {
           title: string
         }
         Insert: {
+          folder_id?: string | null
+
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -492,6 +558,8 @@ export type Database = {
           title: string
         }
         Update: {
+          folder_id?: string | null
+
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null

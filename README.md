@@ -57,3 +57,15 @@ the live database. Ordinary portfolio reads are also read-only: schedule writers
 recompute only the affected production after a change. Any new writer that changes
 task dates/status, milestones, production windows, or set dependencies must keep
 that schedule refresh in its save path.
+
+## Conversations, files, and approvals
+
+Conversations support emoji text and searchable emoji controls, reactions, quoted replies, message editing, and per-person/per-conversation session drafts. Live database changes refresh the app, with a 30-second recovery refresh and refresh on return to the tab. Read markers are stored in this browser.
+
+Documents now have persistent folders and subfolders, file moves/renaming, stars, recent files, a shared-conversation file view, per-file upload status/retry, and recoverable Trash. A shared attachment is filed without copying the stored object. Existing versions remain accessible in the preview. New ordinary uploads are reference files; requesting approval makes the file approval-required. Existing requirements remain intact.
+
+Approval requests select a reviewer. Decisions use the exact displayed version, run in one database transaction, and only close after success. New versions invalidate the current approval state. The latest decision determines whether a version is labeled approved. Change requests require a note.
+
+The app still uses its existing shared **demo identities**. The account menu can select any demo team member so assigned-review workflows can be evaluated. This is not verified user authentication; production identity and per-project authorization remain separate work. New database functions use SECURITY INVOKER and new tables have RLS matching the existing demo access model.
+
+Run `npm test`, `npm run typecheck`, and `npm run build`. Database regression SQL is in `supabase/tests/collaboration_regression.sql`; run it only against an isolated database after applying the migrations. It rolls back its synthetic fixtures and never uploads storage objects.

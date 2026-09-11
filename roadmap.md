@@ -104,3 +104,12 @@
 - Added 26 app regression tests and a rollback-only SQL regression script. Type checking and production build pass. Browser checks cover search Back/reload, filtering, and phone layout.
 
 Follow-up work identified: validation across mixed task/set dependency paths, guarding direct task reassignment between productions, and replacing the existing demo role model before introducing real access controls. The existing schedule RPCs retain their intentional demo grants and Supabase's [security-definer advisory](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable).
+
+
+### Collaboration and document library
+
+Implemented: discoverable emoji controls and reactions, replies/editing, per-conversation drafts, live refresh, local unread markers, real nested folders, move/rename, recent/starred/shared-file views, upload queues, version previews, Trash/Restore, and named version-specific approvals with required change notes. Approval actions wait for the saved result, old-version decisions are refused, duplicate requests are refused, and filing a conversation attachment is repeat-safe.
+
+Validation includes native test cases, TypeScript/build, isolated PostgreSQL regression scenarios, and desktop/mobile browser checks. Existing documents, versions, conversations, and their stored objects were preserved. The browser check exposed an existing DELETE-policy gap for reactions; the migration adds an explicit demo DELETE policy and client removal now checks that a row was removed.
+
+Remaining: replace demo identity selection with verified sign-in/project membership; synchronize drafts/read markers across devices; add resumable percentage-based uploads for larger files (current uploads show queued/uploading/succeeded/failed status and retry). Existing schedule-function security advisor notices remain documented above.

@@ -71,7 +71,6 @@
   --color-neutral-status-bg: var(--cream-100);
 }
 
-
 :root {
   --radius: 0.5rem;
 
@@ -128,7 +127,6 @@
   --shadow-card:
     0 1px 0 oklch(0.245 0.012 55 / 0.04), 0 1px 3px oklch(0.245 0.012 55 / 0.1),
     0 10px 24px -18px oklch(0.245 0.012 55 / 0.28);
-
 }
 
 @layer base {
@@ -244,7 +242,29 @@
   border: 1px solid var(--color-border);
 }
 
-
 @utility gold-rule {
   border-top: 2px solid var(--gold-500);
+}
+
+@utility btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border-radius: 0.375rem;
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 0.875rem;
+  font-weight: 600;
+  &:hover {
+    opacity: 0.9;
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
 }

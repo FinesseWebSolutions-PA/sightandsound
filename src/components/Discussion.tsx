@@ -1,7 +1,18 @@
-import { useEffect, useRef, useState } from "react";
-import { AtSign, Loader2, MessageSquarePlus, Paperclip, Send, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  AtSign,
+  Loader2,
+  MessageSquarePlus,
+  Paperclip,
+  Send,
+  X,
+  Reply,
+  Pencil,
+} from "lucide-react";
 
 import { AttachmentList } from "@/components/AttachmentList";
+import { EmojiPicker } from "@/components/chat/EmojiPicker";
+import { markConversationRead } from "@/lib/conversation-read";
 import { MessageReactions } from "@/components/chat/MessageReactions";
 import { MentionInput } from "@/components/MentionInput";
 import { MentionText } from "@/components/MentionText";
@@ -16,14 +27,25 @@ function ChatPanel({ children }: { children: React.ReactNode }) {
   return <div className="surface-card overflow-hidden">{children}</div>;
 }
 
-function Transcript({ children }: { children: React.ReactNode }) {
+function Transcript({
+  children,
+  scrollRef,
+  onScroll,
+}: {
+  children: React.ReactNode;
+  scrollRef?: React.RefObject<HTMLDivElement | null>;
+  onScroll?: () => void;
+}) {
   return (
-    <div className="max-h-[26rem] space-y-3 overflow-y-auto bg-cream-deep/70 px-3 py-3 sm:px-4">
+    <div
+      ref={scrollRef}
+      onScroll={onScroll}
+      className="max-h-[26rem] space-y-3 overflow-y-auto bg-cream-deep/70 px-3 py-3 sm:px-4"
+    >
       {children}
     </div>
   );
 }
-
 
 function ComposerBar({ children }: { children: React.ReactNode }) {
   return <div className="border-t border-border bg-card px-3 py-2 sm:px-4">{children}</div>;
@@ -76,13 +98,28 @@ function Composer({
   initialDraft?: string;
   autoFocus?: boolean;
 }) {
-  const { uploadAttachment } = useStore();
-  const [body, setBody] = useState(initialDraft);
-  const [subject, setSubject] = useState("");
-  const [staged, setStaged] = useState<StagedAttachment[]>([]);
+  const { uploadAttachment, currentUserId } = useStore();
+  const draftKey = `ss-draft:${currentUserId}:${projectId}:${threadKey}`;
+  const savedDraft = () => {
+    try {
+      return JSON.parse(sessionStorage.getItem(draftKey) ?? "null");
+    } catch {
+      return null;
+    }
+  };
+  const [body, setBody] = useState<string>(() => savedDraft()?.body ?? initialDraft);
+  const [subject, setSubject] = useState<string>(() => savedDraft()?.subject ?? "");
+  const [staged, setStaged] = useState<StagedAttachment[]>(() => savedDraft()?.staged ?? []);
   const [uploading, setUploading] = useState(0);
   const [uploadError, setUploadError] = useState("");
   const [sending, setSending] = useState(false);
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(draftKey, JSON.stringify({ body, subject, staged }));
+    } catch {
+      /* Keep in-memory draft if storage is full. */
+    }
+  }, [draftKey, body, subject, staged]);
   const fileRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
@@ -140,101 +177,118 @@ function Composer({
             setSubject("");
             setStaged([]);
           })
+          .catch(() => setUploadError("Message could not be sent. Your draft is still here."))
           .finally(() => setSending(false));
       }}
     >
-      {withSubject && (
-        <input
-          value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-          onFocus={keepInView}
-          placeholder="What is this about?"
-          aria-label="Discussion subject"
-          className="min-h-11 w-full rounded-md border border-border bg-card px-3 py-2 text-base text-ink focus:ring-2 focus:ring-ring focus:outline-none sm:text-sm"
-        />
-      )}
-      <MentionInput
-        value={body}
-        onChange={setBody}
-        onFocus={keepInView}
-        placeholder={placeholder}
-        rows={compact ? 2 : 3}
-        ariaLabel="Message"
-        inputRef={areaRef}
-        onEnterSubmit={() => formRef.current?.requestSubmit()}
-      />
-
-      {(staged.length > 0 || uploading > 0 || uploadError) && (
-        <div className="space-y-1">
-          {staged.map((a) => (
-            <div
-              key={a.storage_key}
-              className="flex items-center gap-2 rounded-md border border-border bg-cream-soft px-2 py-1.5 text-sm text-ink"
-            >
-              <Paperclip aria-hidden className="size-4 shrink-0 text-ink-soft" />
-              <span className="min-w-0 flex-1 truncate">{a.file_name}</span>
-              <button
-                type="button"
-                onClick={() => setStaged((prev) => prev.filter((s2) => s2.storage_key !== a.storage_key))}
-                aria-label={`Remove ${a.file_name}`}
-                className="grid size-11 place-items-center rounded-md text-ink-soft hover:bg-cream hover:text-ink"
-              >
-                <X aria-hidden className="size-4" />
-              </button>
-            </div>
-          ))}
-          {uploading > 0 && (
-            <p className="flex items-center gap-1.5 text-xs text-ink-soft">
-              <Loader2 aria-hidden className="size-3.5 animate-spin" />
-              Adding {uploading} file{uploading === 1 ? "" : "s"}…
-            </p>
-          )}
-          {uploadError && <p className="text-xs text-danger">{uploadError}</p>}
-        </div>
-      )}
-
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
+      <fieldset disabled={sending} className="contents">
+        {withSubject && (
           <input
-            ref={fileRef}
-            type="file"
-            multiple
-            className="hidden"
-            aria-hidden
-            tabIndex={-1}
-            onChange={(e) => void pickFiles(e.target.files)}
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            onFocus={keepInView}
+            placeholder="What is this about?"
+            aria-label="Discussion subject"
+            className="min-h-11 w-full rounded-md border border-border bg-card px-3 py-2 text-base text-ink focus:ring-2 focus:ring-ring focus:outline-none sm:text-sm"
           />
+        )}
+        <MentionInput
+          value={body}
+          onChange={setBody}
+          onFocus={keepInView}
+          placeholder={placeholder}
+          rows={compact ? 2 : 3}
+          ariaLabel="Message"
+          inputRef={areaRef}
+          onEnterSubmit={() => formRef.current?.requestSubmit()}
+        />
+
+        {(staged.length > 0 || uploading > 0 || uploadError) && (
+          <div className="space-y-1">
+            {staged.map((a) => (
+              <div
+                key={a.storage_key}
+                className="flex items-center gap-2 rounded-md border border-border bg-cream-soft px-2 py-1.5 text-sm text-ink"
+              >
+                <Paperclip aria-hidden className="size-4 shrink-0 text-ink-soft" />
+                <span className="min-w-0 flex-1 truncate">{a.file_name}</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setStaged((prev) => prev.filter((s2) => s2.storage_key !== a.storage_key))
+                  }
+                  aria-label={`Remove ${a.file_name}`}
+                  className="grid size-11 place-items-center rounded-md text-ink-soft hover:bg-cream hover:text-ink"
+                >
+                  <X aria-hidden className="size-4" />
+                </button>
+              </div>
+            ))}
+            {uploading > 0 && (
+              <p className="flex items-center gap-1.5 text-xs text-ink-soft">
+                <Loader2 aria-hidden className="size-3.5 animate-spin" />
+                Adding {uploading} file{uploading === 1 ? "" : "s"}…
+              </p>
+            )}
+            {uploadError && <p className="text-xs text-danger">{uploadError}</p>}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              ref={fileRef}
+              type="file"
+              multiple
+              className="hidden"
+              aria-hidden
+              tabIndex={-1}
+              onChange={(e) => void pickFiles(e.target.files)}
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream"
+            >
+              <Paperclip aria-hidden className="size-4" />
+              Attach
+            </button>
+            <p className="flex items-center gap-1.5 text-xs text-ink-soft">
+              <EmojiPicker
+                onSelect={(emoji) => {
+                  const el = areaRef.current;
+                  const start = el?.selectionStart ?? body.length;
+                  const end = el?.selectionEnd ?? start;
+                  setBody(body.slice(0, start) + emoji + body.slice(end));
+                  requestAnimationFrame(() => {
+                    el?.focus();
+                    el?.setSelectionRange(start + emoji.length, start + emoji.length);
+                  });
+                }}
+              />
+              <AtSign aria-hidden className="size-3.5" />
+              Type @ to bring in a person or department
+            </p>
+          </div>
           <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream"
+            type="submit"
+            disabled={
+              uploading > 0 ||
+              sending ||
+              (!body.trim() && staged.length === 0) ||
+              (withSubject && !subject.trim())
+            }
+            className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-ink-soft disabled:opacity-60 sm:w-auto"
           >
-            <Paperclip aria-hidden className="size-4" />
-            Attach
+            {sending ? (
+              <Loader2 aria-hidden className="size-4 animate-spin" />
+            ) : (
+              <Send aria-hidden className="size-4" />
+            )}
+            {sending ? "Sending…" : submitLabel}
           </button>
-          <p className="flex items-center gap-1.5 text-xs text-ink-soft">
-            <AtSign aria-hidden className="size-3.5" />
-            Type @ to bring in a person or department
-          </p>
         </div>
-        <button
-          type="submit"
-          disabled={
-            uploading > 0 ||
-            sending ||
-            (!body.trim() && staged.length === 0) ||
-            (withSubject && !subject.trim())
-          }
-          className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-ink-soft disabled:opacity-60 sm:w-auto"
-        >
-          {sending ? (
-            <Loader2 aria-hidden className="size-4 animate-spin" />
-          ) : (
-            <Send aria-hidden className="size-4" />
-          )}
-          {sending ? "Sending…" : submitLabel}
-        </button>
-      </div>
+      </fieldset>
     </form>
   );
 }
@@ -249,6 +303,7 @@ function Message({
   mine,
   projectId,
   readOnly,
+  onReply,
 }: {
   authorId: string;
   projectId: string;
@@ -258,8 +313,14 @@ function Message({
   id: string;
   mine: boolean;
   readOnly: boolean;
+  onReply: (id: string) => void;
 }) {
-  const { commentAttachments } = useStore();
+  const { commentAttachments, comments, editComment } = useStore();
+  const message = comments.find((c) => c.id === id);
+  const quoted = comments.find((c) => c.id === message?.reply_to_id);
+  const [editing, setEditing] = useState(false);
+  const [editBody, setEditBody] = useState(body);
+  const [savingEdit, setSavingEdit] = useState(false);
   const author = personById(authorId);
   const files = commentAttachments.filter((a) => a.comment_id === id);
   return (
@@ -288,10 +349,84 @@ function Message({
             mine ? "border-gold/45 bg-gold-tint" : "border-border bg-card",
           )}
         >
-          {body && <MentionText body={body} />}
+          {quoted && (
+            <button
+              type="button"
+              onClick={() =>
+                document
+                  .getElementById(`comment-${quoted.id}`)
+                  ?.scrollIntoView({ block: "center", behavior: "smooth" })
+              }
+              className="mb-2 block w-full rounded border-l-2 border-gold bg-cream p-2 text-left text-xs"
+            >
+              <strong>{personById(quoted.author_id)?.full_name}</strong>
+              <span className="block line-clamp-2">{quoted.body}</span>
+            </button>
+          )}
+          {editing ? (
+            <div className="space-y-2">
+              <MentionInput
+                value={editBody}
+                onChange={setEditBody}
+                ariaLabel="Edit message"
+                rows={3}
+              />
+              <button
+                type="button"
+                disabled={savingEdit || !editBody.trim()}
+                onClick={async () => {
+                  setSavingEdit(true);
+                  try {
+                    if (await editComment(id, editBody)) setEditing(false);
+                  } finally {
+                    setSavingEdit(false);
+                  }
+                }}
+                className="btn-primary px-3 py-2"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                disabled={savingEdit}
+                onClick={() => setEditing(false)}
+                className="ml-2 p-2"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            body && <MentionText body={body} />
+          )}
+          {message?.edited_at && <span className="text-[10px] text-ink-soft">Edited</span>}
           {files.length > 0 && <AttachmentList attachments={files} projectId={projectId} />}
         </div>
-        <MessageReactions commentId={id} readOnly={readOnly} />
+        <div className="flex flex-wrap items-center gap-2">
+          <MessageReactions commentId={id} readOnly={readOnly} />
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => onReply(id)}
+              className="inline-flex min-h-9 items-center gap-1 text-xs text-ink-soft"
+            >
+              <Reply className="size-3" />
+              Reply
+            </button>
+          )}
+          {mine && !readOnly && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditBody(body);
+                setEditing(true);
+              }}
+              className="inline-flex min-h-9 items-center gap-1 text-xs text-ink-soft"
+            >
+              <Pencil className="size-3" />
+              Edit
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -328,10 +463,53 @@ function ThreadPanel({
   initialDraft: string;
   autoFocusComposer: boolean;
   endRef: React.RefObject<HTMLDivElement | null>;
-  onSend: (body: string, attachments: StagedAttachment[]) => Promise<boolean>;
+  onSend: (
+    body: string,
+    attachments: StagedAttachment[],
+    replyToId?: string | null,
+  ) => Promise<boolean>;
 }) {
   const { commentAttachments } = useStore();
   const [tab, setTab] = useState<"messages" | "files">("messages");
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const reply = threadComments.find((c) => c.id === replyTo);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const nearBottom = useRef(true);
+  const priorCount = useRef(threadComments.length);
+  const [newCount, setNewCount] = useState(0);
+  const latestMessage = useRef(threadComments.at(-1));
+  latestMessage.current = threadComments.at(-1);
+  const markRead = useCallback(() => {
+    const latest = latestMessage.current;
+    if (latest) markConversationRead(currentUserId, threadId, latest.created_at);
+  }, [currentUserId, threadId]);
+  const toBottom = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el || el.clientHeight === 0 || document.hidden) return;
+    el.scrollTop = el.scrollHeight;
+    nearBottom.current = true;
+    setNewCount(0);
+    markRead();
+  }, [markRead]);
+  useEffect(() => {
+    if (tab !== "messages") return;
+    if (highlightCommentId) {
+      document.getElementById(`comment-${highlightCommentId}`)?.scrollIntoView({ block: "center" });
+      nearBottom.current = false;
+      return;
+    }
+    toBottom();
+  }, [threadId, tab, highlightCommentId, toBottom]);
+  useEffect(() => {
+    if (threadComments.length > priorCount.current) {
+      if (nearBottom.current || threadComments.at(-1)?.author_id === currentUserId) toBottom();
+      else {
+        const added = threadComments.length - priorCount.current;
+        setNewCount((n) => n + added);
+      }
+    }
+    priorCount.current = threadComments.length;
+  }, [threadComments, currentUserId, toBottom]);
 
   const ids = new Set(threadComments.map((c) => c.id));
   const files = commentAttachments
@@ -360,23 +538,37 @@ function ThreadPanel({
                 onClick={() => setTab(key)}
                 className={cn(
                   "inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm transition-colors",
-                  tab === key ? "chip-selected font-semibold" : "chip-quiet font-medium hover:bg-cream",
+                  tab === key
+                    ? "chip-selected font-semibold"
+                    : "chip-quiet font-medium hover:bg-cream",
                 )}
-
               >
                 {key === "messages" ? (
                   <MessageSquarePlus aria-hidden className="size-4" />
                 ) : (
                   <Paperclip aria-hidden className="size-4" />
                 )}
-                {key === "messages" ? "Messages" : `Files${files.length ? ` (${files.length})` : ""}`}
+                {key === "messages"
+                  ? "Messages"
+                  : `Files${files.length ? ` (${files.length})` : ""}`}
               </button>
             ))}
           </div>
         </header>
 
         {tab === "messages" ? (
-          <Transcript>
+          <Transcript
+            scrollRef={scrollRef}
+            onScroll={() => {
+              const el = scrollRef.current;
+              if (!el) return;
+              nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+              if (nearBottom.current) {
+                setNewCount(0);
+                markRead();
+              }
+            }}
+          >
             {threadComments.map((message, index) => {
               const previous = index > 0 ? threadComments[index - 1] : undefined;
               const newDay =
@@ -394,6 +586,7 @@ function ThreadPanel({
                     createdAt={message.created_at}
                     mine={message.author_id === currentUserId}
                     highlighted={highlightCommentId === message.id}
+                    onReply={setReplyTo}
                     readOnly={!canPost}
                   />
                 </div>
@@ -411,7 +604,9 @@ function ThreadPanel({
               <>
                 <p className="text-xs text-ink-soft">
                   {files.length} shared here
-                  {unsavedCount > 0 ? ` · ${unsavedCount} not yet in the production's documents` : ""}
+                  {unsavedCount > 0
+                    ? ` · ${unsavedCount} not yet in the production's documents`
+                    : ""}
                 </p>
                 {files.map((file) => {
                   const author = personById(
@@ -436,7 +631,27 @@ function ThreadPanel({
 
         {canPost && tab === "messages" && (
           <ComposerBar>
+            {newCount > 0 && (
+              <button
+                type="button"
+                onClick={toBottom}
+                className="mb-2 rounded-full bg-primary px-3 py-1 text-sm text-primary-foreground"
+              >
+                {newCount} new messages ↓
+              </button>
+            )}
+            {reply && (
+              <div className="mb-2 flex items-center gap-2 rounded bg-cream p-2 text-xs">
+                <span className="min-w-0 flex-1 truncate">
+                  Replying to {personById(reply.author_id)?.full_name}: {reply.body}
+                </span>
+                <button type="button" onClick={() => setReplyTo(null)} aria-label="Cancel reply">
+                  <X className="size-4" />
+                </button>
+              </div>
+            )}
             <Composer
+              key={`${currentUserId}:${threadId}`}
               compact
               projectId={projectId}
               threadKey={threadId}
@@ -444,7 +659,11 @@ function ThreadPanel({
               autoFocus={autoFocusComposer}
               placeholder="Message…"
               submitLabel="Send"
-              onSubmit={async (body, _subject, attachments) => onSend(body, attachments)}
+              onSubmit={async (body, _subject, attachments) => {
+                const ok = await onSend(body, attachments, replyTo);
+                if (ok) setReplyTo(null);
+                return ok;
+              }}
             />
           </ComposerBar>
         )}
@@ -503,7 +722,6 @@ export function Discussion({
   const resolvedTaskId = taskId;
   const resolvedDocumentId = documentId;
 
-
   const visible = threads.filter(
     (t) =>
       t.project_id === projectId &&
@@ -526,7 +744,7 @@ export function Discussion({
     .reduce<string>((latest, c) => (latest > c.created_at ? latest : c.created_at + c.id), "");
   useEffect(() => {
     if (highlightCommentId || !lastMessageId) return;
-    endRef.current?.scrollIntoView({ block: "nearest" });
+    // ThreadPanel preserves the reader’s scroll position.
   }, [lastMessageId, highlightCommentId]);
 
   const contextLabel = (threadTaskId: string | null, threadDocumentId: string | null) => {
@@ -552,7 +770,6 @@ export function Discussion({
         </p>
       )}
 
-
       {visible.length === 0 && !inline && (
         <p className="surface-card p-4 text-sm text-ink-soft">
           Nothing here yet.
@@ -566,49 +783,53 @@ export function Discussion({
           <Transcript>
             <p className="py-4 text-center text-sm text-ink-soft">
               No messages here yet
-              {canPost ? " — say something to bring the right people in." : locked ? " — this production is closed and archived." : "."}
+              {canPost
+                ? " — say something to bring the right people in."
+                : locked
+                  ? " — this production is closed and archived."
+                  : "."}
             </p>
           </Transcript>
           {canPost && (
             <ComposerBar>
-            <Composer
-              compact
-              projectId={projectId}
-              threadKey="new"
-              initialDraft={initialDraft}
-              autoFocus={autoFocusComposer}
-              placeholder="Message about this…"
-              submitLabel="Send"
-              onSubmit={async (body, _subject, attachments) => {
-                const ok = await createThread({
-                  projectId,
-                  contextType,
-                  taskId: resolvedTaskId,
-                  documentId: resolvedDocumentId,
-                  sceneId,
-                  subject: "",
-                  body,
-                  attachments,
-                });
-                if (!ok) return false;
-                onSent?.();
-                return true;
-              }}
-            />
+              <Composer
+                compact
+                projectId={projectId}
+                threadKey={`new:${sceneId ?? "project"}`}
+                initialDraft={initialDraft}
+                autoFocus={autoFocusComposer}
+                placeholder="Message about this…"
+                submitLabel="Send"
+                onSubmit={async (body, _subject, attachments) => {
+                  const ok = await createThread({
+                    projectId,
+                    contextType,
+                    taskId: resolvedTaskId,
+                    documentId: resolvedDocumentId,
+                    sceneId,
+                    subject: "",
+                    body,
+                    attachments,
+                  });
+                  if (!ok) return false;
+                  onSent?.();
+                  return true;
+                }}
+              />
             </ComposerBar>
           )}
         </ChatPanel>
       )}
 
       {visible.map((thread) => {
-        // Chat here is flat, in the order it was said — the table keeps no reply parent.
+        // Messages stay chronological; replies carry a link to their original message.
         const threadComments = comments
           .filter((c) => c.thread_id === thread.id)
           .slice()
           .sort((a, b) => a.created_at.localeCompare(b.created_at));
         return (
           <ThreadPanel
-            key={thread.id}
+            key={`${currentUserId}:${thread.id}`}
             projectId={projectId}
             inline={inline}
             title={thread.subject || contextLabel(thread.task_id, thread.document_id)}
@@ -621,8 +842,8 @@ export function Discussion({
             initialDraft={initialDraft}
             autoFocusComposer={autoFocusComposer}
             endRef={endRef}
-            onSend={async (body, attachments) => {
-              const ok = await addComment(thread.id, body, attachments);
+            onSend={async (body, attachments, replyToId) => {
+              const ok = await addComment(thread.id, body, attachments, replyToId);
               if (!ok) return false;
               onSent?.();
               return true;
@@ -665,7 +886,7 @@ export function ConversationView({
 
   useEffect(() => {
     if (highlightCommentId) return;
-    endRef.current?.scrollIntoView({ block: "nearest" });
+    // ThreadPanel preserves the reader’s scroll position.
   }, [threadId, threadComments.length, highlightCommentId]);
 
   if (!thread) {
@@ -704,6 +925,7 @@ export function ConversationView({
 
   return (
     <ThreadPanel
+      key={`${currentUserId}:${thread.id}`}
       projectId={projectId}
       inline={false}
       title={thread.subject || contextText}
@@ -716,7 +938,9 @@ export function ConversationView({
       initialDraft=""
       autoFocusComposer={false}
       endRef={endRef}
-      onSend={async (body, attachments) => addComment(thread.id, body, attachments)}
+      onSend={async (body, attachments, replyToId) =>
+        addComment(thread.id, body, attachments, replyToId)
+      }
     />
   );
 }
@@ -736,7 +960,7 @@ export function NewProjectConversation({
   return (
     <Composer
       projectId={projectId}
-      threadKey="new"
+      threadKey={`new:${sceneId ?? "project"}`}
       withSubject
       placeholder="Write the first message…"
       submitLabel="Send"

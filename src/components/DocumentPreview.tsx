@@ -16,6 +16,7 @@ export function DocumentPreview({
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     setUrl(null);
@@ -35,7 +36,7 @@ export function DocumentPreview({
     return () => {
       cancelled = true;
     };
-  }, [storageKey]);
+  }, [storageKey, attempt]);
 
   const lower = fileLabel.toLowerCase();
   const isImage = /\.(png|jpe?g|gif|webp|svg|avif)$/.test(lower);
@@ -45,7 +46,16 @@ export function DocumentPreview({
     return (
       <div className="flex items-center gap-2 border-b border-border bg-cream-soft px-4 py-6 text-sm text-ink-soft">
         <FileText aria-hidden className="size-4 shrink-0" />
-        No file attached to this revision yet.
+        {failed ? (
+          <span>
+            Could not load this file.{" "}
+            <button type="button" className="underline" onClick={() => setAttempt((n) => n + 1)}>
+              Try again
+            </button>
+          </span>
+        ) : (
+          "No file attached to this revision yet."
+        )}
       </div>
     );
   }

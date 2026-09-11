@@ -30,9 +30,28 @@ export function MentionText({ body }: { body: string }) {
   }
 
   return (
-    <p className="text-sm leading-relaxed text-ink">
+    <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm leading-relaxed text-ink">
       {nodes.map((node, i) => {
-        if (typeof node === "string") return <span key={i}>{node}</span>;
+        if (typeof node === "string")
+          return (
+            <span key={i}>
+              {node.split(/(https?:\/\/[^\s]+)/g).map((part, j) =>
+                /^https?:\/\//.test(part) ? (
+                  <a
+                    key={j}
+                    href={part}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline text-gold-deep"
+                  >
+                    {part}
+                  </a>
+                ) : (
+                  part
+                ),
+              )}
+            </span>
+          );
         const isDepartment = departments.some((d) => d.name === node.mention);
         return (
           <span

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMemo } from "react";
 import { AtSign, CheckCircle2, FileCheck2, ListChecks, MailOpen, Users } from "lucide-react";
 
@@ -84,7 +84,8 @@ function InlineReply({ threadId }: { threadId: string }) {
         if (!body.trim() || sending) return;
         setSending(true);
         void addComment(threadId, body.trim())
-          .then(() => {
+          .then((ok) => {
+            if (!ok) return;
             setBody("");
             setOpen(false);
           })
@@ -134,6 +135,7 @@ function MyWorkPage() {
   // Leadership demo: this opens on whoever you are viewing as, and you can look at
   // any team member's view to see how it works for the shop or lighting.
   const [personId, setPersonId] = useState(currentUserId);
+  useEffect(() => setPersonId(currentUserId), [currentUserId]);
   const viewedId = people.some((p) => p.id === personId) ? personId : currentUserId;
   const me = people.find((p) => p.id === viewedId);
   const today = toISO(new Date());
@@ -299,9 +301,12 @@ function MyWorkPage() {
       const waitingOnMe =
         a.decision === "requested" &&
         doc.approval_state === "in_review" &&
-        (dept?.owner_id === viewedId ||
-          (dept ? dept.lead_ids.includes(viewedId) : false) ||
-          myDepartmentIds.includes(doc.department_id));
+        a.version === doc.current_version &&
+        (a.reviewer_id
+          ? a.reviewer_id === viewedId
+          : dept?.owner_id === viewedId ||
+            (dept ? dept.lead_ids.includes(viewedId) : false) ||
+            myDepartmentIds.includes(doc.department_id));
       const mySubmission = a.requested_by_id === viewedId && a.decision !== "requested";
       if (!waitingOnMe && !mySubmission) continue;
 
@@ -447,7 +452,6 @@ function MyWorkPage() {
           onChange={(e) => setPersonId(e.target.value)}
           className="min-h-11 w-full max-w-full min-w-0 truncate rounded-md border border-border bg-card px-2.5 text-sm text-ink sm:w-auto"
         >
-
           {people.map((p) => (
             <option key={p.id} value={p.id}>
               {p.full_name} — {p.title}
