@@ -410,22 +410,26 @@ function DashboardTab() {
         <div className="space-y-6">
 
 
-          <Panel title="Notifications" icon={Bell}>
+          <Panel title="For you on this production" icon={Bell}>
             <p className="text-sm text-ink-soft">
-              {notices.filter((n) => !n.read).length} unread of {notices.length} on this production.
+              {myNotices.filter((n) => !n.read).length} unread of {myNotices.length} addressed to
+              you.
             </p>
             <ul className="mt-3 space-y-2.5">
-              {notices.slice(0, 6).map((n) => (
+              {myNotices.slice(0, 6).map((n) => (
                 <li key={n.id} className="text-sm">
                   <span className="rule-label mr-2">{n.kind.replace("_", " ")}</span>
                   <span className={n.read ? "text-ink-soft" : "text-ink"}>{n.summary}</span>
-                  <span className="block text-xs text-ink-soft">
-                    To {personById(n.recipient_id)?.full_name}
-                  </span>
                 </li>
               ))}
+              {myNotices.length === 0 && (
+                <li className="text-sm text-ink-soft">
+                  Nothing is waiting on you on this production.
+                </li>
+              )}
             </ul>
           </Panel>
+
 
           <Panel title="Quick links" icon={FileText}>
             <ul className="text-sm">
