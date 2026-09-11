@@ -108,12 +108,13 @@ export function DepartmentWorkQueue({
             (t) => !blocked.includes(t) && !late.includes(t) && !dueSoon.includes(t),
           );
 
-          const groups: Group[] = [
+          const allGroups: Group[] = [
             { key: "blocked", label: "Blocked", Icon: Ban, tone: "danger", tasks: blocked },
             { key: "late", label: "Late", Icon: AlertTriangle, tone: "danger", tasks: late },
             { key: "due_soon", label: "Due soon", Icon: Clock, tone: "warning", tasks: dueSoon },
             { key: "later", label: "Later", Icon: Layers, tone: "neutral", tasks: later },
-          ].filter((g) => g.tasks.length > 0);
+          ];
+          const groups = allGroups.filter((g) => g.tasks.length > 0);
 
           return (
             <section key={dept.id} className="surface-card overflow-hidden">

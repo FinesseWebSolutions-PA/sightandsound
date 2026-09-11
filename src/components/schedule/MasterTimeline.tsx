@@ -658,6 +658,9 @@ export function MasterTimeline({
     const shift = dragging ? drag.days * pxPerDay : 0;
     const live = placePx(span, task.forecast_start, task.forecast_finish, pxPerDay);
     const planned = placePx(span, task.start_date, task.due_date, pxPerDay);
+    const { health, className: barClass } = barLook(task);
+    const Icon = health.meta.Icon;
+    const blocked = task.status === "blocked";
     return (
       <div className="relative h-20" style={{ width: chartWidth }}>
         {ticks.map((t) => (
@@ -675,10 +678,11 @@ export function MasterTimeline({
             className="absolute inset-y-0 w-0.5 bg-gold"
           />
         )}
+        {/* ghost baseline: the committed plan, faint behind the live forecast bar */}
         <span
           style={{ left: planned.left, width: planned.width }}
           aria-hidden
-          className={`absolute top-4 h-2.5 rounded-full border border-border-strong bg-band ${dimmed ? "opacity-30" : ""}`}
+          className={`absolute top-4 h-2.5 rounded-full border border-border-strong bg-band ${dimmed ? "opacity-30" : "opacity-70"}`}
         />
         <span
           ref={(el) => {
@@ -702,13 +706,15 @@ export function MasterTimeline({
           style={{
             left: live.left + shift,
             width: live.width + (dragging && drag.kind === "resize" ? drag.days * pxPerDay : 0),
+            ...(blocked ? BLOCKED_HATCH : {}),
           }}
-          title={`${task.title} · ${criticalityMeta[task.criticality].label} · ${formatFloat(task.total_float_hours)}`}
-          className={`absolute top-8 flex h-7 items-center overflow-hidden rounded-md border px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring ${barClasses(task)} ${
+          title={`${task.title} · ${health.meta.label}${health.detail ? ` · ${health.detail}` : ""} · ${formatFloat(task.total_float_hours)}`}
+          className={`absolute top-8 flex h-7 items-center gap-1 overflow-hidden rounded-md border px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring ${barClass} ${
             dimmed ? "opacity-40" : ""
-          } ${openTask === task.id ? "ring-2 ring-ink" : ""} ${locked ? "cursor-pointer" : "cursor-grab"}`}
+          } ${openTask === task.id ? "ring-2 ring-ink" : ""} ${blocked ? "ring-1 ring-inset ring-cream-soft/80" : ""} ${locked ? "cursor-pointer" : "cursor-grab"}`}
         >
-          {shortCriticality(task)}
+          <Icon aria-hidden className="size-3 shrink-0" />
+          <span className="truncate">{health.meta.label}</span>
           {!locked && (
             <span
               aria-hidden
