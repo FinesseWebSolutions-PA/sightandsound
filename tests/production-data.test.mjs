@@ -11,7 +11,7 @@ const compiled = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 
-function dataLayer({ failTable } = {}) {
+function dataLayer({ failTable, rpcData = [], failRpc } = {}) {
   const calls = [];
   const supabase = {
     from(table) {
@@ -43,7 +43,10 @@ function dataLayer({ failTable } = {}) {
     },
     async rpc(name, args) {
       calls.push({ rpc: name, args });
-      return { data: [], error: null };
+      return {
+        data: rpcData,
+        error: name === failRpc ? { message: "Recipient lookup failed" } : null,
+      };
     },
   };
   const exports = {};
@@ -172,4 +175,50 @@ test("message edits remain limited to their original author", async () => {
 test("a reaction removal that affects no rows is reported instead of silently succeeding", async () => {
   const { api } = dataLayer();
   await assert.rejects(api.removeCommentReaction("reaction", "actor"), /could not be removed/);
+});
+
+const mentionInput = {
+  threadId: "set-thread",
+  body: "@Engineering @Assigned Engineer please check 👋",
+  authorId: "author",
+  projectId: "production",
+  sourceEntityType: "scene",
+  sourceEntityId: "set",
+  departments: [
+    {
+      id: "engineering",
+      name: "Engineering",
+      owner_id: "unrelated-global",
+      lead_ids: ["unrelated-global"],
+    },
+  ],
+  people: [{ id: "assigned", full_name: "Assigned Engineer" }],
+};
+test("department mentions use resolved set recipients, deduplicate direct mentions and skip the sender", async () => {
+  const { api, calls } = dataLayer({
+    rpcData: [
+      { department_id: "engineering", person_id: "assigned" },
+      { department_id: "engineering", person_id: "oversight" },
+      { department_id: "engineering", person_id: "author" },
+      { department_id: "other", person_id: "unrelated" },
+    ],
+  });
+  await api.writeComment(mentionInput);
+  assert.equal(calls[0].rpc, "department_mention_recipients");
+  assert.equal(calls[0].args.p_thread, "set-thread");
+  const notices = calls
+    .filter((c) => c.table === "notifications")
+    .flatMap((c) => c.operations.filter((o) => o.method === "insert").flatMap((o) => o.args[0]));
+  assert.deepEqual(notices.map((n) => [n.person_id, n.type]).sort(), [
+    ["assigned", "mention"],
+    ["oversight", "department_mention"],
+  ]);
+});
+test("failed department resolution prevents saving a message that would be retried", async () => {
+  const { api, calls } = dataLayer({ failRpc: "department_mention_recipients" });
+  await assert.rejects(api.writeComment(mentionInput), /Recipient lookup failed/);
+  assert.equal(
+    calls.some((c) => c.table === "comments"),
+    false,
+  );
 });

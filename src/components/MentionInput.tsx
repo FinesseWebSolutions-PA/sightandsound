@@ -103,7 +103,7 @@ export function MentionInput({
         kind: "department" as const,
         id: d.id,
         label: d.name,
-        hint: "Reaches the owner and leads",
+        hint: "Reaches assigned people and department oversight",
       })),
     );
     return [

@@ -1325,6 +1325,7 @@ async function writeMentions(
   departments: Department[],
   people: Person[],
   authorId: string,
+  scopedRecipients: { department_id: string; person_id: string }[],
 ) {
   const mentionRows: {
     comment_id: string;
@@ -1342,8 +1343,9 @@ async function writeMentions(
       mentioned_person_id: null,
       mentioned_department_id: department.id,
     });
-    // A department mention reaches the designated owner and any leads — never the whole roster.
-    const recipients = new Set([department.owner_id, ...department.lead_ids].filter(Boolean));
+    const recipients = new Set(
+      scopedRecipients.filter((r) => r.department_id === department.id).map((r) => r.person_id),
+    );
     for (const recipient of recipients) {
       if (recipient === authorId) continue;
       if (!notified.has(recipient)) notified.set(recipient, "department_mention");
@@ -1453,6 +1455,14 @@ export async function writeComment(input: {
   attachments?: StagedAttachment[];
   replyToId?: string | null;
 }) {
+  // Resolve recipients before saving, so a lookup failure never leaves a sent message
+  // that the composer asks the author to retry.
+  let scopedRecipients: { department_id: string; person_id: string }[] = [];
+  if (input.departments.some((d) => input.body.includes(`@${d.name}`))) {
+    const result = await callRpc("department_mention_recipients", { p_thread: input.threadId });
+    if (result.error) throw new Error(result.error.message);
+    scopedRecipients = (result.data ?? []) as typeof scopedRecipients;
+  }
   const { data, error } = await supabase
     .from("comments")
     .insert({
@@ -1474,6 +1484,7 @@ export async function writeComment(input: {
     input.departments,
     input.people,
     input.authorId,
+    scopedRecipients,
   );
   // Everyone already in the conversation hears about a new message, even without
   // being named in it — but only once, so a mention does not arrive twice.

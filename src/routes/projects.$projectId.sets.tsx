@@ -1,3 +1,4 @@
+import { SetInstructions } from "@/components/workspace/SetInstructions";
 import { SetWorkspace } from "@/components/workspace/SetWorkspace";
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
@@ -96,9 +97,7 @@ function SetsTab() {
         <div>
           <h2 className="font-display text-2xl text-ink sm:text-3xl">Sets</h2>
           <p className="mt-1 max-w-2xl text-sm text-ink-soft">
-            Each set is its own unit of work inside this production. A set has a lead, its own
-            dates, its own team and its own conversation — and it can follow another set, so a slip
-            on one pushes everything behind it.{" "}
+            Choose a set to see its latest work, conversations and files.{" "}
             <Link
               to="/projects/$projectId/timeline"
               params={{ projectId }}
@@ -164,7 +163,25 @@ function SetsTab() {
         </p>
       ) : (
         <div className="grid gap-4 lg:grid-cols-[20rem_1fr]">
-          <nav className="surface-card overflow-hidden" aria-label="Sets in this production">
+          <label className="block text-sm font-medium text-ink lg:hidden">
+            Set
+            <select
+              aria-label="Choose set"
+              value={selected?.id ?? ""}
+              onChange={(e) => setSelectedId(e.target.value)}
+              className="mt-1 min-h-11 w-full rounded-md border border-border bg-card px-3 text-base"
+            >
+              {projectSets.map((s, i) => (
+                <option key={s.id} value={s.id}>
+                  {i + 1}. {s.name} · {setStatusMeta[s.status].label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <nav
+            className="surface-card hidden self-start overflow-hidden lg:block"
+            aria-label="Sets in this production"
+          >
             <ul className="row-list">
               {projectSets.map((s, i) => {
                 const active = selected?.id === s.id;
@@ -280,6 +297,34 @@ function SetDetail({
       <section className="surface-card p-4">
         <header className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
+            <h3 className="font-display text-2xl text-ink">{set.name}</h3>
+            <p className="mt-1 text-xs text-ink-soft">
+              Set {index + 1} of {order.length} in the running order
+            </p>
+          </div>
+          <StatusBadge meta={setStatusMeta[set.status]} size="sm" />
+        </header>
+
+        <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-soft">
+          <span>Lead: {personById(set.owner_id)?.full_name ?? "Not assigned"}</span>
+          <span>Finish: {set.due_date ? formatDate(set.due_date) : "Not committed"}</span>
+          {set.portal_url && (
+            <a
+              href={set.portal_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-gold-deep underline"
+            >
+              Open Portal <ExternalLink aria-hidden className="size-3.5" />
+            </a>
+          )}
+        </div>
+        <details className="mt-4 border-t border-border pt-3">
+          <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-ink-soft">
+            Set details & settings
+          </summary>
+          <div className="mt-2">
+            {" "}
             {canEdit ? (
               <input
                 aria-label="Set name"
@@ -294,241 +339,252 @@ function SetDetail({
             ) : (
               <h3 className="font-display text-2xl text-ink">{set.name}</h3>
             )}
-            <p className="mt-1 text-xs text-ink-soft">
-              Set {index + 1} of {order.length} in the running order
-            </p>
           </div>
-          <StatusBadge meta={setStatusMeta[set.status]} size="sm" />
-        </header>
+          <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <dt className="rule-label">Set lead</dt>
+              <dd className="mt-1">
+                {canEdit ? (
+                  <PersonPicker
+                    label="Set lead"
+                    value={set.owner_id}
+                    onChange={(id) => void updateScene(set.id, projectId, { owner_id: id })}
+                    placeholder="No lead named"
+                    suggestedIds={projectAssignments
+                      .filter((a) => a.scene_id === set.id)
+                      .map((a) => a.person_id)}
+                    suggestedLabel="Staffed on this set"
+                  />
+                ) : (
+                  <span className="text-sm text-ink">
+                    {personById(set.owner_id)?.full_name ?? "No lead named"}
+                  </span>
+                )}
+              </dd>
+            </div>
 
-        <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div>
-            <dt className="rule-label">Set lead</dt>
-            <dd className="mt-1">
-              {canEdit ? (
-                <PersonPicker
-                  label="Set lead"
-                  value={set.owner_id}
-                  onChange={(id) => void updateScene(set.id, projectId, { owner_id: id })}
-                  placeholder="No lead named"
-                  suggestedIds={projectAssignments
-                    .filter((a) => a.scene_id === set.id)
-                    .map((a) => a.person_id)}
-                  suggestedLabel="Staffed on this set"
-                />
-              ) : (
-                <span className="text-sm text-ink">
-                  {personById(set.owner_id)?.full_name ?? "No lead named"}
-                </span>
-              )}
-            </dd>
-          </div>
-
-          <div>
-            <dt className="rule-label">Where it stands</dt>
-            <dd className="mt-1">
-              {canEdit ? (
-                <select
-                  aria-label="Set status"
-                  value={set.status}
-                  onChange={(e) =>
-                    void updateScene(set.id, projectId, { status: e.target.value as SetStatus })
-                  }
-                  className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
-                >
-                  {statusOptions.map((s) => (
-                    <option key={s} value={s}>
-                      {setStatusMeta[s].label}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <span className="text-sm text-ink">{setStatusMeta[set.status].label}</span>
-              )}
-              <span className="mt-1 block text-xs text-ink-soft">
-                Updates itself as the work tied to this set moves.
-              </span>
-            </dd>
-          </div>
-
-          <div>
-            <dt className="rule-label">Committed start</dt>
-            <dd className="mt-1">
-              {canEdit && !followsSet ? (
-                <input
-                  type="date"
-                  aria-label="Committed start"
-                  value={set.start_date}
-                  onChange={(e) =>
-                    void updateScene(set.id, projectId, { start_date: e.target.value })
-                  }
-                  className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
-                />
-              ) : (
-                <span className="text-sm text-ink">
-                  {set.start_date ? formatDate(set.start_date) : "Not committed"}
-                </span>
-              )}
-              {followsSet && (
-                <span className="mt-1 block text-xs text-ink-soft">
-                  Filled in from {followsSet.name}
-                  {set.lag_days ? ` plus a ${set.lag_days} day gap` : ""}.
-                </span>
-              )}
-            </dd>
-          </div>
-
-          <div>
-            <dt className="rule-label">Committed finish</dt>
-            <dd className="mt-1">
-              {canEdit ? (
-                <input
-                  type="date"
-                  aria-label="Committed finish"
-                  value={set.due_date}
-                  onChange={(e) =>
-                    void updateScene(set.id, projectId, { due_date: e.target.value })
-                  }
-                  className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
-                />
-              ) : (
-                <span className="text-sm text-ink">
-                  {set.due_date ? formatDate(set.due_date) : "Not committed"}
-                </span>
-              )}
-            </dd>
-          </div>
-
-          <div>
-            <dt className="rule-label">Current estimate</dt>
-            <dd className="mt-1 text-sm text-ink">
-              {set.forecast_start || set.forecast_finish
-                ? `${set.forecast_start ? formatDate(set.forecast_start) : "—"} → ${
-                    set.forecast_finish ? formatDate(set.forecast_finish) : "—"
-                  }`
-                : "No work scheduled yet"}
-              <span className="mt-1 block text-xs text-ink-soft">
-                Worked out from the work items tied to this set.
-              </span>
-            </dd>
-          </div>
-
-          <div>
-            <dt className="rule-label flex items-center gap-1.5">
-              <Link2 aria-hidden className="size-3.5" />
-              Follows
-            </dt>
-            <dd className="mt-1 space-y-2">
-              {canEdit ? (
-                <>
+            <div>
+              <dt className="rule-label">Where it stands</dt>
+              <dd className="mt-1">
+                {canEdit ? (
                   <select
-                    aria-label="Set this one follows"
-                    value={set.depends_on_scene_id}
-                    onChange={(e) => applyChain(e.target.value, set.lag_days)}
+                    aria-label="Set status"
+                    value={set.status}
+                    onChange={(e) =>
+                      void updateScene(set.id, projectId, { status: e.target.value as SetStatus })
+                    }
                     className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
                   >
-                    <option value="">Starts on its own</option>
-                    {others.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
+                    {statusOptions.map((s) => (
+                      <option key={s} value={s}>
+                        {setStatusMeta[s].label}
                       </option>
                     ))}
                   </select>
-                  {set.depends_on_scene_id && (
-                    <label className="block text-xs text-ink-soft">
-                      Days of gap after that set finishes
-                      <input
-                        type="number"
-                        value={set.lag_days}
-                        onChange={(e) =>
-                          applyChain(set.depends_on_scene_id, Number(e.target.value) || 0)
-                        }
-                        className="mt-1 min-h-11 w-24 rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
-                      />
-                    </label>
-                  )}
-                </>
-              ) : (
-                <span className="text-sm text-ink">
-                  {set.depends_on_scene_id
-                    ? `${order.find((s) => s.id === set.depends_on_scene_id)?.name ?? "Another set"}${
-                        set.lag_days ? ` + ${set.lag_days} day gap` : ""
-                      }`
-                    : "Starts on its own"}
+                ) : (
+                  <span className="text-sm text-ink">{setStatusMeta[set.status].label}</span>
+                )}
+                <span className="mt-1 block text-xs text-ink-soft">
+                  Updates itself as the work tied to this set moves.
                 </span>
-              )}
-            </dd>
-          </div>
+              </dd>
+            </div>
 
-          <div className="sm:col-span-2">
-            <dt className="rule-label">Portal (set simulation)</dt>
-            <dd className="mt-1 space-y-2">
-              {canEdit && (
-                <input
-                  type="url"
-                  aria-label="Portal (set simulation) link"
-                  defaultValue={set.portal_url}
-                  placeholder="https://…"
-                  onBlur={(e) => {
-                    if (e.target.value.trim() !== set.portal_url)
-                      void updateScene(set.id, projectId, {
-                        portal_link_url: e.target.value,
-                      });
-                  }}
-                  className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink focus:ring-2 focus:ring-ring focus:outline-none sm:text-sm"
-                />
-              )}
-              {set.portal_url ? (
-                <a
-                  href={set.portal_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-gold-deep hover:underline"
-                >
-                  Open Portal
-                  <ExternalLink aria-hidden className="size-3.5" />
-                </a>
-              ) : (
-                <span className="block text-xs text-ink-soft">
-                  No simulation linked for this set yet.
+            <div>
+              <dt className="rule-label">Committed start</dt>
+              <dd className="mt-1">
+                {canEdit && !followsSet ? (
+                  <input
+                    type="date"
+                    aria-label="Committed start"
+                    value={set.start_date}
+                    onChange={(e) =>
+                      void updateScene(set.id, projectId, { start_date: e.target.value })
+                    }
+                    className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
+                  />
+                ) : (
+                  <span className="text-sm text-ink">
+                    {set.start_date ? formatDate(set.start_date) : "Not committed"}
+                  </span>
+                )}
+                {followsSet && (
+                  <span className="mt-1 block text-xs text-ink-soft">
+                    Filled in from {followsSet.name}
+                    {set.lag_days ? ` plus a ${set.lag_days} day gap` : ""}.
+                  </span>
+                )}
+              </dd>
+            </div>
+
+            <div>
+              <dt className="rule-label">Committed finish</dt>
+              <dd className="mt-1">
+                {canEdit ? (
+                  <input
+                    type="date"
+                    aria-label="Committed finish"
+                    value={set.due_date}
+                    onChange={(e) =>
+                      void updateScene(set.id, projectId, { due_date: e.target.value })
+                    }
+                    className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
+                  />
+                ) : (
+                  <span className="text-sm text-ink">
+                    {set.due_date ? formatDate(set.due_date) : "Not committed"}
+                  </span>
+                )}
+              </dd>
+            </div>
+
+            <div>
+              <dt className="rule-label">Current estimate</dt>
+              <dd className="mt-1 text-sm text-ink">
+                {set.forecast_start || set.forecast_finish
+                  ? `${set.forecast_start ? formatDate(set.forecast_start) : "—"} → ${
+                      set.forecast_finish ? formatDate(set.forecast_finish) : "—"
+                    }`
+                  : "No work scheduled yet"}
+                <span className="mt-1 block text-xs text-ink-soft">
+                  Worked out from the work items tied to this set.
                 </span>
-              )}
-            </dd>
-          </div>
-        </dl>
+              </dd>
+            </div>
+
+            <div>
+              <dt className="rule-label flex items-center gap-1.5">
+                <Link2 aria-hidden className="size-3.5" />
+                Follows
+              </dt>
+              <dd className="mt-1 space-y-2">
+                {canEdit ? (
+                  <>
+                    <select
+                      aria-label="Set this one follows"
+                      value={set.depends_on_scene_id}
+                      onChange={(e) => applyChain(e.target.value, set.lag_days)}
+                      className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
+                    >
+                      <option value="">Starts on its own</option>
+                      {others.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                    {set.depends_on_scene_id && (
+                      <label className="block text-xs text-ink-soft">
+                        Days of gap after that set finishes
+                        <input
+                          type="number"
+                          value={set.lag_days}
+                          onChange={(e) =>
+                            applyChain(set.depends_on_scene_id, Number(e.target.value) || 0)
+                          }
+                          className="mt-1 min-h-11 w-24 rounded-md border border-border bg-card px-2.5 text-base text-ink sm:text-sm"
+                        />
+                      </label>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-sm text-ink">
+                    {set.depends_on_scene_id
+                      ? `${order.find((s) => s.id === set.depends_on_scene_id)?.name ?? "Another set"}${
+                          set.lag_days ? ` + ${set.lag_days} day gap` : ""
+                        }`
+                      : "Starts on its own"}
+                  </span>
+                )}
+              </dd>
+            </div>
+
+            <div className="sm:col-span-2">
+              <dt className="rule-label">Portal (set simulation)</dt>
+              <dd className="mt-1 space-y-2">
+                {canEdit && (
+                  <input
+                    type="url"
+                    aria-label="Portal (set simulation) link"
+                    defaultValue={set.portal_url}
+                    placeholder="https://…"
+                    onBlur={(e) => {
+                      if (e.target.value.trim() !== set.portal_url)
+                        void updateScene(set.id, projectId, {
+                          portal_link_url: e.target.value,
+                        });
+                    }}
+                    className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink focus:ring-2 focus:ring-ring focus:outline-none sm:text-sm"
+                  />
+                )}
+                {set.portal_url ? (
+                  <a
+                    href={set.portal_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-gold-deep hover:underline"
+                  >
+                    Open Portal
+                    <ExternalLink aria-hidden className="size-3.5" />
+                  </a>
+                ) : (
+                  <span className="block text-xs text-ink-soft">
+                    No simulation linked for this set yet.
+                  </span>
+                )}
+              </dd>
+            </div>
+          </dl>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => void deleteScene(set.id, projectId)}
+              className="mt-4 min-h-11 rounded-md border border-border px-3 text-sm font-medium text-danger hover:bg-cream"
+            >
+              Remove set
+            </button>
+          )}
+        </details>
       </section>
 
-      <div
-        role="tablist"
+      <nav
         aria-label={`${set.name} sections`}
-        className="surface-card flex flex-wrap gap-1 overflow-hidden p-1"
+        className="surface-card flex flex-wrap items-center gap-1 p-1"
       >
-        {(
-          [
-            { id: "overview", label: "Overview" },
-            { id: "updates", label: "Updates & decisions" },
-            { id: "planning", label: "Planning" },
-            { id: "tasks", label: "Tasks" },
-            { id: "schedule", label: "Schedule" },
-            { id: "documents", label: "Documents" },
-            { id: "conversation", label: "Conversation" },
-            { id: "team", label: "Team" },
-          ] as const
-        ).map((t) => (
+        {[
+          { id: "overview", label: "Overview" },
+          { id: "conversation", label: "Conversations" },
+          { id: "documents", label: "Files" },
+        ].map((t) => (
           <button
             key={t.id}
             type="button"
-            role="tab"
-            aria-selected={tab === t.id}
+            aria-current={tab === t.id ? "page" : undefined}
             onClick={() => setTab(t.id)}
-            className={`min-h-11 rounded-md px-4 text-sm font-medium ${
-              tab === t.id ? "bg-ink text-cream-soft" : "text-ink-soft hover:bg-cream"
-            }`}
+            className={`min-h-11 rounded-md px-3 text-sm font-medium ${tab === t.id ? "bg-ink text-cream-soft" : "text-ink-soft hover:bg-cream"}`}
           >
             {t.label}
           </button>
         ))}
-      </div>
+        <select
+          aria-label="More set sections"
+          value={["overview", "conversation", "documents"].includes(tab) ? "" : tab}
+          onChange={(e) => {
+            if (e.target.value) setTab(e.target.value);
+          }}
+          className={`min-h-11 min-w-0 max-w-full flex-1 rounded-md border border-border px-2 text-sm sm:flex-none ${["overview", "conversation", "documents"].includes(tab) ? "bg-card text-ink-soft" : "bg-ink text-cream-soft"}`}
+        >
+          <option value="" disabled>
+            More…
+          </option>
+          <option value="updates">Updates & decisions</option>
+          <option value="tasks">Tasks</option>
+          <option value="planning">Planning & capacity</option>
+          <option value="schedule">Schedule</option>
+          <option value="team">Team</option>
+        </select>
+      </nav>
+      {(tab === "overview" || tab === "documents") && <SetInstructions key={set.id} set={set} />}
 
       {(tab === "overview" || tab === "updates" || tab === "planning") && (
         <SetWorkspace key={set.id} set={set} view={tab} />
@@ -670,18 +726,6 @@ function SetDetail({
             listTitle={`Conversations on ${set.name}`}
           />
         </section>
-      )}
-
-      {canEdit && (
-        <div className="border-t border-border pt-4">
-          <button
-            type="button"
-            onClick={() => void deleteScene(set.id, projectId)}
-            className="min-h-11 rounded-md border border-border px-3 text-sm font-medium text-danger hover:bg-cream"
-          >
-            Remove set
-          </button>
-        </div>
       )}
     </div>
   );

@@ -23,3 +23,15 @@ The app retains shared demo identities, not verified login or project authorizat
 ## Verification
 
 Run `npm test`, `npm run typecheck`, and `npm run build`. Run `supabase/tests/workspace_regression.sql` only against an isolated database with migrations applied. It rolls back synthetic fixtures. The development harness exercises the SQL workflow against PGlite with a deterministic schedule preview/calculation test double; deployment also checks the actual function signatures and read-only live metadata. No live messages, decisions, acknowledgements, or schedule requests are created by these checks.
+
+## September 9 meeting follow-up
+
+This pass uses the first meeting as context and preserves the more specific workflow agreed in the September 10 meeting.
+
+- Set navigation puts **Overview, Conversations and Files** first. **More** retains updates and decisions, tasks, planning and capacity, schedule, and team. Existing section URLs still work. Set metadata and administrative controls are under **Set details & settings**.
+- A department mention resolves the conversation's actual set, including conversations attached to a task or document. It reaches that department's assigned set members and the production's active department head/default owner. Production-level conversations reach production-level assignments and oversight. Global owners/leads are fallback oversight only when none is named for that production. Deactivated people are excluded. A direct mention takes precedence, each person receives one mention notice, and the sender is excluded. Existing conversation participants still receive ordinary reply notices.
+- **Set instructions** appears on Overview and Files. Contributors can link existing files under operating manuals, assembly/load-in, or shipping/packing. Several files can fill each category. Files stay in the document library with their folders, versions and approvals.
+- Only an approved latest version is labelled current, and links open that exact version. If a new revision awaits approval, an older approved revision is clearly labelled older. Trashed or moved files are shown as unavailable. Unpinning removes the shortcut, not the file. No operational documents are invented or automatically designated.
+- Instructions refresh after edits, on window focus, and every 30 seconds while visible. The existing shared demo persona/permissions model still applies; this pass does not introduce individual sign-in, push notifications, ERP integration, or automated exports.
+
+Validation includes JavaScript tests, type checking, a production build, targeted lint, and isolated PostgreSQL checks for mention routing and instruction scope/permissions. To rerun the database checks, install `@electric-sql/pglite@0.3.7` in a scratch directory and run `node tests/db/set-instruction-hub.mjs /absolute/path/to/node_modules/@electric-sql/pglite/dist/index.js`. The fixture is in-memory and never connects to Supabase.
