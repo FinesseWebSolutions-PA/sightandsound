@@ -776,38 +776,60 @@ export function MasterTimeline({
       </div>
 
 
-      {/* legend */}
-      {!clean && (
-        <div className="flex flex-wrap items-center gap-2">
-          {!setsOnly &&
-            (["critical", "near_critical", "normal"] as const).map((c) => (
-              <StatusBadge key={c} meta={criticalityMeta[c]} size="sm" />
-            ))}
+      {/* legend — status is never colour alone: every bar and swatch carries an icon and a label */}
+      <div className="flex flex-wrap items-center gap-2">
+        {!setsOnly && (
+          <>
+            <StatusBadge meta={taskStatusMeta.blocked} size="sm" />
+            <StatusBadge meta={{ label: "Late", tone: "danger", Icon: AlertTriangle }} size="sm" />
+            <StatusBadge meta={criticalityMeta.critical} size="sm" />
+            <StatusBadge meta={taskStatusMeta.in_progress} size="sm" />
+            <StatusBadge meta={taskStatusMeta.complete} size="sm" />
+            <StatusBadge meta={criticalityMeta.normal} size="sm" />
+          </>
+        )}
+        <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
+          <span aria-hidden className="h-2 w-5 rounded-full border border-border-strong bg-band opacity-70" />
+          Committed plan (ghost bar behind the forecast)
+        </span>
+        {!setsOnly && (
           <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
-            <span aria-hidden className="h-2 w-5 rounded-full border border-border-strong bg-band" />
-            Committed plan
+            <span
+              aria-hidden
+              className="h-3.5 w-6 rounded-sm border border-danger bg-danger"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(135deg, rgba(255,255,255,0.4) 0px, rgba(255,255,255,0.4) 3px, transparent 3px, transparent 7px)",
+              }}
+            />
+            Hatched = blocked
           </span>
+        )}
+        {!setsOnly && projectMilestones.length > 0 && (
           <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
-            <span aria-hidden className="h-0.5 w-4 bg-gold" /> Today
+            <Diamond aria-hidden className="size-3 fill-current text-ink" /> Milestone
           </span>
+        )}
+        <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
+          <span aria-hidden className="h-0.5 w-4 bg-gold" /> Today
+        </span>
+        <span className="hidden rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft lg:inline-block">
+          Ctrl or ⌘ + scroll to zoom
+        </span>
+        {setsOnly ? (
           <span className="rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
-            Ctrl or ⌘ + scroll to zoom
+            Open a set to plan the work inside it
           </span>
-          {setsOnly ? (
-            <span className="rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
-              Open a set to plan the work inside it
-            </span>
-          ) : readOnly ? (
-            <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
-              <Lock aria-hidden className="size-3.5" /> Dates are read-only for you here
-            </span>
-          ) : (
-            <span className="rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
-              Drag a bar to reschedule — you'll see the knock-on effect first
-            </span>
-          )}
-        </div>
-      )}
+        ) : readOnly ? (
+          <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
+            <Lock aria-hidden className="size-3.5" /> Dates are read-only for you here
+          </span>
+        ) : (
+          <span className="hidden rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft lg:inline-block">
+            Drag a bar to reschedule — you'll see the knock-on effect first
+          </span>
+        )}
+      </div>
 
       <div className="surface-card overflow-hidden">
         <div ref={scrollRef} onScroll={onChartScroll} className="overflow-x-auto">
