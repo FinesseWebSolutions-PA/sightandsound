@@ -42,7 +42,7 @@ const statusFilters: ("all" | ProjectStatus)[] = ["all", "active", "planning", "
 
 function PortfolioPage() {
   const { projects, can } = useStore();
-  const [status, setStatus] = useState<"all" | ProjectStatus>("active");
+  const [status, setStatus] = useState<"all" | ProjectStatus>("all");
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
 
@@ -55,12 +55,15 @@ function PortfolioPage() {
     [projects, status],
   );
 
+  const countFor = (option: "all" | ProjectStatus) =>
+    option === "all" ? projects.length : projects.filter((p) => p.status === option).length;
+
 
   return (
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-3xl leading-tight text-ink sm:text-4xl lg:text-5xl">
-          Production List
+          Production Portfolio
         </h1>
         {can.adminConfig && (
           <button
@@ -73,9 +76,18 @@ function PortfolioPage() {
           </button>
         )}
       </div>
+      <p className="mt-2 max-w-2xl text-sm text-ink-soft">
+        Every show-production build in one place — status, owner, departments involved, and the
+        next key date.
+      </p>
       <div className="gold-rule mt-4 w-24" />
 
       <div className="mt-6 space-y-3 sm:mt-8">
+        <p className="text-xs text-ink-soft">
+          Showing <span className="font-semibold text-ink">{rows.length}</span> of{" "}
+          <span className="font-semibold text-ink">{projects.length}</span> productions
+          {status !== "all" && <> filtered to {projectStatusMeta[status].label.toLowerCase()}</>}.
+        </p>
         <div className="-mx-4 flex snap-x items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
           <span className="rule-label shrink-0">Status</span>
           {statusFilters.map((option) => (
@@ -91,7 +103,7 @@ function PortfolioPage() {
               }
 
             >
-              {option === "all" ? "All" : projectStatusMeta[option].label}
+              {option === "all" ? "All" : projectStatusMeta[option].label} {countFor(option)}
             </button>
           ))}
         </div>

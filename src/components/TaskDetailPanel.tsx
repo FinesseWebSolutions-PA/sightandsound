@@ -17,12 +17,12 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { departments, personById, taskDependencies, useStore } from "@/lib/store";
 import {
   approvalStateMeta,
-  criticalityMeta,
   dependencyTypeLabel,
   formatDate,
-  formatFloat,
+  scheduleHealth,
   taskStatusMeta,
 } from "@/lib/status";
+
 import type { TaskStatus } from "@/lib/production-data";
 
 const statusOptions: TaskStatus[] = ["not_started", "in_progress", "blocked", "complete"];
