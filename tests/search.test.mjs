@@ -84,3 +84,23 @@ test("comment results preserve task and comment links", () => {
 test("comments with missing threads are ignored instead of creating broken links", () => {
   assert.deepEqual(searchAll({ ...sources, threads: [] }, "fixture"), []);
 });
+
+test("sets are searchable and preserve their set link", () => {
+  const hits = searchAll(
+    {
+      projects: [],
+      tasks: [],
+      documents: [],
+      milestones: [],
+      departments: [],
+      people: [],
+      threads: [],
+      comments: [],
+      scenes: [{ id: "village", project_id: "prod", name: "Village Marketplace", owner_id: "" }],
+    },
+    "Village",
+  );
+  assert.equal(hits[0].kind, "set");
+  assert.equal(hits[0].sceneId, "village");
+  assert.equal(hits[0].projectId, "prod");
+});

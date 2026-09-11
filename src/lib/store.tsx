@@ -176,6 +176,7 @@ export type Store = {
     note: string,
     versionId: string,
     reviewerId?: string,
+    dueDate?: string,
   ) => Promise<boolean>;
   /**
    * Posts a message into an existing conversation. Chat is flat: no parent id.
@@ -339,9 +340,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(ROLE_KEY, next);
   }, []);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (refreshTables?: string[]) => {
     const request = ++latestRefresh.current;
-    const next = await loadProductionData();
+    const next = await loadProductionData(refreshTables ? { refreshTables } : undefined);
     if (request === latestRefresh.current) {
       applyReferenceData(next);
       setData(next);
@@ -394,6 +395,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       timer: ReturnType<typeof setTimeout> | undefined,
       busy = false,
       queued = false;
+    const changed = new Set<string>();
     const update = async () => {
       if (stopped || document.hidden) return;
       if (busy) {
@@ -402,7 +404,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       busy = true;
       try {
-        await refresh();
+        const tables = [...changed];
+        changed.clear();
+        await refresh(tables.length ? tables : undefined);
       } catch {
         /* Keep readable data while reconnecting. */
       } finally {
@@ -429,8 +433,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       "document_folders",
       "document_stars",
       "notifications",
+      "tasks",
+      "scenes",
+      "project_assignments",
+      "people",
+      "projects",
     ]) {
-      channel = channel.on("postgres_changes", { event: "*", schema: "public", table }, schedule);
+      channel = channel.on("postgres_changes", { event: "*", schema: "public", table }, () => {
+        changed.add(table);
+        schedule();
+      });
     }
     channel.subscribe((status) => {
       if (status === "SUBSCRIBED") schedule();
@@ -438,7 +450,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const onFocus = () => schedule();
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);
-    const recovery = setInterval(() => void update(), 30000);
+    const recovery = setInterval(() => {
+      changed.clear();
+      void update();
+    }, 60000);
     return () => {
       stopped = true;
       clearTimeout(timer);
@@ -663,11 +678,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const recordApproval = useCallback<Store["recordApproval"]>(
-    async (documentId, decision, note, versionId, reviewerId) => {
+    async (documentId, decision, note, versionId, reviewerId, dueDate) => {
       const doc = dataRef.current?.documents.find((d) => d.id === documentId);
       if (!doc || !allowed(doc.project_id, "contribute")) return false;
       return runAsync(() =>
-        writeApproval(documentId, decision, note, currentUserIdRef.current, versionId, reviewerId),
+        writeApproval(
+          documentId,
+          decision,
+          note,
+          currentUserIdRef.current,
+          versionId,
+          reviewerId,
+          dueDate,
+        ),
       );
     },
     [allowed, runAsync],

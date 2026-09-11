@@ -66,6 +66,7 @@ export type Database = {
 
       approvals: {
         Row: {
+          due_date: string | null
           reviewer_id: string | null
 
           decided_at: string | null
@@ -78,6 +79,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          due_date?: string | null
           reviewer_id?: string | null
 
           decided_at?: string | null
@@ -90,6 +92,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          due_date?: string | null
           reviewer_id?: string | null
 
           decided_at?: string | null
@@ -414,6 +417,7 @@ export type Database = {
       }
       discussion_threads: {
         Row: {
+          is_general: boolean
           context_type: string
           created_at: string
           created_by: string | null
@@ -424,6 +428,7 @@ export type Database = {
           task_id: string | null
         }
         Insert: {
+          is_general?: boolean
           context_type: string
           created_at?: string
           created_by?: string | null
@@ -434,6 +439,7 @@ export type Database = {
           task_id?: string | null
         }
         Update: {
+          is_general?: boolean
           context_type?: string
           created_at?: string
           created_by?: string | null

@@ -12,7 +12,7 @@ import {
   X,
 } from "lucide-react";
 
-import { ConversationView, NewProjectConversation } from "@/components/Discussion";
+import { ConversationView, NewProjectConversation, SetChatStart } from "@/components/Discussion";
 import { personById, useStore } from "@/lib/store";
 import { formatDateTime } from "@/lib/status";
 import { groupThreadsBySet, snippet, type ThreadRow } from "@/lib/threads";
@@ -45,7 +45,8 @@ export function ConversationRail({
 }) {
   const { threads, comments, tasks, documents, scenes, can, isClosed } = useStore();
   const [showNew, setShowNew] = useState(false);
-  const [picked, setPicked] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string | null>(sceneId ? "__general__" : null);
+  const general = threads.find((t) => t.scene_id === sceneId && t.is_general);
   const [closedSections, setClosedSections] = useState<Record<string, boolean>>({});
 
   const projectScenes = useMemo(
@@ -71,7 +72,10 @@ export function ConversationRail({
     ? comments.find((c) => c.id === highlightCommentId)?.thread_id
     : undefined;
   const linkedHere = fromLink && allRows.some((r) => r.id === fromLink) ? fromLink : undefined;
-  const activeId = picked ?? linkedHere ?? allRows[0]?.id ?? null;
+  const activeId =
+    picked === "__general__"
+      ? (general?.id ?? "__general__")
+      : (picked ?? linkedHere ?? allRows[0]?.id ?? null);
 
   const locked = isClosed(projectId);
   const canStart = can.comment && !locked;
@@ -119,13 +123,22 @@ export function ConversationRail({
                 ) : (
                   <MessageSquarePlus aria-hidden className="size-4" />
                 )}
-                {showNew ? "Cancel" : "New"}
+                {showNew ? "Cancel" : "New topic"}
               </button>
             )}
           </header>
 
           <div className="max-h-[32rem] overflow-y-auto">
-            {sections.length === 0 && (
+            {sceneId && (
+              <button
+                className="min-h-12 w-full border-b px-3 text-left text-sm font-semibold"
+                aria-current={picked === "__general__" ? "page" : undefined}
+                onClick={() => setPicked("__general__")}
+              >
+                Main conversation
+              </button>
+            )}
+            {sections.length === 0 && !sceneId && (
               <p className="px-3 py-4 text-sm text-ink-soft">
                 No conversations here yet.
                 {canStart ? " Start one to bring the right departments in." : ""}
@@ -171,15 +184,17 @@ export function ConversationRail({
                   )}
                   {(!isClosedSection || sceneId) && (
                     <ul className="row-list">
-                      {section.rows.map((row) => (
-                        <li key={row.id}>
-                          <RailRow
-                            row={row}
-                            active={row.id === activeId}
-                            onPick={() => setPicked(row.id)}
-                          />
-                        </li>
-                      ))}
+                      {section.rows
+                        .filter((row) => row.id !== general?.id)
+                        .map((row) => (
+                          <li key={row.id}>
+                            <RailRow
+                              row={row}
+                              active={row.id === activeId}
+                              onPick={() => setPicked(row.id)}
+                            />
+                          </li>
+                        ))}
                     </ul>
                   )}
                 </section>
@@ -199,7 +214,9 @@ export function ConversationRail({
               All conversations
             </button>
           )}
-          {activeId ? (
+          {activeId === "__general__" && sceneId ? (
+            <SetChatStart projectId={projectId} sceneId={sceneId} />
+          ) : activeId ? (
             <ConversationView
               projectId={projectId}
               threadId={activeId}

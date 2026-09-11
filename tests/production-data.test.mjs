@@ -11,7 +11,7 @@ const compiled = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 
-function dataLayer({ failTable, rpcData = [], failRpc } = {}) {
+function dataLayer({ failTable, rpcData = [], failRpc, tableRows = {} } = {}) {
   const calls = [];
   const supabase = {
     from(table) {
@@ -26,7 +26,11 @@ function dataLayer({ failTable, rpcData = [], failRpc } = {}) {
                 Promise.resolve({
                   data: query.single
                     ? { id: "item", project_id: "production", owner_id: null, created_by: null }
-                    : [],
+                    : (tableRows[table] ?? []).slice(
+                        ...(query.operations
+                          .find((o) => o.method === "range")
+                          ?.args.map((v, i) => (i === 1 ? v + 1 : v)) ?? [0, Infinity]),
+                      ),
                   count: 0,
                   error: failTable === table ? { message: "Connection interrupted" } : null,
                 }).then(resolve, reject);
@@ -44,7 +48,7 @@ function dataLayer({ failTable, rpcData = [], failRpc } = {}) {
     async rpc(name, args) {
       calls.push({ rpc: name, args });
       return {
-        data: rpcData,
+        data: name === "department_mention_recipients" ? rpcData : [],
         error: name === failRpc ? { message: "Recipient lookup failed" } : null,
       };
     },
@@ -221,4 +225,44 @@ test("failed department resolution prevents saving a message that would be retri
     calls.some((c) => c.table === "comments"),
     false,
   );
+});
+
+test("pagination loads every person beyond the API row cap", async () => {
+  const rows = Array.from({ length: 1102 }, (_, i) => ({
+    id: `p${i}`,
+    full_name: `Person ${i}`,
+    role: "contributor",
+    deactivated_at: null,
+  }));
+  const { api, calls } = dataLayer({ tableRows: { people: rows } });
+  const data = await api.loadProductionData();
+  assert.equal(data.people.length, 1102);
+  assert.equal(calls.filter((c) => c.table === "people").length, 3);
+});
+test("a realtime comment refresh reuses unchanged reference data", async () => {
+  const { api, calls } = dataLayer();
+  await api.loadProductionData();
+  calls.length = 0;
+  await api.loadProductionData({ refreshTables: ["comments"] });
+  assert.deepEqual(
+    calls.map((c) => c.table),
+    ["comments"],
+  );
+});
+
+test("a requested review with a due date stays a single exact-version database action", async () => {
+  const { api, calls } = dataLayer();
+  await api.writeApproval(
+    "doc",
+    "requested",
+    "Check clearance",
+    "actor",
+    "v2",
+    "reviewer",
+    "2099-01-01",
+  );
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].rpc, "request_document_review");
+  assert.equal(calls[0].args.p_version, "v2");
+  assert.equal(calls[0].args.p_due_date, "2099-01-01");
 });

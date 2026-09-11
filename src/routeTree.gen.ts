@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as InboxRouteImport } from './routes/inbox'
+import { Route as ProductionsRouteImport } from './routes/productions'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as TeamRouteImport } from './routes/team'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
@@ -29,6 +30,11 @@ const IndexRoute = IndexRouteImport.update({
 const InboxRoute = InboxRouteImport.update({
   id: '/inbox',
   path: '/inbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductionsRoute = ProductionsRouteImport.update({
+  id: '/productions',
+  path: '/productions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SearchRoute = SearchRouteImport.update({
@@ -83,6 +89,7 @@ const ProjectsProjectIdTimelineRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/inbox': typeof InboxRoute
+  '/productions': typeof ProductionsRoute
   '/search': typeof SearchRoute
   '/team': typeof TeamRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
@@ -96,6 +103,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/inbox': typeof InboxRoute
+  '/productions': typeof ProductionsRoute
   '/search': typeof SearchRoute
   '/team': typeof TeamRoute
   '/projects/$projectId/discussions': typeof ProjectsProjectIdDiscussionsRoute
@@ -109,6 +117,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/inbox': typeof InboxRoute
+  '/productions': typeof ProductionsRoute
   '/search': typeof SearchRoute
   '/team': typeof TeamRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
@@ -124,6 +133,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/inbox'
+    | '/productions'
     | '/search'
     | '/team'
     | '/projects/$projectId'
@@ -137,6 +147,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/inbox'
+    | '/productions'
     | '/search'
     | '/team'
     | '/projects/$projectId/discussions'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/inbox'
+    | '/productions'
     | '/search'
     | '/team'
     | '/projects/$projectId'
@@ -163,6 +175,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   InboxRoute: typeof InboxRoute
+  ProductionsRoute: typeof ProductionsRoute
   SearchRoute: typeof SearchRoute
   TeamRoute: typeof TeamRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRouteWithChildren
@@ -182,6 +195,13 @@ declare module '@tanstack/react-router' {
       path: '/inbox'
       fullPath: '/inbox'
       preLoaderRoute: typeof InboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/productions': {
+      id: '/productions'
+      path: '/productions'
+      fullPath: '/productions'
+      preLoaderRoute: typeof ProductionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/search': {
@@ -274,6 +294,7 @@ const ProjectsProjectIdRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   InboxRoute: InboxRoute,
+  ProductionsRoute: ProductionsRoute,
   SearchRoute: SearchRoute,
   TeamRoute: TeamRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRouteWithChildren,

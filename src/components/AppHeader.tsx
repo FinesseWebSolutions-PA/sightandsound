@@ -1,3 +1,5 @@
+import { usePersonalWorkflow } from "@/lib/personal-context";
+import { notificationDisposition } from "@/lib/notification-rules";
 import { Link } from "@tanstack/react-router";
 import { Check, ChevronDown, Inbox, Search, Users } from "lucide-react";
 
@@ -16,9 +18,16 @@ const roles: Role[] = ["admin", "contributor", "viewer"];
 
 export function AppHeader() {
   const { role, setRole, setViewingPerson, currentUserId, notifications } = useStore();
+  const { state: personal } = usePersonalWorkflow();
   const person = people.find((p) => p.id === currentUserId);
   // One count everywhere: what is unread for the person you are viewing as.
-  const myUnread = notifications.filter((n) => !n.read && n.recipient_id === currentUserId).length;
+  const myUnread = notifications.filter(
+    (n) =>
+      !n.read &&
+      n.recipient_id === currentUserId &&
+      notificationDisposition(personal.notifications.find((s) => s.notification_id === n.id)) ===
+        "active",
+  ).length;
 
   const initials = (person?.full_name ?? "")
     .split(" ")
@@ -51,14 +60,19 @@ export function AppHeader() {
         {/* Navigation zone — only the two places people live in */}
         <nav className="hidden flex-1 items-stretch gap-1 px-4 md:flex lg:px-8">
           <Link
-            to="/"
+            to="/productions"
             className={navIdle}
             activeOptions={{ exact: true }}
             activeProps={{ className: navActive }}
           >
             Productions
           </Link>
-          <Link to="/inbox" className={navIdle} activeProps={{ className: navActive }}>
+          <Link
+            to="/"
+            activeOptions={{ exact: true }}
+            className={navIdle}
+            activeProps={{ className: navActive }}
+          >
             <Inbox aria-hidden className="size-4" />
             My Work
             {myUnread > 0 && (

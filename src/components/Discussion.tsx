@@ -1,3 +1,5 @@
+import { usePersonalWorkflow } from "@/lib/personal-context";
+import { MentionAudience } from "./chat/MentionAudience";
 import { canEditMessage, MESSAGE_EDIT_WINDOW_MS } from "@/lib/workspace-rules";
 import { MessageRecordTools } from "./workspace/MessageRecordTools";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -164,6 +166,12 @@ function Composer({
   return (
     <form
       ref={formRef}
+      onPasteCapture={(e) => {
+        if (!sending && e.clipboardData.files.length) {
+          e.preventDefault();
+          void pickFiles(e.clipboardData.files);
+        }
+      }}
       className={cn("space-y-2", compact ? "pt-2" : "surface-card p-4")}
       onSubmit={(e) => {
         e.preventDefault();
@@ -205,6 +213,7 @@ function Composer({
           onEnterSubmit={() => formRef.current?.requestSubmit()}
         />
 
+        <MentionAudience body={body} threadKey={threadKey} projectId={projectId} />
         {(staged.length > 0 || uploading > 0 || uploadError) && (
           <div className="space-y-1">
             {staged.map((a) => (
@@ -486,6 +495,8 @@ function ThreadPanel({
   ) => Promise<boolean>;
 }) {
   const { commentAttachments } = useStore();
+  const { state: personal, act: personalAct } = usePersonalWorkflow();
+  const following = personal.threads.find((t) => t.thread_id === threadId)?.mode;
   const [tab, setTab] = useState<"messages" | "files">("messages");
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const reply = threadComments.find((c) => c.id === replyTo);
@@ -572,6 +583,24 @@ function ThreadPanel({
           </div>
         </header>
 
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-1 text-xs text-ink-soft">
+          <span>Visible to this production · Mentions notify the named people.</span>
+          <button
+            className="min-h-10 px-2 font-medium underline"
+            onClick={() =>
+              void personalAct("follow", {
+                thread_id: threadId,
+                mode: following === "following" ? "muted" : "following",
+              })
+            }
+          >
+            {following === "following"
+              ? "Following · mute replies"
+              : following === "muted"
+                ? "Muted · follow replies"
+                : "Follow replies"}
+          </button>
+        </div>
         {tab === "messages" ? (
           <Transcript
             scrollRef={scrollRef}
@@ -996,5 +1025,42 @@ export function NewProjectConversation({
         return true;
       }}
     />
+  );
+}
+
+export function SetChatStart({ projectId, sceneId }: { projectId: string; sceneId: string }) {
+  const { createThread, can, isClosed } = useStore();
+  return (
+    <ChatPanel>
+      <div className="px-4 py-5">
+        <h3 className="text-sm font-semibold">Main conversation</h3>
+        <p className="mt-1 text-sm text-ink-soft">
+          Ask a question, share a photo, or mention a department. Everyone with access to this
+          production can read this chat.
+        </p>
+      </div>
+      {can.comment && !isClosed(projectId) && (
+        <ComposerBar>
+          <Composer
+            projectId={projectId}
+            threadKey={`new:${sceneId}`}
+            placeholder="Message this set…"
+            submitLabel="Send"
+            onSubmit={(body, _subject, attachments) =>
+              createThread({
+                projectId,
+                sceneId,
+                contextType: "scene",
+                taskId: null,
+                documentId: null,
+                subject: "",
+                body,
+                attachments,
+              })
+            }
+          />
+        </ComposerBar>
+      )}
+    </ChatPanel>
   );
 }

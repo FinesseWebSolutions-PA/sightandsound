@@ -18,7 +18,7 @@ function ProjectNotFound() {
       <h1 className="font-display text-4xl text-ink">Production not found</h1>
       <p className="mt-2 text-sm text-ink-soft">
         This production isn&apos;t in the portfolio.{" "}
-        <Link to="/" className="font-semibold text-gold-deep hover:underline">
+        <Link to="/productions" className="font-semibold text-gold-deep hover:underline">
           Back to Production Portfolio
         </Link>
       </p>
@@ -30,7 +30,7 @@ const tabs = [
   { to: "/projects/$projectId", label: "Dashboard", exact: true },
   { to: "/projects/$projectId/sets", label: "Sets", exact: false },
   { to: "/projects/$projectId/timeline", label: "Timeline", exact: false },
-  { to: "/projects/$projectId/documents", label: "Documents", exact: false },
+  { to: "/projects/$projectId/documents", label: "Files", exact: false },
   { to: "/projects/$projectId/discussions", label: "Conversations", exact: false },
   { to: "/projects/$projectId/team", label: "Team & Departments", exact: false },
 ] as const;
@@ -47,8 +47,11 @@ function ProjectWorkspace() {
   return (
     <div>
       <div className="border-b border-border bg-card shadow-sm">
-        <div className="mx-auto max-w-[1400px] px-4 pt-5 sm:px-6 sm:pt-8">
-          <Link to="/" className="rule-label inline-flex min-h-11 items-center hover:text-ink">
+        <div className="mx-auto max-w-[1400px] px-4 pt-2 sm:px-6 sm:pt-3">
+          <Link
+            to="/productions"
+            className="rule-label inline-flex min-h-11 items-center hover:text-ink"
+          >
             Productions
           </Link>
           {closed && (
@@ -80,13 +83,13 @@ function ProjectWorkspace() {
                   </button>
                 )}
               </div>
-              <h1 className="mt-1 font-display text-3xl leading-tight text-ink sm:text-4xl">
+              <h1 className="mt-1 font-display text-2xl leading-tight text-ink sm:text-3xl">
                 {project.name}
               </h1>
               <p className="mt-1 text-sm text-ink-soft">{project.subtitle}</p>
             </div>
 
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:flex sm:flex-wrap sm:gap-x-8">
+            <dl className="hidden gap-x-6 gap-y-3 text-sm sm:flex sm:flex-wrap sm:gap-x-8">
               <div className="min-w-0">
                 <dt className="rule-label">Production owner</dt>
                 <dd className="mt-0.5 text-ink">{personById(project.owner_id)?.full_name}</dd>
@@ -137,13 +140,16 @@ function ProjectWorkspace() {
               ))}
             </nav>
             {/* Edge fades make the scrollable tab strip discoverable on narrow screens. */}
-            <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-card to-transparent" />
-            <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-card to-transparent" />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-card to-transparent"
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-card to-transparent"
+            />
           </div>
-          <nav
-            className="mt-5 hidden flex-wrap gap-1 sm:flex"
-            aria-label="Project sections"
-          >
+          <nav className="mt-5 hidden flex-wrap gap-1 sm:flex" aria-label="Project sections">
             {tabs.map((tab) => (
               <Link
                 key={tab.label}
@@ -155,7 +161,6 @@ function ProjectWorkspace() {
                   className:
                     "flex min-h-11 shrink-0 snap-start items-center rounded-t-md border border-border border-b-2 border-b-gold bg-card px-4 text-sm font-semibold whitespace-nowrap text-ink shadow-sm",
                 }}
-
               >
                 {tab.label}
               </Link>

@@ -213,6 +213,7 @@ export type DocumentVersion = {
 };
 
 export type Approval = {
+  due_date?: string | null;
   id: string;
   document_id: string;
   version: number;
@@ -229,6 +230,7 @@ export type Approval = {
 export type ThreadContext = "project" | "task" | "document" | "scene";
 
 export type DiscussionThread = {
+  is_general?: boolean;
   id: string;
   project_id: string;
   context_type: ThreadContext;
@@ -290,6 +292,7 @@ export type Mention = {
 };
 
 export type Notification = {
+  raw_type?: string;
   id: string;
   project_id: string;
   recipient_id: string;
@@ -495,8 +498,38 @@ export async function previewTaskReschedule(
   return (data as ReschedulePreviewRow[] | null) ?? [];
 }
 
+const productionRows = new Map<string, unknown[]>();
+let readGeneration = 0;
+export function clearProductionCache() {
+  productionRows.clear();
+  readGeneration++;
+}
 /** Reads every table and maps it into the shapes the interface renders. */
-export async function loadProductionData(): Promise<ProductionData> {
+export async function loadProductionData(options?: {
+  refreshTables: string[];
+}): Promise<ProductionData> {
+  const snapshot = ++readGeneration;
+  const staged = new Map<string, unknown[]>();
+  async function readTable<T>(
+    table: string,
+    fetchPage: (
+      from: number,
+      to: number,
+    ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+    maximum = Infinity,
+  ) {
+    if (options && !options.refreshTables.includes(table) && productionRows.has(table))
+      return { data: productionRows.get(table) as T[], error: null };
+    const data: T[] = [];
+    for (let start = 0; start < maximum; start += 500) {
+      const page = await fetchPage(start, Math.min(start + 499, maximum - 1));
+      if (page.error) return { data: null, error: page.error };
+      data.push(...(page.data ?? []));
+      if (!page.data || page.data.length < Math.min(500, maximum - start)) break;
+    }
+    staged.set(table, data);
+    return { data, error: null };
+  }
   const [
     peopleRes,
     departmentsRes,
@@ -522,29 +555,133 @@ export async function loadProductionData(): Promise<ProductionData> {
     notificationsRes,
     auditRes,
   ] = await Promise.all([
-    supabase.from("people").select("*").order("full_name"),
-    supabase.from("departments").select("*").order("name"),
-    supabase.from("department_memberships").select("*"),
-    supabase.from("projects").select("*").order("created_at"),
-    supabase.from("project_departments").select("*"),
-    supabase.from("project_assignments").select("*").order("created_at"),
-    supabase.from("department_job_titles").select("*").order("sort_order"),
-    supabase.from("scenes").select("*").order("sort_order"),
-    supabase.from("milestones").select("*").order("sort_order"),
-    supabase.from("tasks").select("*").order("sort_order"),
-    supabase.from("task_dependencies").select("*"),
-    supabase.from("documents").select("*").order("created_at"),
-    supabase.from("document_versions").select("*").order("version_number"),
-    supabase.from("approvals").select("*").order("requested_at"),
-    supabase.from("document_folders").select("*").order("name"),
-    supabase.from("document_stars").select("*"),
-    supabase.from("discussion_threads").select("*").order("created_at"),
-    supabase.from("comments").select("*").order("created_at"),
-    supabase.from("comment_reactions").select("*").order("created_at"),
-    supabase.from("comment_attachments").select("*").order("created_at"),
-    supabase.from("mentions").select("*"),
-    supabase.from("notifications").select("*").order("created_at", { ascending: false }),
-    supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(200),
+    readTable("people", (from, to) =>
+      supabase.from("people").select("*").order("full_name").order("id").range(from, to),
+    ),
+    readTable("departments", (from, to) =>
+      supabase.from("departments").select("*").order("name").order("id").range(from, to),
+    ),
+    readTable("department_memberships", (from, to) =>
+      supabase
+        .from("department_memberships")
+        .select("*")
+        .order("department_id")
+        .order("person_id")
+        .range(from, to),
+    ),
+    readTable("projects", (from, to) =>
+      supabase.from("projects").select("*").order("created_at").order("id").range(from, to),
+    ),
+    readTable("project_departments", (from, to) =>
+      supabase
+        .from("project_departments")
+        .select("*")
+        .order("project_id")
+        .order("department_id")
+        .range(from, to),
+    ),
+    readTable("project_assignments", (from, to) =>
+      supabase
+        .from("project_assignments")
+        .select("*")
+        .order("created_at")
+        .order("id")
+        .range(from, to),
+    ),
+    readTable("department_job_titles", (from, to) =>
+      supabase
+        .from("department_job_titles")
+        .select("*")
+        .order("sort_order")
+        .order("id")
+        .range(from, to),
+    ),
+    readTable("scenes", (from, to) =>
+      supabase.from("scenes").select("*").order("sort_order").order("id").range(from, to),
+    ),
+    readTable("milestones", (from, to) =>
+      supabase.from("milestones").select("*").order("sort_order").order("id").range(from, to),
+    ),
+    readTable("tasks", (from, to) =>
+      supabase.from("tasks").select("*").order("sort_order").order("id").range(from, to),
+    ),
+    readTable("task_dependencies", (from, to) =>
+      supabase.from("task_dependencies").select("*").order("id").range(from, to),
+    ),
+    readTable("documents", (from, to) =>
+      supabase.from("documents").select("*").order("created_at").order("id").range(from, to),
+    ),
+    readTable("document_versions", (from, to) =>
+      supabase
+        .from("document_versions")
+        .select("*")
+        .order("version_number")
+        .order("id")
+        .range(from, to),
+    ),
+    readTable("approvals", (from, to) =>
+      supabase.from("approvals").select("*").order("requested_at").order("id").range(from, to),
+    ),
+    readTable("document_folders", (from, to) =>
+      supabase.from("document_folders").select("*").order("name").order("id").range(from, to),
+    ),
+    readTable("document_stars", (from, to) =>
+      supabase
+        .from("document_stars")
+        .select("*")
+        .order("document_id")
+        .order("person_id")
+        .range(from, to),
+    ),
+    readTable("discussion_threads", (from, to) =>
+      supabase
+        .from("discussion_threads")
+        .select("*")
+        .order("created_at")
+        .order("id")
+        .range(from, to),
+    ),
+    readTable("comments", (from, to) =>
+      supabase.from("comments").select("*").order("created_at").order("id").range(from, to),
+    ),
+    readTable("comment_reactions", (from, to) =>
+      supabase
+        .from("comment_reactions")
+        .select("*")
+        .order("created_at")
+        .order("id")
+        .range(from, to),
+    ),
+    readTable("comment_attachments", (from, to) =>
+      supabase
+        .from("comment_attachments")
+        .select("*")
+        .order("created_at")
+        .order("id")
+        .range(from, to),
+    ),
+    readTable("mentions", (from, to) =>
+      supabase.from("mentions").select("*").order("id").range(from, to),
+    ),
+    readTable("notifications", (from, to) =>
+      supabase
+        .from("notifications")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to),
+    ),
+    readTable(
+      "audit_log",
+      (from, to) =>
+        supabase
+          .from("audit_log")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .order("id")
+          .range(from, to),
+      200,
+    ),
   ]);
 
   for (const res of [
@@ -575,6 +712,7 @@ export async function loadProductionData(): Promise<ProductionData> {
     if (res.error) throw new Error(res.error.message);
   }
 
+  if (snapshot === readGeneration) for (const [key, rows] of staged) productionRows.set(key, rows);
   const memberships = membershipsRes.data ?? [];
 
   const projectAssignments: ProjectAssignment[] = (assignmentsRes.data ?? []).map((a) => ({
@@ -867,6 +1005,7 @@ export async function loadProductionData(): Promise<ProductionData> {
       actor_id: a.decided_by ?? a.requested_by ?? "",
       requested_by_id: a.requested_by ?? "",
       reviewer_id: a.reviewer_id,
+      due_date: a.due_date,
       document_version_id: a.document_version_id,
       decided_by_id: a.decided_by ?? "",
       created_at: a.decided_at ?? a.requested_at,
@@ -930,7 +1069,12 @@ export async function loadProductionData(): Promise<ProductionData> {
       task_id: t.task_id,
       document_id: t.document_id,
       scene_id: t.scene_id ?? null,
-      subject: opener ? firstLine(opener.body) : (fallback ?? "Discussion"),
+      is_general: t.is_general,
+      subject: t.is_general
+        ? "Main conversation"
+        : opener
+          ? firstLine(opener.body)
+          : (fallback ?? "Conversation"),
       created_by_id: t.created_by ?? "",
       created_at: t.created_at,
     };
@@ -971,6 +1115,7 @@ export async function loadProductionData(): Promise<ProductionData> {
       id: n.id,
       project_id: n.project_id ?? "",
       recipient_id: n.person_id,
+      raw_type: n.type,
       kind,
       summary,
       created_at: n.created_at,
@@ -1303,7 +1448,20 @@ export async function writeApproval(
   actorId: string,
   versionId: string,
   reviewerId?: string,
+  dueDate?: string,
 ) {
+  if (decision === "requested" && dueDate) {
+    const { error } = await callRpc("request_document_review", {
+      p_document: documentId,
+      p_version: versionId,
+      p_note: note,
+      p_actor: actorId,
+      p_reviewer: reviewerId,
+      p_due_date: dueDate,
+    });
+    if (error) throw new Error(error.message);
+    return;
+  }
   const { error } = await callRpc("review_document", {
     p_document: documentId,
     p_version: versionId,
@@ -1440,6 +1598,9 @@ async function conversationParticipants(threadId: string): Promise<string[]> {
       .maybeSingle();
     people.push(doc?.created_by);
   }
+  const followers = await callRpc("conversation_followers", { p_thread: threadId });
+  if (!followers.error)
+    people.push(...((followers.data ?? []) as { person_id: string }[]).map((r) => r.person_id));
   return people.filter((id): id is string => Boolean(id));
 }
 
@@ -1536,6 +1697,14 @@ export async function writeThread(input: {
     }
   }
 
+  if (!threadId && input.contextType === "scene" && input.sceneId && !input.subject.trim()) {
+    const general = await callRpc("ensure_set_chat", {
+      p_scene: input.sceneId,
+      p_actor: input.authorId,
+    });
+    if (general.error) throw new Error(general.error.message);
+    threadId = general.data as string;
+  }
   if (!threadId) {
     const { data, error } = await supabase
       .from("discussion_threads")

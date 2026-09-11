@@ -1,6 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { FileText, ListChecks, MessageSquare, Search as SearchIcon, Theater, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  FileText,
+  ListChecks,
+  MessageSquare,
+  Search as SearchIcon,
+  Theater,
+  X,
+} from "lucide-react";
 
 import { departments, people, useStore } from "@/lib/store";
 import { searchAll, type SearchHit } from "@/lib/search";
@@ -31,8 +38,9 @@ export const Route = createFileRoute("/search")({
 
 const groups = [
   { kind: "project", label: "Productions", icon: Theater },
-  { kind: "task", label: "Work items", icon: ListChecks },
-  { kind: "document", label: "Drawings & documents", icon: FileText },
+  { kind: "set", label: "Sets", icon: Theater },
+  { kind: "task", label: "Tasks", icon: ListChecks },
+  { kind: "document", label: "Files", icon: FileText },
   { kind: "comment", label: "What people said", icon: MessageSquare },
 ] as const;
 
@@ -49,6 +57,17 @@ function HitLink({ hit }: { hit: SearchHit }) {
       </Link>
     );
   }
+  if (hit.kind === "set")
+    return (
+      <Link
+        to="/projects/$projectId/sets"
+        params={{ projectId: hit.projectId }}
+        search={{ set: hit.sceneId }}
+        className="text-sm font-semibold text-ink hover:underline"
+      >
+        {hit.title}
+      </Link>
+    );
   if (hit.kind === "task") {
     return (
       <Link
@@ -113,7 +132,9 @@ function HitLink({ hit }: { hit: SearchHit }) {
 function SearchPage() {
   const q = Route.useSearch().q ?? "";
   const navigate = Route.useNavigate();
-  const { projects, tasks, documents, milestones, threads, comments } = useStore();
+  const { projects, tasks, documents, milestones, threads, comments, scenes } = useStore();
+  const [kind, setKind] = useState("");
+  const [project, setProject] = useState("");
   const setQuery = (value: string) => {
     void navigate({ search: value ? { q: value } : {}, replace: true, resetScroll: false });
   };
@@ -121,12 +142,15 @@ function SearchPage() {
   const hits = useMemo(
     () =>
       searchAll(
-        { projects, tasks, documents, milestones, departments, people, threads, comments },
+        { projects, tasks, documents, milestones, departments, people, threads, comments, scenes },
         q,
       ),
-    [projects, tasks, documents, milestones, threads, comments, q],
+    [projects, tasks, documents, milestones, threads, comments, scenes, q],
   );
 
+  const visibleHits = hits.filter(
+    (h) => (!kind || h.kind === kind) && (!project || h.projectId === project),
+  );
   return (
     <main className="mx-auto max-w-[1000px] px-4 py-6 sm:px-6 sm:py-8">
       <h1 className="font-display text-3xl text-ink sm:text-4xl">Search</h1>
@@ -137,7 +161,7 @@ function SearchPage() {
           autoFocus
           value={q}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Production, work item, drawing, or something someone said"
+          placeholder="Search sets, tasks, files, and messages…"
           aria-label="Search"
           className="min-h-12 w-full bg-transparent text-base text-ink outline-none sm:text-sm"
         />
@@ -154,22 +178,56 @@ function SearchPage() {
       </div>
 
       {q.trim().length < 2 && (
-        <p className="mt-6 text-sm text-ink-soft">Type at least two characters. Search by title, description, department, or team member.</p>
+        <p className="mt-6 text-sm text-ink-soft">
+          Type at least two characters. Search by title, description, department, or team member.
+        </p>
       )}
 
+      <div className="mt-3 flex flex-wrap gap-2">
+        <select
+          aria-label="Search result type"
+          value={kind}
+          onChange={(e) => setKind(e.target.value)}
+          className="min-h-11 rounded border bg-card px-3 text-sm"
+        >
+          <option value="">Everything</option>
+          {groups.map((g) => (
+            <option key={g.kind} value={g.kind}>
+              {g.label}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Search within production"
+          value={project}
+          onChange={(e) => setProject(e.target.value)}
+          className="min-h-11 max-w-full rounded border bg-card px-3 text-sm"
+        >
+          <option value="">All productions</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </div>
       <div role="status" aria-live="polite" aria-atomic="true">
-        {q.trim().length >= 2 && (
-          hits.length === 0 ? (
-            <p className="surface-card mt-6 p-4 text-sm text-ink-soft">Nothing matches “{q.trim()}”. Try fewer words or a different department or team member.</p>
+        {q.trim().length >= 2 &&
+          (visibleHits.length === 0 ? (
+            <p className="surface-card mt-6 p-4 text-sm text-ink-soft">
+              Nothing matches “{q.trim()}”. Try fewer words or a different department or team
+              member.
+            </p>
           ) : (
-            <p className="mt-4 text-sm text-ink-soft">{hits.length} result{hits.length === 1 ? "" : "s"} for “{q.trim()}”.</p>
-          )
-        )}
+            <p className="mt-4 text-sm text-ink-soft">
+              {visibleHits.length} result{visibleHits.length === 1 ? "" : "s"} for “{q.trim()}”.
+            </p>
+          ))}
       </div>
 
       <div className="mt-6 space-y-4">
         {groups.map((group) => {
-          const rows = hits.filter((h) => h.kind === group.kind);
+          const rows = visibleHits.filter((h) => h.kind === group.kind);
           if (rows.length === 0) return null;
           return (
             <section key={group.kind} className="surface-card overflow-hidden">

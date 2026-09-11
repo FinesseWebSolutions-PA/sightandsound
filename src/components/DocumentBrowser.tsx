@@ -1,3 +1,5 @@
+import { PersonPicker } from "./PersonPicker";
+import { toast } from "sonner";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FileText,
@@ -37,7 +39,7 @@ import { AttachmentList } from "./AttachmentList";
 import { FolderSelect } from "./FolderSelect";
 import { MentionInput } from "./MentionInput";
 import { MentionText } from "./MentionText";
-import { people, personById, useStore } from "@/lib/store";
+import { departments, people, personById, useStore } from "@/lib/store";
 import {
   folderTrail,
   folderLabel,
@@ -110,6 +112,9 @@ export function DocumentBrowser({
   const [location, setLocation] = useState(openFolder);
   const [openedId, setOpenedId] = useState(openDocumentId);
   const [query, setQuery] = useState("");
+  const [deptFilter, setDeptFilter] = useState("");
+  const [setFilter, setSetFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
   const [fileState, setFileState] = useState("all");
   const [grid, setGrid] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
@@ -157,7 +162,19 @@ export function DocumentBrowser({
   const stars = new Set(
     documentStars.filter((s) => s.person_id === currentUserId).map((s) => s.document_id),
   );
+  const fileType = (d: Document) => {
+    const file =
+      documentVersions.find((v) => v.document_id === d.id && v.version === d.current_version)
+        ?.file_label || d.title;
+    return file.includes(".") ? file.split(".").at(-1)?.toLowerCase() || "" : "";
+  };
   const visibleDocs = projectDocs
+    .filter(
+      (d) =>
+        (!deptFilter || d.department_id === deptFilter) &&
+        (!setFilter || d.scene_id === setFilter) &&
+        (!typeFilter || fileType(d) === typeFilter),
+    )
     .filter(
       (d) =>
         fileState === "all" ||
@@ -228,6 +245,19 @@ export function DocumentBrowser({
                 action.type === "rename" ? name : destination || null,
               );
       if (ok) {
+        if (action.type === "trash") {
+          const trashed = action;
+          toast.success("Moved to Trash", {
+            action: {
+              label: "Undo",
+              onClick: () => {
+                void (trashed.folder
+                  ? store.changeFolder(trashed.folder.id, "restore", "", null)
+                  : store.changeDocuments(trashed.ids ?? [], "restore", null));
+              },
+            },
+          });
+        }
         setAction(null);
         setSelected([]);
       } else setActionError("Could not save this change. Please try again.");
@@ -257,7 +287,7 @@ export function DocumentBrowser({
           file: item.file,
           folder: null,
           folderId: item.folderId,
-          sceneId: null,
+          sceneId: sceneId ?? null,
           requiresApproval: false,
         });
         setQueue((prev) =>
@@ -333,6 +363,18 @@ export function DocumentBrowser({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          onSelect={() => {
+            const url = new URL(`/projects/${projectId}/documents`, window.location.origin);
+            url.searchParams.set("document", doc.id);
+            void navigator.clipboard.writeText(url.toString()).then(
+              () => toast.success("File link copied"),
+              () => toast.error("Could not copy. Open the file and copy the address."),
+            );
+          }}
+        >
+          Copy link
+        </DropdownMenuItem>
         {view !== "trash" && (
           <DropdownMenuItem onSelect={() => openFile(doc.id)}>Open file</DropdownMenuItem>
         )}
@@ -431,30 +473,34 @@ export function DocumentBrowser({
             </nav>
             <div className="ml-auto flex gap-2">
               {writable && view !== "trash" && (
-                <>
-                  <button
-                    type="button"
-                    className={button}
-                    disabled={uploading.current}
-                    onClick={() => fileInput.current?.click()}
-                  >
-                    <Upload className="size-4" />
-                    Upload files
-                  </button>
-                  {view === "files" && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className={button}
-                      onClick={() => {
-                        startAction({ type: "new" });
-                        setName("");
-                      }}
+                      className={`${button} bg-ink text-cream-soft`}
+                      disabled={uploading.current}
                     >
-                      <FolderPlus className="size-4" />
-                      New folder
+                      + New
                     </button>
-                  )}
-                </>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => fileInput.current?.click()}>
+                      <Upload className="mr-2 size-4" />
+                      Upload files
+                    </DropdownMenuItem>
+                    {view === "files" && (
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          startAction({ type: "new" });
+                          setName("");
+                        }}
+                      >
+                        <FolderPlus className="mr-2 size-4" />
+                        New folder
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
               <input
                 ref={fileInput}
@@ -503,6 +549,71 @@ export function DocumentBrowser({
                 <option value="reference">Reference files</option>
               </select>
             </label>
+            <label className="text-xs text-ink-soft">
+              Department
+              <select
+                aria-label="Filter files by department"
+                value={deptFilter}
+                onChange={(e) => setDeptFilter(e.target.value)}
+                className="mt-1 block min-h-10 rounded border bg-card px-2 text-sm"
+              >
+                <option value="">All departments</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {!sceneId && (
+              <label className="text-xs text-ink-soft">
+                Set
+                <select
+                  aria-label="Filter files by set"
+                  value={setFilter}
+                  onChange={(e) => setSetFilter(e.target.value)}
+                  className="mt-1 block min-h-10 max-w-full rounded border bg-card px-2 text-sm"
+                >
+                  <option value="">All sets</option>
+                  {store.scenes
+                    .filter((s) => s.project_id === projectId)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            )}
+            <label className="text-xs text-ink-soft">
+              Type
+              <select
+                aria-label="Filter files by type"
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="mt-1 block min-h-10 rounded border bg-card px-2 text-sm"
+              >
+                <option value="">All types</option>
+                {[
+                  ...new Set(
+                    projectDocs
+                      .map(fileType)
+                      .filter((v): v is string => Boolean(v && v.length < 8)),
+                  ),
+                ].map((t) => (
+                  <option key={t} value={t}>
+                    {t.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {writable && view !== "trash" && (
+              <p className="w-full text-xs text-ink-soft">
+                Upload destination: {store.projects.find((p) => p.id === projectId)?.name} →{" "}
+                {folderLabel(folders, folderId)}. Files start as reference files; request approval
+                when needed.
+              </p>
+            )}
           </header>
           {selected.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 border-b bg-cream p-2 text-sm">
@@ -849,6 +960,7 @@ function FileViewer({
     currentUserId,
     setDocumentApprovalRequirement,
     documentFolders,
+    projectAssignments: reviewAssignments,
   } = useStore();
   const versions = documentVersions
     .filter((v) => v.document_id === doc.id)
@@ -862,6 +974,7 @@ function FileViewer({
   const [requesting, setRequesting] = useState(false);
   const [changing, setChanging] = useState(false);
   const [reviewer, setReviewer] = useState("");
+  const [reviewDate, setReviewDate] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -891,8 +1004,17 @@ function FileViewer({
         decision === "approved" ? "" : note,
         version.id,
         reviewer,
+        reviewDate,
       );
       if (ok) {
+        toast.success(
+          decision === "requested"
+            ? "Review requested"
+            : decision === "approved"
+              ? `Approved v${version.version}`
+              : "Changes requested",
+        );
+        if (decision !== "requested") onClose();
         setRequesting(false);
         setChanging(false);
         setNote("");
@@ -1077,6 +1199,10 @@ function FileViewer({
                     </p>
                     {pending && (
                       <p className="mt-1 text-sm">
+                        Requested by{" "}
+                        {personById(pending.requested_by_id)?.full_name ?? "a team member"}
+                        {pending.due_date ? ` · Needed by ${pending.due_date}` : ""}
+                        <br />
                         Waiting for{" "}
                         {personById(pending.reviewer_id ?? "")?.full_name ?? "a reviewer"} · v
                         {version?.version}
@@ -1115,23 +1241,36 @@ function FileViewer({
                   )}
                   {requesting && current && (
                     <div className="space-y-3 rounded border p-3">
-                      <label className="block space-y-1 text-sm">
-                        <span>Reviewer</span>
-                        <select
-                          aria-label="Reviewer"
-                          value={reviewer}
-                          onChange={(e) => setReviewer(e.target.value)}
-                          className="min-h-11 w-full rounded border bg-card px-2"
-                        >
-                          <option value="">Choose a reviewer…</option>
-                          {people
-                            .filter((p) => p.role !== "viewer")
-                            .map((p) => (
-                              <option value={p.id} key={p.id}>
-                                {p.full_name}
-                              </option>
-                            ))}
-                        </select>
+                      <PersonPicker
+                        label="Reviewer"
+                        value={reviewer}
+                        onChange={setReviewer}
+                        placeholder="Search for a reviewer…"
+                        excludeIds={people.filter((p) => p.role === "viewer").map((p) => p.id)}
+                        suggestedIds={[
+                          ...reviewAssignments
+                            .filter(
+                              (a) =>
+                                a.project_id === doc.project_id &&
+                                a.department_id === doc.department_id &&
+                                (a.scene_id === doc.scene_id || a.is_head),
+                            )
+                            .map((a) => a.person_id),
+                          ...departments
+                            .filter((d) => d.id === doc.department_id)
+                            .flatMap((d) => [d.owner_id, ...d.lead_ids]),
+                        ]}
+                        suggestedLabel="Responsible for this set and department"
+                      />
+                      <label className="block text-sm">
+                        Review needed by (optional)
+                        <input
+                          type="date"
+                          aria-label="Review needed by"
+                          value={reviewDate}
+                          onChange={(e) => setReviewDate(e.target.value)}
+                          className="mt-1 block min-h-11 rounded border px-3"
+                        />
                       </label>
                       <MentionInput
                         value={note}
@@ -1157,7 +1296,7 @@ function FileViewer({
                     </div>
                   )}
                   {mayDecide && !changing && (
-                    <div className="flex gap-2">
+                    <div className="sticky bottom-0 z-10 flex gap-2 border-t bg-card p-3">
                       <button
                         className="btn-primary min-h-11 flex-1 px-3"
                         disabled={busy}

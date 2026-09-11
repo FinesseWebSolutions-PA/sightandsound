@@ -1,3 +1,4 @@
+import { PersonalWorkflowProvider } from "@/components/PersonalWorkflowProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -126,12 +127,14 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <DemoGate>
         <StoreProvider>
-          <div className="min-h-screen bg-background pb-[calc(60px+env(safe-area-inset-bottom))] md:pb-0">
-            <AppHeader />
-            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-            <Outlet />
-            <BottomTabBar />
-          </div>
+          <PersonalWorkflowProvider>
+            <div className="min-h-screen bg-background pb-[calc(60px+env(safe-area-inset-bottom))] md:pb-0">
+              <AppHeader />
+              {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+              <Outlet />
+              <BottomTabBar />
+            </div>
+          </PersonalWorkflowProvider>
         </StoreProvider>
       </DemoGate>
     </QueryClientProvider>

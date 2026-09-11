@@ -1,3 +1,5 @@
+import { usePersonalWorkflow } from "@/lib/personal-context";
+import { notificationDisposition } from "@/lib/notification-rules";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Inbox, LayoutGrid, Search, UserRound, Users, X } from "lucide-react";
@@ -14,8 +16,15 @@ const tabActive =
 
 export function BottomTabBar() {
   const { role, setRole, setViewingPerson, currentUserId, notifications } = useStore();
+  const { state: personal } = usePersonalWorkflow();
   const person = people.find((p) => p.id === currentUserId);
-  const myUnread = notifications.filter((n) => !n.read && n.recipient_id === currentUserId).length;
+  const myUnread = notifications.filter(
+    (n) =>
+      !n.read &&
+      n.recipient_id === currentUserId &&
+      notificationDisposition(personal.notifications.find((s) => s.notification_id === n.id)) ===
+        "active",
+  ).length;
   const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
@@ -26,7 +35,7 @@ export function BottomTabBar() {
       >
         <div className="flex items-stretch px-2">
           <Link
-            to="/"
+            to="/productions"
             activeOptions={{ exact: true }}
             className={tabBase}
             activeProps={{ className: tabActive }}
@@ -34,7 +43,12 @@ export function BottomTabBar() {
             <LayoutGrid aria-hidden className="size-6" />
             Productions
           </Link>
-          <Link to="/inbox" className={tabBase} activeProps={{ className: tabActive }}>
+          <Link
+            to="/"
+            activeOptions={{ exact: true }}
+            className={tabBase}
+            activeProps={{ className: tabActive }}
+          >
             <span className="relative flex items-center">
               <Inbox aria-hidden className="size-6" />
               {myUnread > 0 && (

@@ -257,6 +257,7 @@ function SetDetail({
     saving,
   } = useStore();
   const [nameDraft, setNameDraft] = useState(set.name);
+  const [portalDraft, setPortalDraft] = useState(set.portal_url);
   const tab = section || "overview";
   const setTab = onSectionChange;
   const [scheduleMode, setScheduleMode] = useState<"gantt" | "calendar">("gantt");
@@ -326,16 +327,22 @@ function SetDetail({
           <div className="mt-2">
             {" "}
             {canEdit ? (
-              <input
-                aria-label="Set name"
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                onBlur={() => {
-                  if (nameDraft.trim() && nameDraft !== set.name)
-                    renameScene(set.id, projectId, nameDraft);
-                }}
-                className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 font-display text-2xl text-ink focus:ring-2 focus:ring-ring focus:outline-none"
-              />
+              <div className="flex flex-wrap gap-2">
+                <input
+                  aria-label="Set name"
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 font-display text-2xl text-ink focus:ring-2 focus:ring-ring focus:outline-none"
+                />
+                <button
+                  type="button"
+                  disabled={saving || !nameDraft.trim() || nameDraft === set.name}
+                  onClick={() => void renameScene(set.id, projectId, nameDraft)}
+                  className="min-h-11 rounded border px-3 text-sm disabled:opacity-50"
+                >
+                  Save name
+                </button>
+              </div>
             ) : (
               <h3 className="font-display text-2xl text-ink">{set.name}</h3>
             )}
@@ -503,19 +510,26 @@ function SetDetail({
               <dt className="rule-label">Portal (set simulation)</dt>
               <dd className="mt-1 space-y-2">
                 {canEdit && (
-                  <input
-                    type="url"
-                    aria-label="Portal (set simulation) link"
-                    defaultValue={set.portal_url}
-                    placeholder="https://…"
-                    onBlur={(e) => {
-                      if (e.target.value.trim() !== set.portal_url)
-                        void updateScene(set.id, projectId, {
-                          portal_link_url: e.target.value,
-                        });
-                    }}
-                    className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink focus:ring-2 focus:ring-ring focus:outline-none sm:text-sm"
-                  />
+                  <div>
+                    <input
+                      type="url"
+                      aria-label="Portal (set simulation) link"
+                      value={portalDraft}
+                      onChange={(e) => setPortalDraft(e.target.value)}
+                      placeholder="https://…"
+                      className="min-h-11 w-full rounded-md border border-border bg-card px-2.5 text-base text-ink focus:ring-2 focus:ring-ring focus:outline-none sm:text-sm"
+                    />
+                    <button
+                      type="button"
+                      disabled={saving || portalDraft === set.portal_url}
+                      onClick={() =>
+                        void updateScene(set.id, projectId, { portal_link_url: portalDraft })
+                      }
+                      className="mt-2 min-h-11 rounded border px-3 text-sm disabled:opacity-50"
+                    >
+                      Save link
+                    </button>
+                  </div>
                 )}
                 {set.portal_url ? (
                   <a
@@ -553,6 +567,7 @@ function SetDetail({
       >
         {[
           { id: "overview", label: "Overview" },
+          { id: "tasks", label: "Tasks" },
           { id: "conversation", label: "Conversations" },
           { id: "documents", label: "Files" },
         ].map((t) => (
@@ -568,24 +583,23 @@ function SetDetail({
         ))}
         <select
           aria-label="More set sections"
-          value={["overview", "conversation", "documents"].includes(tab) ? "" : tab}
+          value={["overview", "tasks", "conversation", "documents"].includes(tab) ? "" : tab}
           onChange={(e) => {
             if (e.target.value) setTab(e.target.value);
           }}
-          className={`min-h-11 min-w-0 max-w-full flex-1 rounded-md border border-border px-2 text-sm sm:flex-none ${["overview", "conversation", "documents"].includes(tab) ? "bg-card text-ink-soft" : "bg-ink text-cream-soft"}`}
+          className={`min-h-11 min-w-0 max-w-full flex-1 rounded-md border border-border px-2 text-sm sm:flex-none ${["overview", "tasks", "conversation", "documents"].includes(tab) ? "bg-card text-ink-soft" : "bg-ink text-cream-soft"}`}
         >
           <option value="" disabled>
             More…
           </option>
           <option value="updates">Updates & decisions</option>
-          <option value="tasks">Tasks</option>
           <option value="planning">Planning & capacity</option>
           <option value="schedule">Schedule</option>
           <option value="team">Team</option>
         </select>
       </nav>
       {(tab === "overview" || tab === "documents") && (
-        <SetInstructions key={`instructions-${set.id}`} set={set} />
+        <SetInstructions key={`instructions-${set.id}`} set={set} compact={tab === "overview"} />
       )}
 
       {(tab === "overview" || tab === "updates" || tab === "planning") && (

@@ -14,13 +14,14 @@ import {
 } from "@/lib/set-instruction-data";
 import { button, field } from "./SetUpdateComposer";
 
-export function SetInstructions({ set }: { set: Scene }) {
+export function SetInstructions({ set, compact = false }: { set: Scene; compact?: boolean }) {
   const { documents, documentVersions, approvals, currentUserId, can, isClosed, libraryAction } =
     useStore();
   const [pins, setPins] = useState<SetInstruction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [managing, setManaging] = useState(false);
+  const [expanded, setExpanded] = useState(!compact);
   const [busy, setBusy] = useState(false);
   const [category, setCategory] = useState<InstructionCategory>("manual");
   const [documentId, setDocumentId] = useState("");
@@ -99,90 +100,104 @@ export function SetInstructions({ set }: { set: Scene }) {
           </button>
         </p>
       )}
-      {loading ? (
-        <p role="status" className="mt-3 text-sm text-ink-soft">
-          Loading instructions…
-        </p>
-      ) : (
-        <div className="mt-4 grid gap-4 lg:grid-cols-3">
-          {instructionCategories.map((kind) => (
-            <div key={kind.id} className="min-w-0 rounded-md border border-border p-3">
-              <h5 className="text-sm font-semibold text-ink">{kind.label}</h5>
-              <ul className="mt-2 space-y-3">
-                {pins
-                  .filter((p) => p.category === kind.id)
-                  .map((pin) => {
-                    const doc = setDocs.find((d) => d.id === pin.document_id);
-                    const state = instructionVersions(pin.document_id, documentVersions, approvals);
-                    return (
-                      <li key={pin.document_id} className="space-y-1 text-sm">
-                        <p className="break-words font-medium text-ink">
-                          {doc?.title ?? "Document unavailable or moved"}
-                        </p>
-                        {doc && state.currentApproved && state.latest ? (
-                          <Link
-                            to="/projects/$projectId/documents"
-                            params={{ projectId: set.project_id }}
-                            search={{ document: doc.id, version: state.latest.id }}
-                            className="block font-medium text-gold-deep underline"
-                          >
-                            Open approved v{state.latest.version}
-                          </Link>
-                        ) : doc ? (
-                          <>
-                            <p className="text-xs text-ink-soft">
-                              {state.lastApproved
-                                ? `Latest revision v${state.latest?.version} is not approved.`
-                                : "No approved version yet."}
-                            </p>
-                            {state.lastApproved && (
-                              <Link
-                                to="/projects/$projectId/documents"
-                                params={{ projectId: set.project_id }}
-                                search={{ document: doc.id, version: state.lastApproved.id }}
-                                className="block text-xs text-gold-deep underline"
-                              >
-                                Previous approved v{state.lastApproved.version} — older revision
-                              </Link>
-                            )}
+      {compact && (
+        <button
+          className="mt-2 min-h-10 text-sm text-gold-deep underline"
+          onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+        >
+          {expanded ? "Hide instruction files" : `Show instruction files (${pins.length})`}
+        </button>
+      )}
+      {(expanded || managing) &&
+        (loading ? (
+          <p role="status" className="mt-3 text-sm text-ink-soft">
+            Loading instructions…
+          </p>
+        ) : (
+          <div className="mt-4 grid gap-4 lg:grid-cols-3">
+            {instructionCategories.map((kind) => (
+              <div key={kind.id} className="min-w-0 rounded-md border border-border p-3">
+                <h5 className="text-sm font-semibold text-ink">{kind.label}</h5>
+                <ul className="mt-2 space-y-3">
+                  {pins
+                    .filter((p) => p.category === kind.id)
+                    .map((pin) => {
+                      const doc = setDocs.find((d) => d.id === pin.document_id);
+                      const state = instructionVersions(
+                        pin.document_id,
+                        documentVersions,
+                        approvals,
+                      );
+                      return (
+                        <li key={pin.document_id} className="space-y-1 text-sm">
+                          <p className="break-words font-medium text-ink">
+                            {doc?.title ?? "Document unavailable or moved"}
+                          </p>
+                          {doc && state.currentApproved && state.latest ? (
                             <Link
                               to="/projects/$projectId/documents"
                               params={{ projectId: set.project_id }}
-                              search={{
-                                document: doc.id,
-                                ...(state.latest ? { version: state.latest.id } : {}),
-                              }}
-                              className="block text-xs text-gold-deep underline"
+                              search={{ document: doc.id, version: state.latest.id }}
+                              className="block font-medium text-gold-deep underline"
                             >
-                              Review latest file
+                              Open approved v{state.latest.version}
                             </Link>
-                          </>
-                        ) : (
-                          <p className="text-xs text-ink-soft">
-                            Choose a file from this set to replace this link.
-                          </p>
-                        )}
-                        {editable && managing && (
-                          <button
-                            disabled={busy}
-                            className={button}
-                            aria-label={`Unpin ${doc?.title ?? "unavailable document"} from ${kind.label}`}
-                            onClick={() => void save(pin.document_id, kind.id, true)}
-                          >
-                            Unpin
-                          </button>
-                        )}
-                      </li>
-                    );
-                  })}
-              </ul>
-              {!pins.some((p) => p.category === kind.id) && (
-                <p className="mt-2 text-xs text-ink-soft">No instructions linked yet.</p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+                          ) : doc ? (
+                            <>
+                              <p className="text-xs text-ink-soft">
+                                {state.lastApproved
+                                  ? `Latest revision v${state.latest?.version} is not approved.`
+                                  : "No approved version yet."}
+                              </p>
+                              {state.lastApproved && (
+                                <Link
+                                  to="/projects/$projectId/documents"
+                                  params={{ projectId: set.project_id }}
+                                  search={{ document: doc.id, version: state.lastApproved.id }}
+                                  className="block text-xs text-gold-deep underline"
+                                >
+                                  Previous approved v{state.lastApproved.version} — older revision
+                                </Link>
+                              )}
+                              <Link
+                                to="/projects/$projectId/documents"
+                                params={{ projectId: set.project_id }}
+                                search={{
+                                  document: doc.id,
+                                  ...(state.latest ? { version: state.latest.id } : {}),
+                                }}
+                                className="block text-xs text-gold-deep underline"
+                              >
+                                Review latest file
+                              </Link>
+                            </>
+                          ) : (
+                            <p className="text-xs text-ink-soft">
+                              Choose a file from this set to replace this link.
+                            </p>
+                          )}
+                          {editable && managing && (
+                            <button
+                              disabled={busy}
+                              className={button}
+                              aria-label={`Unpin ${doc?.title ?? "unavailable document"} from ${kind.label}`}
+                              onClick={() => void save(pin.document_id, kind.id, true)}
+                            >
+                              Unpin
+                            </button>
+                          )}
+                        </li>
+                      );
+                    })}
+                </ul>
+                {!pins.some((p) => p.category === kind.id) && (
+                  <p className="mt-2 text-xs text-ink-soft">No instructions linked yet.</p>
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
       {editable && managing && (
         <div className="mt-4 space-y-3 border-t border-border pt-4">
           <p className="text-xs text-ink-soft">
