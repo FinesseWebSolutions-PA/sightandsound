@@ -284,6 +284,12 @@ export function DocumentBrowser({
 
   /** The file open in the Drive-style viewer. */
   const opened = documents.find((d) => d.id === openedId && d.project_id === projectId);
+  const currentVersion = opened
+    ? documentVersions
+        .filter((v) => v.document_id === opened.id)
+        .sort((a, b) => b.version - a.version)[0]
+    : undefined;
+  const hasPreviewFile = !!currentVersion?.storage_key;
 
   /** Uploading a file straight into wherever you're standing. */
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -887,20 +893,20 @@ export function DocumentBrowser({
             </button>
           </header>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-0 overflow-y-auto px-3 pb-3 lg:grid lg:grid-cols-[1.6fr_1fr] lg:gap-3 lg:overflow-hidden sm:px-4 sm:pb-4">
-            <div className="surface-card min-h-0 overflow-y-auto">
-              {(() => {
-                const current = documentVersions
-                  .filter((v) => v.document_id === opened.id)
-                  .sort((a, b) => b.version - a.version)[0];
-                return (
-                  <DocumentPreview
-                    storageKey={current?.storage_key ?? null}
-                    fileLabel={current?.file_label ?? opened.title}
-                  />
-                );
-              })()}
-            </div>
+          <div
+            className={cn(
+              "flex min-h-0 flex-1 flex-col gap-0 overflow-y-auto px-3 pb-3 lg:grid lg:gap-3 lg:overflow-hidden sm:px-4 sm:pb-4",
+              hasPreviewFile ? "lg:grid-cols-[1.6fr_1fr]" : "lg:grid-cols-1",
+            )}
+          >
+            {hasPreviewFile && (
+              <div className="surface-card min-h-0 overflow-y-auto">
+                <DocumentPreview
+                  storageKey={currentVersion?.storage_key ?? null}
+                  fileLabel={currentVersion?.file_label ?? opened.title}
+                />
+              </div>
+            )}
 
             <aside className="surface-card mt-3 flex min-h-0 flex-col overflow-hidden lg:mt-0">
               <div className="panel-header flex items-center gap-1 px-2 py-2">
