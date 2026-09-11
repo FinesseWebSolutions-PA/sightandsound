@@ -1244,7 +1244,7 @@ export function DocumentBrowser({
                             </li>
                           ))}
                       </ul>
-                    </details>
+                    </section>
                   </div>
                 ) : (
                   <div className="p-3">
