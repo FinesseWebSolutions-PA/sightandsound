@@ -65,6 +65,15 @@ export const readinessMeta: Record<ProjectDepartment["readiness"], StatusMeta> =
   complete: { label: "Complete", tone: "neutral", Icon: CheckCircle2 },
 };
 
+/** Cell states for the set readiness matrix; a superset of readinessMeta with an explicit "not started". */
+export const cellReadinessMeta = {
+  not_started: { label: "Not started", tone: "neutral", Icon: CircleDashed },
+  on_track: readinessMeta.on_track,
+  at_risk: readinessMeta.at_risk,
+  blocked: readinessMeta.blocked,
+  complete: readinessMeta.complete,
+} satisfies Record<string, StatusMeta>;
+
 /** Where a set stands as a whole; rolled up from the work tied to it. */
 export const setStatusMeta = {
   not_started: { label: "Not started", tone: "neutral", Icon: CircleDashed },
@@ -104,9 +113,18 @@ export const toneClasses: Record<Tone, string> = {
   neutral: "bg-cream text-ink-soft border-ink-soft/35 font-semibold",
 };
 
+/** Shown wherever a date simply has not been committed yet. */
+export const NO_DATE = "No date set";
 
-export function formatDate(value: string): string {
+function parseDay(value: string): Date | null {
   const date = new Date(value.length <= 10 ? `${value}T12:00:00Z` : value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function formatDate(value: string | null | undefined, fallback = NO_DATE): string {
+  if (!value) return fallback;
+  const date = parseDay(value);
+  if (!date) return fallback;
   return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -115,8 +133,12 @@ export function formatDate(value: string): string {
   });
 }
 
-export function formatDateTime(value: string): string {
-  const date = new Date(value);
+export function formatDateTime(value: string | null | undefined, fallback = NO_DATE): string {
+  if (!value) return fallback;
+  const date = parseDay(value);
+  if (!date) return fallback;
+  // A date-only value carries no real time of day, so don't invent "12:00 AM".
+  if (value.length <= 10) return formatDate(value, fallback);
   return date.toLocaleString("en-US", {
     month: "short",
     day: "numeric",
@@ -125,4 +147,81 @@ export function formatDateTime(value: string): string {
     minute: "2-digit",
     timeZone: "UTC",
   });
+}
+
+/* ------------------------------------------------------------------ *
+ * One place decides how a work item's schedule health reads, so a late
+ * or blocked item can never also be presented as comfortably slack.
+ * ------------------------------------------------------------------ */
+
+export type ScheduleHealth = {
+  /** The single dominant badge: Blocked → Late → Complete → tightness. */
+  meta: StatusMeta;
+  /** Supporting line; empty when it would repeat the badge. */
+  detail: string;
+  /** True when the item is behind or blocked — never show it as healthy. */
+  urgent: boolean;
+  lateDays: number;
+};
+
+const DAY = 24 * 60 * 60 * 1000;
+
+export function scheduleHealth(
+  item: {
+    status?: TaskStatus;
+    due_date?: string | null;
+    forecast_finish?: string | null;
+    criticality?: Criticality;
+    total_float_hours?: number | null;
+  },
+  today: Date = new Date(),
+): ScheduleHealth {
+  const target = item.forecast_finish || item.due_date || null;
+  const parsed = target ? parseDay(target) : null;
+  const lateDays =
+    parsed && item.status !== "complete"
+      ? Math.max(0, Math.floor((today.getTime() - parsed.getTime()) / DAY))
+      : 0;
+
+  if (item.status === "complete") {
+    return { meta: taskStatusMeta.complete, detail: "", urgent: false, lateDays: 0 };
+  }
+  if (item.status === "blocked") {
+    return {
+      meta: taskStatusMeta.blocked,
+      detail: lateDays > 0 ? `Late by ${lateDays} day${lateDays === 1 ? "" : "s"}` : "Waiting on other work",
+      urgent: true,
+      lateDays,
+    };
+  }
+  if (lateDays > 0) {
+    return {
+      meta: { label: `Late by ${lateDays} day${lateDays === 1 ? "" : "s"}`, tone: "danger", Icon: AlertTriangle },
+      detail: item.criticality === "critical" ? "On the critical path" : "",
+      urgent: true,
+      lateDays,
+    };
+  }
+  const criticality = item.criticality ?? "normal";
+  const meta = criticalityMeta[criticality];
+  const spare = item.total_float_hours ?? null;
+  return {
+    meta,
+    detail: criticality === "normal" && spare !== null && spare > 0 ? formatFloat(spare) : "",
+    urgent: false,
+    lateDays: 0,
+  };
+}
+
+
+/** Sorts by a date, keeping items with no date at the end of the list. */
+export function byDateAsc<T>(pick: (item: T) => string | null | undefined) {
+  return (a: T, b: T) => {
+    const x = pick(a) || "";
+    const y = pick(b) || "";
+    if (!x && !y) return 0;
+    if (!x) return 1;
+    if (!y) return -1;
+    return x.localeCompare(y);
+  };
 }

@@ -17,12 +17,12 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { departments, personById, taskDependencies, useStore } from "@/lib/store";
 import {
   approvalStateMeta,
-  criticalityMeta,
   dependencyTypeLabel,
   formatDate,
-  formatFloat,
+  scheduleHealth,
   taskStatusMeta,
 } from "@/lib/status";
+
 import type { TaskStatus } from "@/lib/production-data";
 
 const statusOptions: TaskStatus[] = ["not_started", "in_progress", "blocked", "complete"];
@@ -102,6 +102,8 @@ export function TaskDetailPanel({
   const parent = task.parent_task_id ? tasks.find((t) => t.id === task.parent_task_id) : undefined;
   const canAddSub = can.editCoreTimeline && !locked && !task.parent_task_id;
   const subDone = subItems.filter((t) => t.status === "complete").length;
+  const health = scheduleHealth(task);
+
 
   /** Files attach straight to this work item — no folders to choose. */
   async function addFiles(files: File[], requiresApproval: boolean) {
@@ -183,9 +185,14 @@ export function TaskDetailPanel({
         <div className="space-y-5 px-4 py-4">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge meta={taskStatusMeta[task.status]} size="sm" />
-            <StatusBadge meta={criticalityMeta[task.criticality]} size="sm" />
-            <span className="text-xs text-ink-soft">{formatFloat(task.total_float_hours)}</span>
+            {/* One dominant read of where this stands — a late or blocked item
+                is never also presented as comfortably slack. */}
+            {health.meta.label !== taskStatusMeta[task.status].label && (
+              <StatusBadge meta={health.meta} size="sm" />
+            )}
+            {health.detail && <span className="text-xs text-ink-soft">{health.detail}</span>}
           </div>
+
 
           {canUpdate && subItems.length === 0 && (
             <label className="block">

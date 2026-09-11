@@ -21,8 +21,12 @@ import {
   dependencyTypeLabel,
   formatDate,
   formatFloat,
+  milestoneStatusMeta,
+  scheduleHealth,
   setStatusMeta,
   taskStatusMeta,
+  toneClasses,
+  type Tone,
 } from "@/lib/status";
 import {
   addDays,
@@ -36,32 +40,72 @@ import {
   ZOOM_MAX,
   ZOOM_MIN,
 } from "@/lib/schedule";
-import type { ReschedulePreviewRow, Scene, Task } from "@/lib/production-data";
+import type { Milestone, ReschedulePreviewRow, Scene, Task } from "@/lib/production-data";
 
-/** Bar colouring is driven by the shared calculation, never chosen per view. */
-function barClasses(task: Task): string {
-  if (task.criticality === "critical") return "bg-danger border-danger";
-  if (task.criticality === "near_critical") return "bg-warning border-warning";
-  return "bg-info border-info";
+/** Solid bar fills, one per tone — always paired with an icon and a text label. */
+const toneBarClasses: Record<Tone, string> = {
+  success: "bg-success border-success",
+  warning: "bg-warning border-warning",
+  danger: "bg-danger border-danger",
+  info: "bg-info border-info",
+  neutral: "bg-neutral-status border-neutral-status",
+};
+
+/** Hatching laid over a blocked bar so it reads as blocked even without colour. */
+const BLOCKED_HATCH: React.CSSProperties = {
+  backgroundImage:
+    "repeating-linear-gradient(135deg, rgba(255,255,255,0.4) 0px, rgba(255,255,255,0.4) 4px, transparent 4px, transparent 9px)",
+};
+
+/** Bar colouring, icon and pattern are all driven by the one shared calculation. */
+function barLook(task: Task) {
+  const health = scheduleHealth(task);
+  return { health, className: toneBarClasses[health.meta.tone] };
 }
 
-/** The coloured edge on a row carries the same computed criticality. */
+/**
+ * A set reads as blocked or late when its own work does. Same shared
+ * calculation as the work items, so the chart and the queue always agree.
+ */
+function setHealth(tasks: Task[], slip: number) {
+  const healths = tasks.map((t) => scheduleHealth(t));
+  if (healths.some((h) => h.meta.label === taskStatusMeta.blocked.label)) {
+    return { meta: taskStatusMeta.blocked, blocked: true, tone: "danger" as Tone };
+  }
+  const late = healths.filter((h) => h.lateDays > 0);
+  if (late.length > 0 || slip > 0) {
+    const worst = Math.max(slip, ...late.map((h) => h.lateDays));
+    return {
+      meta: {
+        label: `Late by ${worst} day${worst === 1 ? "" : "s"}`,
+        tone: "danger" as Tone,
+        Icon: AlertTriangle,
+      },
+      blocked: false,
+      tone: "danger" as Tone,
+    };
+  }
+  return null;
+}
+
+
+/** The coloured edge on a row carries the same computed schedule health. */
 function edgeClasses(task: Task): string {
-  if (task.criticality === "critical") return "text-danger";
-  if (task.criticality === "near_critical") return "text-warning";
-  return "text-info";
-}
-
-function shortCriticality(task: Task): string {
-  return task.criticality === "critical"
-    ? "Critical"
-    : task.criticality === "near_critical"
-      ? "Tight"
-      : "Slack";
+  const tone = scheduleHealth(task).meta.tone;
+  return tone === "danger"
+    ? "text-danger"
+    : tone === "warning"
+      ? "text-warning"
+      : tone === "success"
+        ? "text-success"
+        : tone === "neutral"
+          ? "text-neutral-status"
+          : "text-info";
 }
 
 const todayISO = new Date().toISOString().slice(0, 10);
-const NAME_COL = 352; // 22rem — the fixed work-item column
+const NAME_COL_DESKTOP = 352; // 22rem — the fixed work-item column at desktop widths
+const NAME_COL_TABLET = 220; // narrower label column so the chart keeps its room on a tablet
 const ROW_H = 80;
 
 type Row = { task: Task; isChild: boolean };
@@ -90,6 +134,19 @@ function useWideScreen(): boolean {
   return wide;
 }
 
+/** Tablet (1024–1279) gets a narrower label column so the chart keeps its room. */
+function useDesktopScreen(): boolean {
+  const [desktop, setDesktop] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 1280px)");
+    const sync = () => setDesktop(mql.matches);
+    sync();
+    mql.addEventListener("change", sync);
+    return () => mql.removeEventListener("change", sync);
+  }, []);
+  return desktop;
+}
+
 export function MasterTimeline({
   projectId,
   sceneId: pinnedSceneId,
@@ -101,6 +158,7 @@ export function MasterTimeline({
   const {
     tasks,
     scenes,
+    milestones,
     can,
     isClosed,
     previewReschedule,
@@ -109,7 +167,13 @@ export function MasterTimeline({
   } = useStore();
   const readOnly = isClosed(projectId) || !can.editCoreTimeline;
   const wide = useWideScreen();
+  const desktop = useDesktopScreen();
+  const NAME_COL = desktop ? NAME_COL_DESKTOP : NAME_COL_TABLET;
   const [openSetId, setOpenSetId] = useState<string | null>(null);
+  const projectMilestones = useMemo(
+    () => milestones.filter((m) => m.project_id === projectId),
+    [milestones, projectId],
+  );
 
 
   const projectTasks = useMemo(
@@ -206,7 +270,7 @@ export function MasterTimeline({
     const ro = new ResizeObserver(sync);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [wide]);
+  }, [wide, NAME_COL]);
 
   const baseDays = Math.max(1, daysBetween(baseSpan.start, baseSpan.end));
   const fitZoom = Math.max(ZOOM_MIN, viewportWidth / baseDays);
@@ -266,7 +330,7 @@ export function MasterTimeline({
         return clamped;
       });
     },
-    [],
+    [NAME_COL],
   );
 
   const zoomRef = useRef(pxPerDay);
@@ -293,7 +357,7 @@ export function MasterTimeline({
       if (!el) return;
       el.scrollLeft = Math.max(0, xAt(span, date, pxPerDay) - (el.clientWidth - NAME_COL) / 2);
     },
-    [span, pxPerDay],
+    [span, pxPerDay, NAME_COL],
   );
 
   const ticks = useMemo(() => axisTicks(span, pxPerDay), [span, pxPerDay]);
@@ -641,6 +705,9 @@ export function MasterTimeline({
     const shift = dragging ? drag.days * pxPerDay : 0;
     const live = placePx(span, task.forecast_start, task.forecast_finish, pxPerDay);
     const planned = placePx(span, task.start_date, task.due_date, pxPerDay);
+    const { health, className: barClass } = barLook(task);
+    const Icon = health.meta.Icon;
+    const blocked = task.status === "blocked";
     return (
       <div className="relative h-20" style={{ width: chartWidth }}>
         {ticks.map((t) => (
@@ -658,10 +725,11 @@ export function MasterTimeline({
             className="absolute inset-y-0 w-0.5 bg-gold"
           />
         )}
+        {/* ghost baseline: the committed plan, faint behind the live forecast bar */}
         <span
           style={{ left: planned.left, width: planned.width }}
           aria-hidden
-          className={`absolute top-4 h-2.5 rounded-full border border-border-strong bg-band ${dimmed ? "opacity-30" : ""}`}
+          className={`absolute top-4 h-2.5 rounded-full border border-border-strong bg-band ${dimmed ? "opacity-30" : "opacity-70"}`}
         />
         <span
           ref={(el) => {
@@ -685,13 +753,15 @@ export function MasterTimeline({
           style={{
             left: live.left + shift,
             width: live.width + (dragging && drag.kind === "resize" ? drag.days * pxPerDay : 0),
+            ...(blocked ? BLOCKED_HATCH : {}),
           }}
-          title={`${task.title} · ${criticalityMeta[task.criticality].label} · ${formatFloat(task.total_float_hours)}`}
-          className={`absolute top-8 flex h-7 items-center overflow-hidden rounded-md border px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring ${barClasses(task)} ${
+          title={`${task.title} · ${health.meta.label}${health.detail ? ` · ${health.detail}` : ""} · ${formatFloat(task.total_float_hours)}`}
+          className={`absolute top-8 flex h-7 items-center gap-1 overflow-hidden rounded-md border px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring ${barClass} ${
             dimmed ? "opacity-40" : ""
-          } ${openTask === task.id ? "ring-2 ring-ink" : ""} ${locked ? "cursor-pointer" : "cursor-grab"}`}
+          } ${openTask === task.id ? "ring-2 ring-ink" : ""} ${blocked ? "ring-1 ring-inset ring-cream-soft/80" : ""} ${locked ? "cursor-pointer" : "cursor-grab"}`}
         >
-          {shortCriticality(task)}
+          <Icon aria-hidden className="size-3 shrink-0" />
+          <span className="truncate">{health.meta.label}</span>
           {!locked && (
             <span
               aria-hidden
@@ -753,38 +823,60 @@ export function MasterTimeline({
       </div>
 
 
-      {/* legend */}
-      {!clean && (
-        <div className="flex flex-wrap items-center gap-2">
-          {!setsOnly &&
-            (["critical", "near_critical", "normal"] as const).map((c) => (
-              <StatusBadge key={c} meta={criticalityMeta[c]} size="sm" />
-            ))}
+      {/* legend — status is never colour alone: every bar and swatch carries an icon and a label */}
+      <div className="flex flex-wrap items-center gap-2">
+        {!setsOnly && (
+          <>
+            <StatusBadge meta={taskStatusMeta.blocked} size="sm" />
+            <StatusBadge meta={{ label: "Late", tone: "danger", Icon: AlertTriangle }} size="sm" />
+            <StatusBadge meta={criticalityMeta.critical} size="sm" />
+            <StatusBadge meta={taskStatusMeta.in_progress} size="sm" />
+            <StatusBadge meta={taskStatusMeta.complete} size="sm" />
+            <StatusBadge meta={criticalityMeta.normal} size="sm" />
+          </>
+        )}
+        <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
+          <span aria-hidden className="h-2 w-5 rounded-full border border-border-strong bg-band opacity-70" />
+          Committed plan (ghost bar behind the forecast)
+        </span>
+        {!setsOnly && (
           <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
-            <span aria-hidden className="h-2 w-5 rounded-full border border-border-strong bg-band" />
-            Committed plan
+            <span
+              aria-hidden
+              className="h-3.5 w-6 rounded-sm border border-danger bg-danger"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(135deg, rgba(255,255,255,0.4) 0px, rgba(255,255,255,0.4) 3px, transparent 3px, transparent 7px)",
+              }}
+            />
+            Hatched = blocked
           </span>
+        )}
+        {!setsOnly && projectMilestones.length > 0 && (
           <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
-            <span aria-hidden className="h-0.5 w-4 bg-gold" /> Today
+            <Diamond aria-hidden className="size-3 fill-current text-ink" /> Milestone
           </span>
+        )}
+        <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
+          <span aria-hidden className="h-0.5 w-4 bg-gold" /> Today
+        </span>
+        <span className="hidden rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft lg:inline-block">
+          Ctrl or ⌘ + scroll to zoom
+        </span>
+        {setsOnly ? (
           <span className="rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
-            Ctrl or ⌘ + scroll to zoom
+            Open a set to plan the work inside it
           </span>
-          {setsOnly ? (
-            <span className="rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
-              Open a set to plan the work inside it
-            </span>
-          ) : readOnly ? (
-            <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
-              <Lock aria-hidden className="size-3.5" /> Dates are read-only for you here
-            </span>
-          ) : (
-            <span className="rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
-              Drag a bar to reschedule — you'll see the knock-on effect first
-            </span>
-          )}
-        </div>
-      )}
+        ) : readOnly ? (
+          <span className="flex items-center gap-1.5 rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft">
+            <Lock aria-hidden className="size-3.5" /> Dates are read-only for you here
+          </span>
+        ) : (
+          <span className="hidden rounded-md border border-border-strong bg-card px-2.5 py-1 text-xs text-ink-soft lg:inline-block">
+            Drag a bar to reschedule — you'll see the knock-on effect first
+          </span>
+        )}
+      </div>
 
       <div className="surface-card overflow-hidden">
         <div ref={scrollRef} onScroll={onChartScroll} className="overflow-x-auto">
@@ -812,6 +904,47 @@ export function MasterTimeline({
                     </span>
                   ))}
                   <span className="invisible text-xs">months</span>
+                </div>
+              </div>
+            )}
+
+            {/* milestones: diamond markers on the axis when the store has milestone data */}
+            {wide && setsOnly && projectMilestones.length > 0 && (
+              <div className="relative border-b border-border-strong bg-cream-soft/60" style={{ height: 28 }}>
+                <div
+                  className="sticky left-0 z-10 flex h-full shrink-0 items-center border-r border-border-strong bg-cream-soft/60 px-4"
+                  style={{ width: NAME_COL, position: "absolute" }}
+                >
+                  <span className="rule-label">Milestones</span>
+                </div>
+                <div className="relative h-full" style={{ marginLeft: NAME_COL, width: chartWidth }}>
+                  {projectMilestones.map((m) => {
+                    const date = m.forecast_date || m.due_date;
+                    if (!date || date < span.start || date > span.end) return null;
+                    const x = xAt(span, date, pxPerDay);
+                    const meta = milestoneStatusMeta[m.status];
+                    return (
+                      <span
+                        key={m.id}
+                        style={{ left: x, top: "50%" }}
+                        title={`${m.name} · ${meta.label} · ${formatDate(date)}`}
+                        className="absolute -translate-x-1/2 -translate-y-1/2"
+                      >
+                        <Diamond
+                          aria-hidden
+                          className={`size-3.5 fill-current ${
+                            meta.tone === "danger"
+                              ? "text-danger"
+                              : meta.tone === "warning"
+                                ? "text-warning"
+                                : meta.tone === "success"
+                                  ? "text-success"
+                                  : "text-ink-soft"
+                          }`}
+                        />
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -878,9 +1011,13 @@ export function MasterTimeline({
                 const s = group.scene;
                 const slip = slipDays(s.due_date, s.forecast_finish);
                 const setPlanned = placePx(span, s.start_date, s.due_date, pxPerDay);
-                
+
                 const setDimmed = setChain ? !setChain.has(s.id) : false;
                 const follows = projectScenes.find((o) => o.id === s.depends_on_scene_id);
+                const health = setHealth(
+                  projectTasks.filter((t) => t.scene_id === s.id),
+                  slip,
+                );
                 return (
                   <section key={group.key}>
                     <header className="group-header flex items-stretch">
@@ -895,7 +1032,9 @@ export function MasterTimeline({
                                 </span>
                               )}
                               {!clean && <StatusBadge meta={setStatusMeta[s.status]} size="sm" />}
+                              {!clean && health && <StatusBadge meta={health.meta} size="sm" />}
                             </span>
+
                             <span className="mt-1 block text-xs text-ink-soft">
                               {s.start_date ? formatDate(s.start_date) : "No start"} –{" "}
                               {s.due_date ? formatDate(s.due_date) : "No finish"}
@@ -1001,17 +1140,27 @@ export function MasterTimeline({
                                   }}
                                   onMouseEnter={() => setHoveredScene(s.id)}
                                   onMouseLeave={() => setHoveredScene(null)}
-                                  style={{ left, width: Math.max(pxPerDay, width) }}
+                                  style={{
+                                    left,
+                                    width: Math.max(pxPerDay, width),
+                                    ...(health?.blocked ? BLOCKED_HATCH : {}),
+                                  }}
                                   title={`${s.name} · ${formatDate(s.start_date)} – ${formatDate(s.due_date)}${
-                                    canDragSets ? " · drag the bar or its ends to reschedule" : ""
-                                  }`}
-                                  className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-md border border-ink bg-ink px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm ${
-                                    setDimmed ? "opacity-30" : ""
-                                  } ${canDragSets ? "cursor-grab" : "cursor-pointer"} ${
-                                    dragging ? "ring-2 ring-gold" : ""
-                                  }`}
+                                    health ? ` · ${health.meta.label}` : ""
+                                  }${canDragSets ? " · drag the bar or its ends to reschedule" : ""}`}
+                                  className={`absolute top-1/2 flex h-7 -translate-y-1/2 items-center gap-1 overflow-hidden rounded-md border px-2 text-[11px] font-semibold whitespace-nowrap text-cream-soft shadow-sm ${
+                                    health ? toneBarClasses[health.tone] : "border-ink bg-ink"
+                                  } ${setDimmed ? "opacity-30" : ""} ${
+                                    canDragSets ? "cursor-grab" : "cursor-pointer"
+                                  } ${dragging ? "ring-2 ring-gold" : ""}`}
                                 >
-                                  {Math.max(pxPerDay, width) > 84 ? s.name : ""}
+                                  {health && (
+                                    <health.meta.Icon aria-hidden className="size-3 shrink-0" />
+                                  )}
+                                  {Math.max(pxPerDay, width) > 84
+                                    ? `${formatDate(s.start_date)} – ${formatDate(s.due_date)}${slip > 0 ? ` · ${slip}d late` : ""}`
+                                    : ""}
+
                                   {canDragSets && (
                                     <>
                                       <span

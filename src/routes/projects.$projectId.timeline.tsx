@@ -11,7 +11,7 @@ import { MasterTimeline } from "@/components/schedule/MasterTimeline";
 import { ProductionCalendar } from "@/components/schedule/ProductionCalendar";
 import { SceneReadinessMatrix } from "@/components/schedule/SceneReadinessMatrix";
 import { departments, personById, taskDependencies, useStore } from "@/lib/store";
-import { formatDate, formatDateTime, taskStatusMeta } from "@/lib/status";
+import { byDateAsc, formatDate, formatDateTime, taskStatusMeta } from "@/lib/status";
 import { activityFor, snippet } from "@/lib/threads";
 import type { Task, TaskStatus } from "@/lib/production-data";
 
@@ -20,6 +20,7 @@ const views = [
   {
     id: "master",
     label: "Gantt",
+    mobileLabel: "Schedule",
     blurb: "Set by set, with their dates and the chain between them",
   },
   {
@@ -37,6 +38,19 @@ const views = [
 ] as const;
 
 type ViewId = (typeof views)[number]["id"];
+
+/** On a phone the Gantt renders as a plain list, so the switcher should say so. */
+function useIsMobile(): boolean {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 639px)");
+    const sync = () => setMobile(mql.matches);
+    sync();
+    mql.addEventListener("change", sync);
+    return () => mql.removeEventListener("change", sync);
+  }, []);
+  return mobile;
+}
 
 const comingSoon = [
   { label: "Capacity Heat Map", blurb: "Where crew hours are over-committed, week by week" },
@@ -261,7 +275,7 @@ function TaskTable({
                     >
                       {task.title}
                     </button>
-                    <span className="code-id mt-0.5 block">{task.id}</span>
+                    
                     {blocks.length > 0 && (
                       <span className="mt-1 inline-flex items-center gap-1 text-xs text-ink-soft">
                         <ArrowUpRight aria-hidden className="size-3" />
@@ -353,7 +367,7 @@ function TimelineTab() {
   } | null>(null);
 
   const projectTasks = tasks.filter((t) => t.project_id === projectId);
-  const listTasks = [...projectTasks].sort((a, b) => a.due_date.localeCompare(b.due_date));
+  const listTasks = [...projectTasks].sort(byDateAsc((t) => t.due_date));
 
 
   const taskTitle = (id: string) => tasks.find((t) => t.id === id)?.title ?? id;
@@ -392,6 +406,7 @@ function TimelineTab() {
   const [view, setView] = useState<ViewId>(initialView);
 
   const activeView = views.find((v) => v.id === view) ?? views[0];
+  const isMobile = useIsMobile();
 
   return (
     <div className="space-y-6">
@@ -437,7 +452,7 @@ function TimelineTab() {
               }`}
 
             >
-              {v.label}
+              {isMobile && "mobileLabel" in v && v.mobileLabel ? v.mobileLabel : v.label}
             </button>
           ))}
         </div>

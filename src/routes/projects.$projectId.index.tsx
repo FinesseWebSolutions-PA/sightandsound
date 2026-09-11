@@ -14,6 +14,7 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { auditLog, departments, personById, projectDepartments, useStore } from "@/lib/store";
 import {
+  byDateAsc,
   formatDate,
   formatDateTime,
   readinessMeta,
@@ -71,6 +72,8 @@ function DashboardTab() {
     tasks,
     documents,
     notifications,
+    currentUserId,
+
     threads,
     comments,
     can,
@@ -87,7 +90,7 @@ function DashboardTab() {
   const projectTasks = tasks.filter((t) => t.project_id === projectId);
   const openTasks = projectTasks
     .filter((t) => t.status !== "complete")
-    .sort((a, b) => a.due_date.localeCompare(b.due_date));
+    .sort(byDateAsc((t) => t.due_date));
   const emptyWork =
     projectTasks.length === 0
       ? "No work items yet — add the first one on the Timeline."
@@ -124,7 +127,11 @@ function DashboardTab() {
   const activity = [...commentFeed, ...auditFeed].sort((a, b) =>
     b.created_at.localeCompare(a.created_at),
   );
-  const notices = notifications.filter((n) => n.project_id === projectId);
+  // Only ever the signed-in person's own notices — never somebody else's "mentioned you".
+  const myNotices = notifications.filter(
+    (n) => n.project_id === projectId && n.recipient_id === currentUserId,
+  );
+
   const pendingReview = documents.filter(
     (d) => d.project_id === projectId && d.approval_state === "in_review",
   );
@@ -410,22 +417,26 @@ function DashboardTab() {
         <div className="space-y-6">
 
 
-          <Panel title="Notifications" icon={Bell}>
+          <Panel title="For you on this production" icon={Bell}>
             <p className="text-sm text-ink-soft">
-              {notices.filter((n) => !n.read).length} unread of {notices.length} on this production.
+              {myNotices.filter((n) => !n.read).length} unread of {myNotices.length} addressed to
+              you.
             </p>
             <ul className="mt-3 space-y-2.5">
-              {notices.slice(0, 6).map((n) => (
+              {myNotices.slice(0, 6).map((n) => (
                 <li key={n.id} className="text-sm">
                   <span className="rule-label mr-2">{n.kind.replace("_", " ")}</span>
                   <span className={n.read ? "text-ink-soft" : "text-ink"}>{n.summary}</span>
-                  <span className="block text-xs text-ink-soft">
-                    To {personById(n.recipient_id)?.full_name}
-                  </span>
                 </li>
               ))}
+              {myNotices.length === 0 && (
+                <li className="text-sm text-ink-soft">
+                  Nothing is waiting on you on this production.
+                </li>
+              )}
             </ul>
           </Panel>
+
 
           <Panel title="Quick links" icon={FileText}>
             <ul className="text-sm">

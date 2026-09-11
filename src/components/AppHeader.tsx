@@ -68,10 +68,14 @@ export function AppHeader() {
               </span>
             )}
           </Link>
+          <Link to="/team" className={navIdle} activeProps={{ className: navActive }}>
+            <Users aria-hidden className="size-4" />
+            People
+          </Link>
         </nav>
 
         {/* Utilities zone — search icon + one account menu */}
-        <div className="ml-auto flex items-center gap-1 py-2.5 md:border-l md:border-bar-border md:pl-4 lg:pl-6">
+        <div className="ml-auto hidden items-center gap-1 py-2.5 md:flex md:border-l md:border-bar-border md:pl-4 lg:pl-6">
           <Link
             to="/search"
             aria-label="Search"
@@ -124,24 +128,6 @@ export function AppHeader() {
                 </DropdownMenuItem>
               ))}
 
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/inbox" className="flex w-full items-center gap-2">
-                  <Inbox aria-hidden className="size-4" />
-                  My Work
-                  {myUnread > 0 && (
-                    <span className="ml-auto rounded-full bg-gold px-1.5 text-xs font-bold text-bar">
-                      {myUnread}
-                    </span>
-                  )}
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/team" className="flex w-full items-center gap-2">
-                  <Users aria-hidden className="size-4" />
-                  Team &amp; roles
-                </Link>
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

@@ -134,14 +134,27 @@ const decisionLabel: Record<"requested" | "approved" | "changes_requested" | "re
 export function DocumentBrowser({
   projectId,
   sceneId: pinnedSceneId,
-  openDocumentId,
+  openDocumentId = "",
+  openFolder = "",
   highlightCommentId,
+  onOpenDocument,
+  onCloseDocument,
+  onPlaceChange,
 }: {
   projectId: string;
   /** When given, only this set's folder is shown — used inside a set workspace. */
   sceneId?: string;
+  /** Deep-linked document id, driven by the route's `document` search param. */
   openDocumentId?: string;
+  /** Deep-linked folder, driven by the route's `folder` search param (e.g. "set:abc" or "folder:Props"). */
+  openFolder?: string;
   highlightCommentId?: string;
+  /** Called when the viewer should reflect an opened document in the URL. */
+  onOpenDocument?: (documentId: string) => void;
+  /** Called when the viewer closes, so the URL can drop the `document` param. */
+  onCloseDocument?: () => void;
+  /** Called when the current folder changes, so the URL can reflect it. */
+  onPlaceChange?: (encoded: string) => void;
 }) {
   const {
     projects,
@@ -174,13 +187,13 @@ export function DocumentBrowser({
 
   /** Highlighted row (single click) vs. opened file (double click / Enter). */
   const [activeId, setActiveId] = useState("");
-  const [openedId, setOpenedId] = useState(openDocumentId ?? "");
-  // Arriving from the Inbox or the Dashboard opens that exact document.
+  const [openedId, setOpenedId] = useState(openDocumentId);
+  // The URL (Inbox, Dashboard links, or the browser's own Back/Forward) is the
+  // source of truth whenever this browser is deep-linkable, so keep the local
+  // "is a file open" state mirroring it exactly — including closing it.
   useEffect(() => {
-    if (openDocumentId) {
-      setActiveId(openDocumentId);
-      setOpenedId(openDocumentId);
-    }
+    setOpenedId(openDocumentId);
+    if (openDocumentId) setActiveId(openDocumentId);
   }, [openDocumentId]);
 
   const [note, setNote] = useState("");
@@ -207,7 +220,31 @@ export function DocumentBrowser({
         name: projectScenes.find((sc) => sc.id === pinnedSceneId)?.name ?? "Set",
       }
     : null;
-  const [place, setPlace] = useState<Place>(pinnedPlace);
+  const [place, setPlace] = useState<Place>(() => {
+    if (pinnedSceneId) return pinnedPlace;
+    if (openFolder.startsWith("set:")) {
+      const sc = scenes.find((s) => s.project_id === projectId && s.id === openFolder.slice(4));
+      if (sc) return { kind: "set", id: sc.id, name: sc.name };
+    } else if (openFolder.startsWith("folder:")) {
+      return { kind: "custom", name: openFolder.slice(7) };
+    }
+    return pinnedPlace;
+  });
+  /** Navigating to a folder/set also updates the URL, so it's shareable and Back works. */
+  const goPlace = (next: Place) => {
+    setPlace(next);
+    onPlaceChange?.(next ? (next.kind === "set" ? `set:${next.id}` : `folder:${next.name}`) : "");
+  };
+  /** Opening a file updates the URL (deep-link); closing it drops that param. */
+  const openDoc = (id: string) => {
+    setActiveId(id);
+    setOpenedId(id);
+    onOpenDocument?.(id);
+  };
+  const closeDoc = () => {
+    setOpenedId("");
+    onCloseDocument?.();
+  };
 
   // Every set is automatically a folder, even before anything is filed in it.
   const folderList =
@@ -247,6 +284,12 @@ export function DocumentBrowser({
 
   /** The file open in the Drive-style viewer. */
   const opened = documents.find((d) => d.id === openedId && d.project_id === projectId);
+  const currentVersion = opened
+    ? documentVersions
+        .filter((v) => v.document_id === opened.id)
+        .sort((a, b) => b.version - a.version)[0]
+    : undefined;
+  const hasPreviewFile = !!currentVersion?.storage_key;
 
   /** Uploading a file straight into wherever you're standing. */
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -315,7 +358,7 @@ export function DocumentBrowser({
   useEffect(() => {
     if (!openedId) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !menuOpen) setOpenedId("");
+      if (e.key === "Escape" && !menuOpen) closeDoc();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -373,7 +416,7 @@ export function DocumentBrowser({
             <button
               type="button"
               disabled={!!pinnedSceneId}
-              onClick={() => setPlace(null)}
+              onClick={() => goPlace(null)}
               className={cn(
                 "min-h-9 rounded-md px-2 font-medium",
                 place === null ? "text-ink" : "text-ink-soft hover:bg-cream",
@@ -459,8 +502,8 @@ export function DocumentBrowser({
               <button
                 key={f.key}
                 type="button"
-                onDoubleClick={() => setPlace(f.place)}
-                onClick={() => setPlace(f.place)}
+                onDoubleClick={() => goPlace(f.place)}
+                onClick={() => goPlace(f.place)}
                 className="group flex min-h-14 items-center gap-3 rounded-lg border border-border bg-cream-soft px-3 py-3 text-left transition-colors hover:border-border-strong hover:bg-cream"
               >
                 <Folder
@@ -481,10 +524,7 @@ export function DocumentBrowser({
                 key={doc.id}
                 type="button"
                 onClick={() => setActiveId(doc.id)}
-                onDoubleClick={() => {
-                  setActiveId(doc.id);
-                  setOpenedId(doc.id);
-                }}
+                onDoubleClick={() => openDoc(doc.id)}
                 aria-pressed={doc.id === activeId}
                 className={cn(
                   "rounded-lg border border-border p-3 text-left hover:bg-cream-soft",
@@ -533,10 +573,7 @@ export function DocumentBrowser({
                 <li key={doc.id}>
                   <button
                     type="button"
-                    onClick={() => {
-                      setActiveId(doc.id);
-                      setOpenedId(doc.id);
-                    }}
+                    onClick={() => openDoc(doc.id)}
                     className="flex w-full items-start gap-3 px-4 py-4 text-left"
                   >
                     <FileText aria-hidden className="mt-0.5 size-5 shrink-0 text-ink-soft" />
@@ -583,7 +620,7 @@ export function DocumentBrowser({
                     <tr
                       key={f.key}
                       className="cursor-pointer hover:bg-cream-soft"
-                      onClick={() => setPlace(f.place)}
+                      onClick={() => goPlace(f.place)}
                     >
                       <td className="px-4 py-3" colSpan={2}>
                         <span className="flex items-center gap-2">
@@ -612,15 +649,9 @@ export function DocumentBrowser({
                         doc.id === activeId ? "bg-cream-soft" : "hover:bg-cream-soft",
                       )}
                       onClick={() => setActiveId(doc.id)}
-                      onDoubleClick={() => {
-                        setActiveId(doc.id);
-                        setOpenedId(doc.id);
-                      }}
+                      onDoubleClick={() => openDoc(doc.id)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          setActiveId(doc.id);
-                          setOpenedId(doc.id);
-                        }
+                        if (e.key === "Enter") openDoc(doc.id);
                       }}
                     >
                       <td className="px-4 py-3">
@@ -631,8 +662,7 @@ export function DocumentBrowser({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setActiveId(doc.id);
-                                setOpenedId(doc.id);
+                                openDoc(doc.id);
                               }}
                               className="text-left font-medium text-ink hover:underline"
                             >
@@ -652,7 +682,7 @@ export function DocumentBrowser({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setPlace(
+                                goPlace(
                                   set
                                     ? { kind: "set", id: set.id, name: set.name }
                                     : { kind: "custom", name: label },
@@ -682,8 +712,7 @@ export function DocumentBrowser({
                           aria-label={`Open ${doc.title}`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setActiveId(doc.id);
-                            setOpenedId(doc.id);
+                            openDoc(doc.id);
                           }}
                           className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-soft hover:bg-cream"
                         >
@@ -774,32 +803,26 @@ export function DocumentBrowser({
                         </button>
                       </li>
                     )}
-                    {canReview &&
-                      opened.requires_approval &&
-                      (
-                        [
-                          { key: "requested", label: "Request review", Icon: Send },
-                          { key: "approved", label: "Approve", Icon: CheckCircle2 },
-                          { key: "changes_requested", label: "Request changes", Icon: ThumbsDown },
-                          { key: "rejected", label: "Reject", Icon: XCircle },
-                        ] as const
-                      ).map(({ key, label, Icon }) => (
-                        <li key={key} role="none">
-                          <button
-                            role="menuitem"
-                            type="button"
-                            onClick={() => {
-                              setPane("details");
-                              setMenuAction(key);
-                              setMenuOpen(false);
-                            }}
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-cream"
-                          >
-                            <Icon aria-hidden className="size-4 text-ink-soft" />
-                            <span className="flex-1">{label}</span>
-                          </button>
-                        </li>
-                      ))}
+                    {/* Approve / Request review / Request changes are surfaced as
+                        primary buttons in the detail view; Reject stays here since it's
+                        the rarer, more consequential call. */}
+                    {canReview && opened.requires_approval && (
+                      <li role="none">
+                        <button
+                          role="menuitem"
+                          type="button"
+                          onClick={() => {
+                            setPane("details");
+                            setMenuAction("rejected");
+                            setMenuOpen(false);
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-cream"
+                        >
+                          <XCircle aria-hidden className="size-4 text-ink-soft" />
+                          <span className="flex-1">Reject</span>
+                        </button>
+                      </li>
+                    )}
                     {canUpload && (
                       <li role="none">
                         <button
@@ -845,7 +868,7 @@ export function DocumentBrowser({
                               setMenuOpen(false);
                               if (window.confirm(`Delete “${opened.title}”? It will be removed from the production's documents but any conversation history stays visible.`)) {
                                 deleteDocument(opened.id);
-                                setOpenedId("");
+                                closeDoc();
                               }
                             }}
                             className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-danger hover:bg-danger-bg"
@@ -863,27 +886,27 @@ export function DocumentBrowser({
             <button
               type="button"
               aria-label="Close file"
-              onClick={() => setOpenedId("")}
+              onClick={closeDoc}
               className="inline-flex h-10 w-10 items-center justify-center rounded-md text-cream hover:bg-white/15"
             >
               <X aria-hidden className="size-5" />
             </button>
           </header>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-0 overflow-y-auto px-3 pb-3 lg:grid lg:grid-cols-[1.6fr_1fr] lg:gap-3 lg:overflow-hidden sm:px-4 sm:pb-4">
-            <div className="surface-card min-h-0 overflow-y-auto">
-              {(() => {
-                const current = documentVersions
-                  .filter((v) => v.document_id === opened.id)
-                  .sort((a, b) => b.version - a.version)[0];
-                return (
-                  <DocumentPreview
-                    storageKey={current?.storage_key ?? null}
-                    fileLabel={current?.file_label ?? opened.title}
-                  />
-                );
-              })()}
-            </div>
+          <div
+            className={cn(
+              "flex min-h-0 flex-1 flex-col gap-0 overflow-y-auto px-3 pb-3 lg:grid lg:gap-3 lg:overflow-hidden sm:px-4 sm:pb-4",
+              hasPreviewFile ? "lg:grid-cols-[1.6fr_1fr]" : "lg:grid-cols-1",
+            )}
+          >
+            {hasPreviewFile && (
+              <div className="surface-card min-h-0 overflow-y-auto">
+                <DocumentPreview
+                  storageKey={currentVersion?.storage_key ?? null}
+                  fileLabel={currentVersion?.file_label ?? opened.title}
+                />
+              </div>
+            )}
 
             <aside className="surface-card mt-3 flex min-h-0 flex-col overflow-hidden lg:mt-0">
               <div className="panel-header flex items-center gap-1 px-2 py-2">
@@ -939,6 +962,46 @@ export function DocumentBrowser({
                         <dd className="text-ink">{formatDate(opened.updated_at)}</dd>
                       </div>
                     </dl>
+
+                    {opened.requires_approval && opened.approval_state === "draft" && (
+                      <p className="rounded-md border border-border bg-cream-soft px-3 py-2.5 text-sm text-ink-soft">
+                        Draft — not yet sent for review.
+                      </p>
+                    )}
+
+                    {canReview && opened.requires_approval && menuAction === null && (
+                      <div className="flex flex-wrap gap-2">
+                        {(opened.approval_state === "draft" ||
+                          opened.approval_state === "changes_requested" ||
+                          opened.approval_state === "rejected") && (
+                          <button
+                            type="button"
+                            onClick={() => setMenuAction("requested")}
+                            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-ink-soft"
+                          >
+                            <Send aria-hidden className="size-4" /> Request review
+                          </button>
+                        )}
+                        {opened.approval_state === "in_review" && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setMenuAction("approved")}
+                              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-ink-soft"
+                            >
+                              <CheckCircle2 aria-hidden className="size-4" /> Approve
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setMenuAction("changes_requested")}
+                              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream"
+                            >
+                              <ThumbsDown aria-hidden className="size-4" /> Request changes
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
 
                     {opened.requires_approval &&
                       (() => {
@@ -1142,16 +1205,22 @@ export function DocumentBrowser({
                       </p>
                     )}
 
-                    {/* Rarely needed, so it stays tucked away until someone asks for it. */}
-                    <details className="rounded-md border border-border">
-                      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm text-ink-soft hover:bg-cream">
-                        <History aria-hidden className="size-4" />
+                    {/* Revisions are part of the story of a document, so they stay visible. */}
+                    <section className="rounded-md border border-border">
+                      <h4 className="flex min-h-11 items-center gap-2 border-b border-border px-3 py-2.5 text-sm font-semibold text-ink">
+                        <History aria-hidden className="size-4 text-ink-soft" />
                         Version history
-                        <span className="ml-auto text-xs">
-                          {documentVersions.filter((v) => v.document_id === opened.id).length}
+                        <span className="ml-auto text-xs font-normal text-ink-soft">
+                          {documentVersions.filter((v) => v.document_id === opened.id).length}{" "}
+                          revision
+                          {documentVersions.filter((v) => v.document_id === opened.id).length === 1
+                            ? ""
+                            : "s"}
                         </span>
-                      </summary>
-                      <ul className="row-list border-t border-border">
+                      </h4>
+
+                      <ul className="row-list">
+
                         {documentVersions
                           .filter((v) => v.document_id === opened.id)
                           .sort((a, b) => b.version - a.version)
@@ -1175,7 +1244,7 @@ export function DocumentBrowser({
                             </li>
                           ))}
                       </ul>
-                    </details>
+                    </section>
                   </div>
                 ) : (
                   <div className="p-3">
