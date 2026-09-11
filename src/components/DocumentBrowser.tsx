@@ -1219,7 +1219,8 @@ export function DocumentBrowser({
                         </span>
                       </h4>
 
-                      <ul className="row-list border-t border-border">
+                      <ul className="row-list">
+
                         {documentVersions
                           .filter((v) => v.document_id === opened.id)
                           .sort((a, b) => b.version - a.version)
