@@ -14,6 +14,7 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { auditLog, departments, personById, projectDepartments, useStore } from "@/lib/store";
 import {
+  byDateAsc,
   formatDate,
   formatDateTime,
   readinessMeta,
@@ -89,7 +90,7 @@ function DashboardTab() {
   const projectTasks = tasks.filter((t) => t.project_id === projectId);
   const openTasks = projectTasks
     .filter((t) => t.status !== "complete")
-    .sort((a, b) => a.due_date.localeCompare(b.due_date));
+    .sort(byDateAsc((t) => t.due_date));
   const emptyWork =
     projectTasks.length === 0
       ? "No work items yet — add the first one on the Timeline."
