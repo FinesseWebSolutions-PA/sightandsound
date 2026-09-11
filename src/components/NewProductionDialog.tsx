@@ -111,7 +111,7 @@ export function NewProductionDialog({
         isHead: row.isHead,
       })),
     );
-    const id = await createProduction({
+    const result = await createProduction({
       name,
       status,
       ownerId: ownerId || null,
@@ -120,11 +120,17 @@ export function NewProductionDialog({
       departmentIds,
       assignments,
     });
-    if (!id) {
+    if (!result) {
       setError("That production could not be created. Try again.");
       return;
     }
-    onCreated(id);
+    if (result.refreshed) {
+      onCreated(result.id);
+    } else {
+      // It was saved: close the form so it cannot be submitted again. The store
+      // provides a refresh action; the new workspace is not available locally yet.
+      onClose();
+    }
   };
 
 

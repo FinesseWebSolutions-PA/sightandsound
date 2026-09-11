@@ -8,7 +8,7 @@ import type {
   Project,
   Task,
 } from "./production-data";
-import { snippet } from "./threads";
+import { snippet } from "./threads.ts";
 
 export type SearchHit =
   | { kind: "project"; id: string; projectId: string; title: string; breadcrumb: string }
@@ -51,28 +51,39 @@ type Sources = {
   comments: Comment[];
 };
 
-const has = (haystack: string | null | undefined, needle: string) =>
-  (haystack ?? "").toLowerCase().includes(needle);
+const normalize = (value: string) => value.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase();
 
 /**
- * Plain substring search over the production data already loaded in the browser:
- * productions, work items, documents, and what people have written.
+ * Match every query word across an item's content and context, so searches such
+ * as a department plus a team member work without requiring an exact phrase.
  */
 export function searchAll(sources: Sources, query: string): SearchHit[] {
-  const q = query.trim().toLowerCase();
+  const q = normalize(query.trim());
   if (q.length < 2) return [];
+  const words = q.split(/\s+/);
+  const matches = (...fields: (string | null | undefined)[]) => {
+    const text = normalize(fields.filter(Boolean).join(" "));
+    return words.every((word) => text.includes(word));
+  };
 
   const { projects, tasks, documents, milestones, departments, people, threads, comments } = sources;
-  const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? "Production";
+  const projectMap = new Map(projects.map((project) => [project.id, project]));
+  const departmentMap = new Map(departments.map((department) => [department.id, department]));
+  const personMap = new Map(people.map((person) => [person.id, person]));
+  const milestoneMap = new Map(milestones.map((milestone) => [milestone.id, milestone]));
+  const taskMap = new Map(tasks.map((task) => [task.id, task]));
+  const documentMap = new Map(documents.map((document) => [document.id, document]));
+  const threadMap = new Map(threads.map((thread) => [thread.id, thread]));
+  const projectName = (id: string) => projectMap.get(id)?.name ?? "Production";
   const deptName = (id: string | null) =>
-    id ? (departments.find((d) => d.id === id)?.name ?? "") : "";
+    id ? (departmentMap.get(id)?.name ?? "") : "";
   const personName = (id: string | null) =>
-    id ? (people.find((p) => p.id === id)?.full_name ?? "") : "";
+    id ? (personMap.get(id)?.full_name ?? "") : "";
 
   const hits: SearchHit[] = [];
 
   for (const p of projects) {
-    if (has(p.name, q) || has(p.subtitle, q) || has(p.summary, q) || has(p.code, q)) {
+    if (matches(p.name, p.subtitle, p.summary, p.code, personName(p.owner_id))) {
       hits.push({
         kind: "project",
         id: `p-${p.id}`,
@@ -84,7 +95,7 @@ export function searchAll(sources: Sources, query: string): SearchHit[] {
   }
 
   for (const t of tasks) {
-    if (!has(t.title, q) && !has(personName(t.assignee_id), q)) continue;
+    if (!matches(t.title, t.description, personName(t.assignee_id), deptName(t.department_id), projectName(t.project_id), projectMap.get(t.project_id)?.code, milestoneMap.get(t.milestone_id)?.name)) continue;
     hits.push({
       kind: "task",
       id: `t-${t.id}`,
@@ -99,7 +110,7 @@ export function searchAll(sources: Sources, query: string): SearchHit[] {
   }
 
   for (const d of documents) {
-    if (!has(d.title, q) && !has(d.kind, q)) continue;
+    if (!matches(d.title, d.kind, d.folder, personName(d.owner_id), deptName(d.department_id), projectName(d.project_id), projectMap.get(d.project_id)?.code)) continue;
     hits.push({
       kind: "document",
       id: `d-${d.id}`,
@@ -113,18 +124,18 @@ export function searchAll(sources: Sources, query: string): SearchHit[] {
   }
 
   for (const c of comments) {
-    if (!has(c.body, q)) continue;
-    const thread = threads.find((t) => t.id === c.thread_id);
+    const thread = threadMap.get(c.thread_id);
     if (!thread) continue;
-    const task = thread.task_id ? tasks.find((t) => t.id === thread.task_id) : undefined;
+    const task = thread.task_id ? taskMap.get(thread.task_id) : undefined;
     const doc = thread.document_id
-      ? documents.find((x) => x.id === thread.document_id)
+      ? documentMap.get(thread.document_id)
       : undefined;
     const where = task
       ? task.title
       : doc
         ? doc.title
         : thread.subject || "Production updates";
+    if (!matches(c.body, personName(c.author_id), where, projectName(thread.project_id))) continue;
     hits.push({
       kind: "comment",
       id: `c-${c.id}`,

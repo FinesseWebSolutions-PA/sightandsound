@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { FileText, ListChecks, MessageSquare, Search as SearchIcon, Theater } from "lucide-react";
+import { useMemo } from "react";
+import { FileText, ListChecks, MessageSquare, Search as SearchIcon, Theater, X } from "lucide-react";
 
 import { departments, people, useStore } from "@/lib/store";
 import { searchAll, type SearchHit } from "@/lib/search";
@@ -111,9 +111,12 @@ function HitLink({ hit }: { hit: SearchHit }) {
 }
 
 function SearchPage() {
-  const initial = Route.useSearch().q ?? "";
+  const q = Route.useSearch().q ?? "";
+  const navigate = Route.useNavigate();
   const { projects, tasks, documents, milestones, threads, comments } = useStore();
-  const [q, setQ] = useState(initial);
+  const setQuery = (value: string) => {
+    void navigate({ search: value ? { q: value } : {}, replace: true, resetScroll: false });
+  };
 
   const hits = useMemo(
     () =>
@@ -128,25 +131,41 @@ function SearchPage() {
     <main className="mx-auto max-w-[1000px] px-4 py-6 sm:px-6 sm:py-8">
       <h1 className="font-display text-3xl text-ink sm:text-4xl">Search</h1>
 
-      <label className="mt-4 flex items-center gap-2 rounded-full border border-border bg-card px-4 focus-within:ring-2 focus-within:ring-ring">
+      <div className="mt-4 flex items-center gap-2 rounded-full border border-border bg-card px-4 focus-within:ring-2 focus-within:ring-ring">
         <SearchIcon aria-hidden className="size-4 shrink-0 text-ink-soft" />
         <input
           autoFocus
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => setQuery(e.target.value)}
           placeholder="Production, work item, drawing, or something someone said"
           aria-label="Search"
           className="min-h-12 w-full bg-transparent text-base text-ink outline-none sm:text-sm"
         />
-      </label>
+        {q && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            aria-label="Clear search"
+            className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-ink-soft hover:text-ink"
+          >
+            <X aria-hidden className="size-4" />
+          </button>
+        )}
+      </div>
 
       {q.trim().length < 2 && (
-        <p className="mt-6 text-sm text-ink-soft">Type at least two letters.</p>
+        <p className="mt-6 text-sm text-ink-soft">Type at least two characters. Search by title, description, department, or team member.</p>
       )}
 
-      {q.trim().length >= 2 && hits.length === 0 && (
-        <p className="surface-card mt-6 p-4 text-sm text-ink-soft">Nothing matches “{q.trim()}”.</p>
-      )}
+      <div role="status" aria-live="polite" aria-atomic="true">
+        {q.trim().length >= 2 && (
+          hits.length === 0 ? (
+            <p className="surface-card mt-6 p-4 text-sm text-ink-soft">Nothing matches “{q.trim()}”. Try fewer words or a different department or team member.</p>
+          ) : (
+            <p className="mt-4 text-sm text-ink-soft">{hits.length} result{hits.length === 1 ? "" : "s"} for “{q.trim()}”.</p>
+          )
+        )}
+      </div>
 
       <div className="mt-6 space-y-4">
         {groups.map((group) => {

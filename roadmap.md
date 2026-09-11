@@ -90,3 +90,17 @@
 - [x] Shared list rows with hover, tinted panel headers, banded milestone groups, status-coloured row edges
 - [x] Timeline: saturated bars, darker gridlines, today marker, legend; long explainer and manual date nudges removed
 - [x] Checked at 390 and 1280px: no overflow, no console errors
+
+## Reliability pass — September 11, 2026
+
+- Portfolio includes On hold and labels the next actual key date, with honest empty/archived states.
+- Dashboard attention excludes undated work from overdue counts, lists blocked/late work once, and uses the production's department head.
+- Search persists in the URL and matches words across descriptions, departments, people, folders, and production context.
+- Data loads no longer recalculate every production. Schedule-changing saves refresh the affected production.
+- Concurrent saves keep the busy state until all requests finish. Failed loads offer a retry; a successful save followed by a failed refresh no longer asks for duplicate submission.
+- A newly saved production opens only after its refreshed data is available.
+- The official header logo is included in the repository for portable hosting.
+- Supabase rejects self-dependencies, links between productions, missing task endpoints, and task-only dependency loops.
+- Added 26 app regression tests and a rollback-only SQL regression script. Type checking and production build pass. Browser checks cover search Back/reload, filtering, and phone layout.
+
+Follow-up work identified: validation across mixed task/set dependency paths, guarding direct task reassignment between productions, and replacing the existing demo role model before introducing real access controls. The existing schedule RPCs retain their intentional demo grants and Supabase's [security-definer advisory](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable).

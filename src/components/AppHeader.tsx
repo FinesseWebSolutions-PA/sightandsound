@@ -3,7 +3,6 @@ import { Check, ChevronDown, Inbox, Search, Users } from "lucide-react";
 
 import { people, roleLabels, useStore } from "@/lib/store";
 import type { Role } from "@/lib/production-data";
-import logoAsset from "@/assets/sight-and-sound-logo.svg.asset.json";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,7 +39,7 @@ export function AppHeader() {
         <div className="flex min-w-0 items-center py-2.5 md:border-r md:border-bar-border md:pr-6 lg:pr-8">
           <Link to="/" className="flex min-h-11 min-w-0 items-center gap-3 py-1">
             <img
-              src={logoAsset.url}
+              src="/sight-and-sound-logo.svg"
               alt="Sight &amp; Sound"
               className="h-4 w-auto sm:h-[18px]"
               width={215}

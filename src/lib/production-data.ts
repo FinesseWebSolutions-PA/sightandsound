@@ -450,8 +450,8 @@ function asDependencyType(value: string | null | undefined): DependencyType {
 }
 
 /**
- * Asks the database to recompute float, criticality and forecast dates for every
- * production, so every view reads one shared set of numbers.
+ * Recompute only productions whose schedule inputs changed. Ordinary reads must
+ * not write forecasts or depend on permission to run a schedule mutation.
  */
 export async function refreshSchedule(projectIds: string[]): Promise<void> {
   await Promise.all(
@@ -479,12 +479,6 @@ export async function previewTaskReschedule(
 
 /** Reads every table and maps it into the shapes the interface renders. */
 export async function loadProductionData(): Promise<ProductionData> {
-  const { data: projectIdRows, error: projectIdError } = await supabase
-    .from("projects")
-    .select("id");
-  if (projectIdError) throw new Error(projectIdError.message);
-  await refreshSchedule((projectIdRows ?? []).map((p) => p.id));
-
   const [
     peopleRes,
     departmentsRes,
@@ -1052,6 +1046,7 @@ export async function writeTaskStatus(taskId: string, status: TaskStatus, actorI
     .select("project_id, owner_id, created_by, parent_task_id")
     .single();
   if (error) throw new Error(error.message);
+  await refreshSchedule([data.project_id]);
   await notifyWorkFollowers(data, taskId, `work_${status}`, actorId);
   await recordAudit("task", taskId, actorId, "status_changed", { status });
 }
@@ -1094,11 +1089,14 @@ async function notifyWorkFollowers(
 }
 
 export async function writeMilestoneDate(milestoneId: string, dueDate: string, actorId: string) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("milestones")
     .update({ due_date: dueDate })
-    .eq("id", milestoneId);
+    .eq("id", milestoneId)
+    .select("project_id")
+    .single();
   if (error) throw new Error(error.message);
+  await refreshSchedule([data.project_id]);
   await recordAudit("milestone", milestoneId, actorId, "date_changed", { due_date: dueDate });
 }
 
@@ -1159,6 +1157,7 @@ export async function writeProductionSettings(
   };
   const { error } = await supabase.from("projects").update(changes).eq("id", projectId);
   if (error) throw new Error(error.message);
+  await refreshSchedule([projectId]);
   await recordAudit("project", projectId, actorId, "production_updated", changes);
 }
 
@@ -2386,6 +2385,7 @@ export async function removeScene(sceneId: string, projectId: string, actorId: s
   for (const r of cleared) if (r.error) throw new Error(r.error.message);
   const { error } = await supabase.from("scenes").delete().eq("id", sceneId);
   if (error) throw new Error(error.message);
+  await refreshSchedule([projectId]);
   await recordAudit("project", projectId, actorId, "scene_removed", { scene_id: sceneId });
 }
 
@@ -2426,6 +2426,7 @@ export async function writeSceneFields(
 
   const { error } = await supabase.from("scenes").update(patch).eq("id", sceneId);
   if (error) throw new Error(error.message);
+  await refreshSchedule([projectId]);
   await recordAudit("project", projectId, actorId, "scene_updated", { scene_id: sceneId, ...patch });
 }
 

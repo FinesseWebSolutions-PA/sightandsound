@@ -245,8 +245,11 @@ export type Store = {
   ) => Promise<boolean>;
   /** Swaps a set with its neighbour in the running order. */
   reorderScene: (sceneId: string, neighbourId: string, projectId: string) => Promise<boolean>;
-  /** Starts a new production. Admin only; resolves the new production's id. */
-  createProduction: (input: Omit<NewProductionInput, "actorId">) => Promise<string | null>;
+  /** Starts a production and reports whether refreshed data is ready for navigation. */
+  createProduction: (input: Omit<NewProductionInput, "actorId">) => Promise<{
+    id: string;
+    refreshed: boolean;
+  } | null>;
   /** Edits a production's own settings. Admin only; closed ones can be reopened. */
   updateProduction: (projectId: string, input: ProductionSettingsInput) => Promise<boolean>;
 };
@@ -288,7 +291,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [role, setRoleState] = useState<Role>("admin");
   const [data, setData] = useState<ProductionData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [pendingSaves, setPendingSaves] = useState(0);
+  const saving = pendingSaves > 0;
+  // One completed request must not unlock controls while another is still saving.
+  const setSaving = useCallback((active: boolean) => {
+    setPendingSaves((count) => Math.max(0, count + (active ? 1 : -1)));
+    if (active) setError(null);
+  }, []);
+  const latestRefresh = useRef(0);
   const currentUserIdRef = useRef("");
 
   // Read after hydration so the server and the first client render agree.
@@ -303,11 +313,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refresh = useCallback(async () => {
+    const request = ++latestRefresh.current;
     const next = await loadProductionData();
-    applyReferenceData(next);
-    setData(next);
+    if (request === latestRefresh.current) {
+      applyReferenceData(next);
+      setData(next);
+    }
     return next;
   }, []);
+
+  const retryLoad = useCallback(async () => {
+    setError(null);
+    try {
+      await refresh();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Could not load the data.");
+    }
+  }, [refresh]);
+
+  // A failed read after a successful write must not encourage duplicate submissions.
+  const refreshAfterSave = useCallback(async (): Promise<boolean> => {
+    const request = latestRefresh.current + 1;
+    try {
+      await refresh();
+      // A newer read may have superseded this one without applying its result.
+      return request === latestRefresh.current;
+    } catch {
+      setError("Your change was saved, but the latest data could not be loaded. Try refreshing the data.");
+      return false;
+    }
+  }, [refresh]);
 
   useEffect(() => {
     let cancelled = false;
@@ -340,8 +375,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   /**
-   * Server-side of the permission story: even if a control were re-enabled in the
-   * browser, a closed production or an insufficient role never writes.
+   * Shared demo-role guard for every screen. This is a client-side prototype
+   * control; real user authorization must be enforced by the database.
    */
   const allowed = useCallback(
     (projectId: string | undefined, level: "contribute" | "admin") => {
@@ -368,7 +403,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setSaving(true);
       try {
         await work();
-        await refresh();
+        await refreshAfterSave();
         return true;
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "That change could not be saved.");
@@ -379,7 +414,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setSaving(false);
       }
     },
-    [refresh],
+    [refresh, refreshAfterSave, setSaving],
   );
 
   const run = useCallback(
@@ -511,7 +546,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setSaving(true);
       try {
         await writeNewDocument({ ...input, actorId: currentUserIdRef.current });
-        await refresh();
+        await refreshAfterSave();
         return true;
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "That file could not be uploaded.");
@@ -520,7 +555,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setSaving(false);
       }
     },
-    [allowed, refresh],
+    [allowed, refreshAfterSave, setSaving],
   );
 
   const recordApproval = useCallback(
@@ -668,7 +703,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           requiresApproval,
           actorId: currentUserIdRef.current,
         });
-        await refresh();
+        await refreshAfterSave();
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "That file could not be saved to documents.");
         throw e;
@@ -676,7 +711,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setSaving(false);
       }
     },
-    [allowed, refresh],
+    [allowed, refreshAfterSave, setSaving],
   );
 
   const setDocumentApprovalRequirement = useCallback(
@@ -870,7 +905,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setSaving(true);
       try {
         const id = await writeScene(projectId, name, currentUserIdRef.current, portalUrl);
-        await refresh();
+        await refreshAfterSave();
         return id;
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "That scene could not be added.");
@@ -879,7 +914,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setSaving(false);
       }
     },
-    [allowed, refresh],
+    [allowed, refreshAfterSave, setSaving],
   );
 
   const renameScene = useCallback<Store["renameScene"]>(
@@ -925,8 +960,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setSaving(true);
       try {
         const id = await writeProduction({ ...input, actorId: currentUserIdRef.current });
-        await refresh();
-        return id;
+        const refreshed = await refreshAfterSave();
+        return { id, refreshed };
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "That production could not be created.");
         return null;
@@ -934,7 +969,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setSaving(false);
       }
     },
-    [refresh],
+    [refreshAfterSave, setSaving],
   );
 
 
@@ -945,7 +980,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setSaving(true);
       try {
         await writeProductionSettings(projectId, input, currentUserIdRef.current);
-        await refresh();
+        await refreshAfterSave();
         return true;
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Those settings could not be saved.");
@@ -954,7 +989,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setSaving(false);
       }
     },
-    [refresh],
+    [refreshAfterSave, setSaving],
   );
 
   const markNotifications = useCallback(
@@ -1177,7 +1212,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           role="alert"
           className="border-b border-border bg-[var(--ss-danger-bg,#FCE8E6)] px-6 py-2 text-sm text-ink"
         >
-          <span className="font-semibold">That change was not saved.</span> {error}{" "}
+          <span className="font-semibold">Something needs attention.</span> {error}{" "}
+          <button
+            type="button"
+            onClick={() => void retryLoad()}
+            className="mr-3 min-h-11 font-semibold underline hover:no-underline"
+          >
+            Refresh data
+          </button>
           <button
             type="button"
             onClick={() => setError(null)}
@@ -1192,7 +1234,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           <h1 className="font-display text-2xl text-ink">
             The production data could not be loaded
           </h1>
-          <p className="mt-2 text-sm text-ink-soft">{error}</p>
+          <p className="mt-2 text-sm text-ink-soft" role="alert">{error}</p>
+          <button
+            type="button"
+            onClick={() => void retryLoad()}
+            className="mt-5 min-h-11 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          >
+            Try again
+          </button>
         </div>
       ) : !data ? (
         <div className="flex min-h-[60vh] items-center justify-center gap-2 text-sm text-ink-soft">
@@ -1205,4 +1254,3 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     </StoreContext.Provider>
   );
 }
-

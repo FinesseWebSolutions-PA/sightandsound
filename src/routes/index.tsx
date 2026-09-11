@@ -8,6 +8,8 @@ import { departments, projectDepartments, personById, useStore } from "@/lib/sto
 import { formatDate, projectStatusMeta, readinessMeta, type Tone } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import type { ProjectStatus } from "@/lib/production-data";
+import { nextProductionKeyDate } from "@/lib/production-overview";
+import { toISO } from "@/lib/schedule";
 
 /** Status colour as text only — quieter than a filled chip, still label + icon. */
 const toneText: Record<Tone, string> = {
@@ -38,13 +40,14 @@ export const Route = createFileRoute("/")({
   component: PortfolioPage,
 });
 
-const statusFilters: ("all" | ProjectStatus)[] = ["all", "active", "planning", "closed"];
+const statusFilters: ("all" | ProjectStatus)[] = ["all", "active", "planning", "on_hold", "closed"];
 
 function PortfolioPage() {
   const { projects, can } = useStore();
   const [status, setStatus] = useState<"all" | ProjectStatus>("all");
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
+  const today = toISO(new Date());
 
   const rows = useMemo(
     () =>
@@ -115,6 +118,7 @@ function PortfolioPage() {
           
           const status = projectStatusMeta[project.status];
           const owner = personById(project.owner_id);
+          const keyDate = nextProductionKeyDate(project, today);
           const initials = (owner?.full_name ?? "")
             .split(" ")
             .map((part) => part[0])
@@ -155,7 +159,7 @@ function PortfolioPage() {
               </div>
 
               {/* Secondary detail: owner and next date, demoted */}
-              <div className="mt-4 flex items-center justify-between gap-3 border-t border-border-strong pt-4">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border-strong pt-4">
                 <span className="flex min-w-0 items-center gap-2">
                   <span
                     aria-hidden
@@ -163,11 +167,15 @@ function PortfolioPage() {
                   >
                     {initials}
                   </span>
-                  <span className="truncate text-xs font-medium text-ink">{owner?.full_name}</span>
+                  <span className="truncate text-xs font-medium text-ink">{owner?.full_name || "Owner not assigned"}</span>
                 </span>
                 <span className="flex shrink-0 items-center gap-1.5 text-xs text-ink-soft">
                   <CalendarDays aria-hidden className="size-3.5" />
-                  {formatDate(project.opening_date)}
+                  {keyDate ? (
+                    <span>
+                      {keyDate.upcoming ? "Next: " : ""}{keyDate.label} · {formatDate(keyDate.date)}
+                    </span>
+                  ) : "Key dates not set"}
                 </span>
               </div>
 

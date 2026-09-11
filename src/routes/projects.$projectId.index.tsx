@@ -22,6 +22,7 @@ import {
 } from "@/lib/status";
 import { snippet } from "@/lib/threads";
 import { toISO } from "@/lib/schedule";
+import { attentionWork } from "@/lib/production-overview";
 
 export const Route = createFileRoute("/projects/$projectId/")({
   head: () => ({
@@ -94,7 +95,7 @@ function DashboardTab() {
   const emptyWork =
     projectTasks.length === 0
       ? "No work items yet — add the first one on the Timeline."
-      : "Nothing open — this production is complete.";
+      : "All work items are complete.";
   // Recent activity mixes real conversation with status changes, so the dashboard
   // shows what people are actually saying and where they said it.
   const projectThreadIds = threads.filter((t) => t.project_id === projectId).map((t) => t.id);
@@ -140,24 +141,16 @@ function DashboardTab() {
   // The short list of things a person should look at first on this production.
   const today = toISO(new Date());
   const attention = [
-    ...projectTasks
-      .filter((t) => t.status !== "complete" && t.forecast_finish < today)
-      .map((t) => ({
-        id: `late-${t.id}`,
-        label: "Running late",
-        title: t.title,
-        detail: `${departments.find((d) => d.id === t.department_id)?.name ?? "Unassigned"} · forecast ${formatDate(t.forecast_finish)}`,
-        taskId: t.id,
-        documentId: null as string | null,
-      })),
-    ...projectTasks
-      .filter((t) => t.status === "blocked")
-      .map((t) => ({
-        id: `blocked-${t.id}`,
-        label: "Blocked",
-        title: t.title,
-        detail: departments.find((d) => d.id === t.department_id)?.name ?? "Unassigned",
-        taskId: t.id,
+    ...attentionWork(projectTasks, today)
+      .map(({ task, blocked, late, target }) => ({
+        id: `attention-${task.id}`,
+        label: blocked ? (late ? "Blocked · running late" : "Blocked") : "Running late",
+        title: task.title,
+        detail: [
+          departments.find((d) => d.id === task.department_id)?.name ?? "Unassigned",
+          target ? `${task.forecast_finish ? "forecast" : "due"} ${formatDate(target)}` : "No date set",
+        ].join(" · "),
+        taskId: task.id,
         documentId: null as string | null,
       })),
     ...pendingReview.map((d) => ({
@@ -250,7 +243,7 @@ function DashboardTab() {
                     </div>
                     <p className="mt-1 text-sm text-ink-soft">{pd.note}</p>
                     <p className="mt-0.5 text-xs text-ink-soft">
-                      Owner: {personById(dept?.owner_id ?? "")?.full_name}
+                      Owner: {personById(pd.head_id || dept?.owner_id || "")?.full_name || "Not assigned"}
                     </p>
                   </li>
                 );

@@ -35,6 +35,25 @@ Prefer working locally? You need Node.js and npm — [install with nvm](https://
 ```sh
 git clone <this-repository-url>
 cd <repository-name>
-npm i
+npx --yes bun@1.3.10 install --frozen-lockfile
 npm run dev
 ```
+
+Use Node.js 22.18 or newer for the test runner. The committed `bun.lock` pins the
+dependency versions used for verification. Set `SITE_PASSWORD` and a random
+`SESSION_SECRET` of at least 32 characters in an untracked `.env.local` file when
+running the access-code gate locally; these are server-only variables.
+
+Before publishing changes:
+
+```sh
+npm test
+npm run typecheck
+npm run build
+```
+
+The tests use synthetic data and a mocked Supabase transport. They do not write to
+the live database. Ordinary portfolio reads are also read-only: schedule writers
+recompute only the affected production after a change. Any new writer that changes
+task dates/status, milestones, production windows, or set dependencies must keep
+that schedule refresh in its save path.
