@@ -3,11 +3,11 @@ import { useMemo } from "react";
 
 import { StatusBadge } from "@/components/StatusBadge";
 import { departments, useStore } from "@/lib/store";
-import { formatDate, readinessMeta, type StatusMeta } from "@/lib/status";
+import { cellReadinessMeta, formatDate, scheduleHealth, type StatusMeta } from "@/lib/status";
 import { toISO } from "@/lib/schedule";
 import type { Approval, Document, Task } from "@/lib/production-data";
 
-type Readiness = keyof typeof readinessMeta | "not_involved";
+type Readiness = keyof typeof cellReadinessMeta | "not_involved";
 
 type Cell = {
   readiness: Readiness;
@@ -20,20 +20,63 @@ type Cell = {
 
 /**
  * Every cell is derived from real work: the tasks, documents and reviews for
- * that set and department. Nothing here is decorative.
+ * that set and department, plus schedule health (blocked/late/critical).
+ * Nothing here is decorative, and the states genuinely vary — a set with no
+ * blockers, no late work and no reviews pending is the only case that reads
+ * "On track".
  */
-function cellFor(tasks: Task[], documents: Document[], approvals: Approval[], today: string): Cell {
+function cellFor(
+  tasks: Task[],
+  documents: Document[],
+  approvals: Approval[],
+  today: Date,
+): Cell {
   if (tasks.length === 0 && documents.length === 0) {
     return { readiness: "not_involved", meta: null, reason: "Not involved in this set" };
   }
 
-  const blocked = tasks.find((t) => t.status === "blocked");
-  if (blocked) {
+  const blockedTask = tasks.find((t) => t.status === "blocked");
+  if (blockedTask) {
     return {
       readiness: "blocked",
-      meta: readinessMeta.blocked,
-      reason: `Blocked: ${blocked.title}`,
-      task: blocked,
+      meta: cellReadinessMeta.blocked,
+      reason: `Blocked: ${blockedTask.title}`,
+      task: blockedTask,
+    };
+  }
+
+  const rejected = documents.find((d) => d.approval_state === "rejected");
+  if (rejected) {
+    return {
+      readiness: "blocked",
+      meta: cellReadinessMeta.blocked,
+      reason: `Rejected: ${rejected.title}`,
+      document: rejected,
+    };
+  }
+
+  // Late or blocked-by-dependency work, using the same health rule as
+  // everywhere else so a late item never reads as healthy here.
+  const late = tasks
+    .filter((t) => t.status !== "complete")
+    .map((t) => ({ task: t, health: scheduleHealth(t, today) }))
+    .find(({ health }) => health.urgent && health.lateDays > 0);
+  if (late) {
+    return {
+      readiness: "at_risk",
+      meta: cellReadinessMeta.at_risk,
+      reason: `${late.health.meta.label}: ${late.task.title}`,
+      task: late.task,
+    };
+  }
+
+  const changes = documents.find((d) => d.approval_state === "changes_requested");
+  if (changes) {
+    return {
+      readiness: "at_risk",
+      meta: cellReadinessMeta.at_risk,
+      reason: `Changes requested: ${changes.title}`,
+      document: changes,
     };
   }
 
@@ -44,44 +87,40 @@ function cellFor(tasks: Task[], documents: Document[], approvals: Approval[], to
     );
     return {
       readiness: "at_risk",
-      meta: readinessMeta.at_risk,
+      meta: cellReadinessMeta.at_risk,
       reason: `Awaiting review: ${waitingReview.title}`,
       document: waitingReview,
       ...(pending ? { approval: pending } : {}),
     };
   }
 
-  const changes = documents.find(
-    (d) => d.approval_state === "changes_requested" || d.approval_state === "rejected",
-  );
-  if (changes) {
+  // Tight schedule margin also reads as at-risk, even without a hard blocker.
+  const critical = tasks
+    .filter((t) => t.status !== "complete")
+    .find((t) => t.criticality === "critical");
+  if (critical) {
     return {
       readiness: "at_risk",
-      meta: readinessMeta.at_risk,
-      reason: `Changes requested: ${changes.title}`,
-      document: changes,
-    };
-  }
-
-  const late = tasks.find((t) => t.status !== "complete" && t.forecast_finish < today);
-  if (late) {
-    return {
-      readiness: "at_risk",
-      meta: readinessMeta.at_risk,
-      reason: `Past forecast: ${late.title} (${formatDate(late.forecast_finish)})`,
-      task: late,
+      meta: cellReadinessMeta.at_risk,
+      reason: `On the critical path: ${critical.title}`,
+      task: critical,
     };
   }
 
   const open = tasks.filter((t) => t.status !== "complete");
   if (open.length === 0 && tasks.length > 0) {
-    return { readiness: "complete", meta: readinessMeta.complete, reason: "All work complete" };
+    return { readiness: "complete", meta: cellReadinessMeta.complete, reason: "All work complete" };
+  }
+
+  const started = tasks.some((t) => t.status !== "not_started");
+  if (!started && documents.every((d) => d.approval_state === "draft")) {
+    return { readiness: "not_started", meta: cellReadinessMeta.not_started, reason: "Not started yet" };
   }
 
   const next = open.sort((a, b) => a.forecast_finish.localeCompare(b.forecast_finish))[0];
   return {
     readiness: "on_track",
-    meta: readinessMeta.on_track,
+    meta: cellReadinessMeta.on_track,
     reason: next ? `Next: ${next.title} by ${formatDate(next.forecast_finish)}` : "On track",
     ...(next ? { task: next } : {}),
   };
@@ -150,6 +189,13 @@ function CellLink({
   return <span className={shared}>{body}</span>;
 }
 
+const LEGEND: { key: keyof typeof cellReadinessMeta; hint: string }[] = [
+  { key: "not_started", hint: "No work has begun yet" },
+  { key: "on_track", hint: "Work is progressing, nothing behind or waiting" },
+  { key: "at_risk", hint: "Late work, pending review, or a critical-path item" },
+  { key: "blocked", hint: "A work item or document is stuck" },
+  { key: "complete", hint: "All work for this set and department is done" },
+];
 
 export function SceneReadinessMatrix({
   projectId,
@@ -160,7 +206,7 @@ export function SceneReadinessMatrix({
   onAddWork?: (sceneId: string, departmentId: string) => void;
 }) {
   const { scenes, tasks, documents, approvals } = useStore();
-  const today = toISO(new Date());
+  const today = new Date();
 
   const projectScenes = useMemo(
     () =>
@@ -210,6 +256,14 @@ export function SceneReadinessMatrix({
             review that sets that readiness.
           </p>
 
+          <div className="surface-card flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+            <span className="rule-label">Legend</span>
+            {LEGEND.map(({ key, hint }) => (
+              <span key={key} className="inline-flex items-center gap-1.5" title={hint}>
+                <StatusBadge meta={cellReadinessMeta[key]} size="sm" />
+              </span>
+            ))}
+          </div>
 
       {/* Phone: one card per set */}
       <div className="space-y-3 lg:hidden">
