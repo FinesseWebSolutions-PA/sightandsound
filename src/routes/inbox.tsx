@@ -437,7 +437,7 @@ function MyWorkPage() {
         );
       })}
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
+      <div className="flex min-w-0 flex-wrap items-center gap-2 border-t border-border pt-4">
         <label htmlFor="inbox-person" className="text-xs text-ink-soft">
           Viewing as
         </label>
@@ -445,8 +445,9 @@ function MyWorkPage() {
           id="inbox-person"
           value={viewedId}
           onChange={(e) => setPersonId(e.target.value)}
-          className="min-h-11 rounded-md border border-border bg-card px-2.5 text-sm text-ink"
+          className="min-h-11 w-full max-w-full min-w-0 truncate rounded-md border border-border bg-card px-2.5 text-sm text-ink sm:w-auto"
         >
+
           {people.map((p) => (
             <option key={p.id} value={p.id}>
               {p.full_name} — {p.title}
