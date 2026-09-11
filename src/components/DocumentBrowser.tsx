@@ -1205,15 +1205,20 @@ export function DocumentBrowser({
                       </p>
                     )}
 
-                    {/* Rarely needed, so it stays tucked away until someone asks for it. */}
-                    <details className="rounded-md border border-border">
-                      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm text-ink-soft hover:bg-cream">
-                        <History aria-hidden className="size-4" />
+                    {/* Revisions are part of the story of a document, so they stay visible. */}
+                    <section className="rounded-md border border-border">
+                      <h4 className="flex min-h-11 items-center gap-2 border-b border-border px-3 py-2.5 text-sm font-semibold text-ink">
+                        <History aria-hidden className="size-4 text-ink-soft" />
                         Version history
-                        <span className="ml-auto text-xs">
-                          {documentVersions.filter((v) => v.document_id === opened.id).length}
+                        <span className="ml-auto text-xs font-normal text-ink-soft">
+                          {documentVersions.filter((v) => v.document_id === opened.id).length}{" "}
+                          revision
+                          {documentVersions.filter((v) => v.document_id === opened.id).length === 1
+                            ? ""
+                            : "s"}
                         </span>
-                      </summary>
+                      </h4>
+
                       <ul className="row-list border-t border-border">
                         {documentVersions
                           .filter((v) => v.document_id === opened.id)
