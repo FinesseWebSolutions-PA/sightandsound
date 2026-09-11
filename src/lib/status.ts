@@ -204,3 +204,15 @@ export function scheduleHealth(
   };
 }
 
+
+/** Sorts by a date, keeping items with no date at the end of the list. */
+export function byDateAsc<T>(pick: (item: T) => string | null | undefined) {
+  return (a: T, b: T) => {
+    const x = pick(a) || "";
+    const y = pick(b) || "";
+    if (!x && !y) return 0;
+    if (!x) return 1;
+    if (!y) return -1;
+    return x.localeCompare(y);
+  };
+}
