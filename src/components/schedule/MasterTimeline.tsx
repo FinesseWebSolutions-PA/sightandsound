@@ -21,8 +21,12 @@ import {
   dependencyTypeLabel,
   formatDate,
   formatFloat,
+  milestoneStatusMeta,
+  scheduleHealth,
   setStatusMeta,
   taskStatusMeta,
+  toneClasses,
+  type Tone,
 } from "@/lib/status";
 import {
   addDays,
@@ -36,28 +40,41 @@ import {
   ZOOM_MAX,
   ZOOM_MIN,
 } from "@/lib/schedule";
-import type { ReschedulePreviewRow, Scene, Task } from "@/lib/production-data";
+import type { Milestone, ReschedulePreviewRow, Scene, Task } from "@/lib/production-data";
 
-/** Bar colouring is driven by the shared calculation, never chosen per view. */
-function barClasses(task: Task): string {
-  if (task.criticality === "critical") return "bg-danger border-danger";
-  if (task.criticality === "near_critical") return "bg-warning border-warning";
-  return "bg-info border-info";
+/** Solid bar fills, one per tone — always paired with an icon and a text label. */
+const toneBarClasses: Record<Tone, string> = {
+  success: "bg-success border-success",
+  warning: "bg-warning border-warning",
+  danger: "bg-danger border-danger",
+  info: "bg-info border-info",
+  neutral: "bg-neutral-status border-neutral-status",
+};
+
+/** Hatching laid over a blocked bar so it reads as blocked even without colour. */
+const BLOCKED_HATCH: React.CSSProperties = {
+  backgroundImage:
+    "repeating-linear-gradient(135deg, rgba(255,255,255,0.4) 0px, rgba(255,255,255,0.4) 4px, transparent 4px, transparent 9px)",
+};
+
+/** Bar colouring, icon and pattern are all driven by the one shared calculation. */
+function barLook(task: Task) {
+  const health = scheduleHealth(task);
+  return { health, className: toneBarClasses[health.meta.tone] };
 }
 
-/** The coloured edge on a row carries the same computed criticality. */
+/** The coloured edge on a row carries the same computed schedule health. */
 function edgeClasses(task: Task): string {
-  if (task.criticality === "critical") return "text-danger";
-  if (task.criticality === "near_critical") return "text-warning";
-  return "text-info";
-}
-
-function shortCriticality(task: Task): string {
-  return task.criticality === "critical"
-    ? "Critical"
-    : task.criticality === "near_critical"
-      ? "Tight"
-      : "Slack";
+  const tone = scheduleHealth(task).meta.tone;
+  return tone === "danger"
+    ? "text-danger"
+    : tone === "warning"
+      ? "text-warning"
+      : tone === "success"
+        ? "text-success"
+        : tone === "neutral"
+          ? "text-neutral-status"
+          : "text-info";
 }
 
 const todayISO = new Date().toISOString().slice(0, 10);
