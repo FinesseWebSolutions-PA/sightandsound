@@ -963,6 +963,46 @@ export function DocumentBrowser({
                       </div>
                     </dl>
 
+                    {opened.requires_approval && opened.approval_state === "draft" && (
+                      <p className="rounded-md border border-border bg-cream-soft px-3 py-2.5 text-sm text-ink-soft">
+                        Draft — not yet sent for review.
+                      </p>
+                    )}
+
+                    {canReview && opened.requires_approval && menuAction === null && (
+                      <div className="flex flex-wrap gap-2">
+                        {(opened.approval_state === "draft" ||
+                          opened.approval_state === "changes_requested" ||
+                          opened.approval_state === "rejected") && (
+                          <button
+                            type="button"
+                            onClick={() => setMenuAction("requested")}
+                            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-ink-soft"
+                          >
+                            <Send aria-hidden className="size-4" /> Request review
+                          </button>
+                        )}
+                        {opened.approval_state === "in_review" && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setMenuAction("approved")}
+                              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-ink-soft"
+                            >
+                              <CheckCircle2 aria-hidden className="size-4" /> Approve
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setMenuAction("changes_requested")}
+                              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-cream"
+                            >
+                              <ThumbsDown aria-hidden className="size-4" /> Request changes
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+
                     {opened.requires_approval &&
                       (() => {
                         const approvedVersions = approvals
