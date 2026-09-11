@@ -353,7 +353,7 @@ function TimelineTab() {
   } | null>(null);
 
   const projectTasks = tasks.filter((t) => t.project_id === projectId);
-  const listTasks = [...projectTasks].sort((a, b) => a.due_date.localeCompare(b.due_date));
+  const listTasks = [...projectTasks].sort(byDateAsc((t) => t.due_date));
 
 
   const taskTitle = (id: string) => tasks.find((t) => t.id === id)?.title ?? id;
