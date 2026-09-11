@@ -261,7 +261,7 @@ function TaskTable({
                     >
                       {task.title}
                     </button>
-                    <span className="code-id mt-0.5 block">{task.id}</span>
+                    
                     {blocks.length > 0 && (
                       <span className="mt-1 inline-flex items-center gap-1 text-xs text-ink-soft">
                         <ArrowUpRight aria-hidden className="size-3" />
