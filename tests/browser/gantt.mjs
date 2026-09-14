@@ -123,21 +123,35 @@ await page.getByRole("region", { name: "Production Gantt" }).waitFor();
 const chart = page.getByRole("region", { name: "Production Gantt" });
 await chart.getByRole("button", { name: "Expand Courtyard", exact: true }).waitFor();
 assert.equal(
-  await chart.getByRole("button", { name: "Edit finish for Frame assembly", exact: true }).count(),
+  await chart.getByRole("button", { name: "Schedule Frame assembly", exact: true }).count(),
   0,
 );
 await chart.getByRole("button", { name: "Expand Courtyard", exact: true }).click();
 await chart.getByRole("button", { name: "Expand Metal", exact: true }).waitFor();
 assert.equal(
-  await chart.getByRole("button", { name: "Edit finish for Frame assembly", exact: true }).count(),
+  await chart.getByRole("button", { name: "Schedule Frame assembly", exact: true }).count(),
   0,
 );
 await chart.getByRole("button", { name: "Expand all", exact: true }).click();
-await chart.getByRole("button", { name: "Edit finish for Frame assembly", exact: true }).click();
-await chart.getByRole("textbox", { name: "New finish for Frame assembly" }).count();
-const finish = chart.getByLabel("New finish for Frame assembly");
-await finish.fill("2026-10-08");
-await finish.press("Enter");
+assert.equal(await chart.getByRole("button", { name: "Fields", exact: true }).count(), 0);
+assert.equal(
+  await chart.getByRole("button", { name: "Edit owner for Frame assembly", exact: true }).count(),
+  0,
+);
+await chart.getByRole("button", { name: "Frame assembly", exact: true }).click();
+const detail = page.getByRole("dialog", { name: "Frame assembly", exact: true });
+await detail.waitFor();
+assert.match(await detail.innerText(), /Team member/);
+await detail.getByLabel("Status for Frame assembly").waitFor();
+await detail.getByRole("button", { name: "Close", exact: true }).click();
+await chart.getByLabel("Gantt zoom").selectOption("24");
+const resize = chart.getByRole("button", { name: "Resize finish of Frame assembly", exact: true });
+await resize.scrollIntoViewIfNeeded();
+const edge = await resize.boundingBox();
+await page.mouse.move(edge.x + edge.width / 2, edge.y + edge.height / 2);
+await page.mouse.down();
+await page.mouse.move(edge.x + edge.width / 2 + 72, edge.y + edge.height / 2, { steps: 4 });
+await page.mouse.up();
 const preview = page.getByRole("dialog", { name: "Review schedule changes" });
 await preview.waitFor({ timeout: 8000 }).catch(async (e) => {
   console.log(await page.locator("body").innerText());
@@ -169,8 +183,8 @@ await page.screenshot({
   fullPage: false,
 });
 assert.equal(
-  await chart.getByRole("button", { name: "Edit finish for Finished sample" }).isDisabled(),
-  true,
+  await chart.getByRole("button", { name: "Resize finish of Finished sample" }).count(),
+  0,
 );
 // Cancelled pointer gesture cannot write.
 await chart.getByLabel("Gantt zoom").selectOption("24");
@@ -195,15 +209,20 @@ await preview.waitFor();
 await preview.getByRole("button", { name: "Cancel", exact: true }).click();
 // A failed save never appears committed; a retry can succeed.
 failNext = true;
-await chart.getByRole("button", { name: "Edit owner for Frame assembly", exact: true }).click();
-await chart.getByLabel("New owner for Frame assembly").selectOption(admin);
+async function renameFrame() {
+  await chart.getByRole("button", { name: "Frame assembly", exact: true }).focus();
+  await page.keyboard.press("F2");
+  const rename = chart.getByLabel("Rename Frame assembly", { exact: true });
+  await rename.fill("Frame assembly revised");
+  await rename.press("Enter");
+}
+await renameFrame();
 await page.getByRole("alert").filter({ hasText: "Simulated save failure" }).waitFor();
 assert.equal(
-  (await db.query("select owner_id from tasks where id=$1", [id(30)])).rows[0].owner_id,
-  null,
+  (await db.query("select title from tasks where id=$1", [id(30)])).rows[0].title,
+  "Frame assembly",
 );
-await chart.getByRole("button", { name: "Edit owner for Frame assembly", exact: true }).click();
-await chart.getByLabel("New owner for Frame assembly").selectOption(admin);
+await renameFrame();
 await page.waitForFunction(() => document.body.innerText.includes("Saved"));
 // An intervening colleague edit blocks undo instead of overwriting it.
 await db.query("update tasks set title='Updated by colleague' where id=$1", [id(30)]);
@@ -232,7 +251,7 @@ await db.query(
 );
 const start = performance.now();
 await page.reload();
-await page.getByRole("button", { name: "Edit finish for Frame assembly", exact: true }).waitFor();
+await page.getByRole("button", { name: "Schedule Frame assembly", exact: true }).waitFor();
 const readyMs = performance.now() - start;
 const rowCount = await page.locator("[data-gantt-row]").count();
 assert.ok(rowCount < 60, `Only visible rows render: ${rowCount}`);

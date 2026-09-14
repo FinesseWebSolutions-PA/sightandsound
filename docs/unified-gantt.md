@@ -5,12 +5,12 @@ The production and set timelines now share one Gantt editor. The previous Set da
 ## Everyday planning
 
 - Expand a set, stage or parent task. Filter by set or department, search task names, or group by department across sets. Matching subtasks retain their context.
-- Edit owner, status, start, finish and duration in table cells. Enter or leaving a valid date cell saves it; Escape cancels. Select a task and choose Rename, or press F2 on its name. Double-click a bar to open its details in place.
+- Keep only set, stage and task names beside the timeline. Click a task name or double-click its bar to open its details, including its owner, status and dates. Select a task and choose Rename, or press F2 on its name.
 - Drag an unstarted leaf task to move it; drag either edge to resize it. Alt + left/right on a focused bar moves it one calendar day. Cancelled drags save nothing. Dates of started/completed work and summary tasks are protected in this editor.
 - Open Dependencies from a task row or click a connector to review relationships. Add/change/remove all four start/finish relationship types and nonnegative buffers. Links are task-based, so stages can overlap and independent tasks remain independent. Summary tasks cannot be newly linked; use the actual tasks.
 - Review affected dates before saving a cascade or dependency change. Protected milestone warnings remain visible. Preview uses a transaction rollback and writes no changes or audit entries.
 - Undo/redo the last 30 Gantt changes while the chart remains open. An intervening change to the production prevents undo from overwriting newer work. Reloading or leaving the chart clears the undo history.
-- Use Today, Fit, zoom, Fields, the adjustable table divider or full screen. Grouping, filters, columns, expansion and scroll positions are saved per production/set in the current browser.
+- Use Today, Fit, zoom, the adjustable name divider or full screen. Grouping, filters, name width, expansion and scroll positions are saved per production/set in the current browser. The name area starts at 280 pixels, leaving the remaining width for the timeline.
 - Show the current schedule using forecast dates, falling back to task dates. Date-mode and baseline controls have been removed to simplify the chart; previously captured baseline records remain stored.
 - Administrators can add stages and tasks in context. Existing task/set editors remain available for full details. Viewers retain read-only access.
 

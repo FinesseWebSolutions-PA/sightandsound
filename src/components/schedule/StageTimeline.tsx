@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Undo2, Redo2, Link2, X, Maximize2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { useStore, departments, people } from "@/lib/store";
+import { useStore, departments } from "@/lib/store";
 import { addDays, axisTicks, daysBetween, spanOfDates, toISO } from "@/lib/schedule";
 import {
   ganttRows,
@@ -15,7 +15,6 @@ import { useGanttData, ganttTask, type GanttOperation } from "@/lib/gantt-data";
 import { TaskDetailPanel } from "@/components/TaskDetailPanel";
 import { WorkItemEditor } from "@/components/WorkItemEditor";
 import type { Task, TaskDependency } from "@/lib/production-data";
-import { taskStatusMeta } from "@/lib/status";
 const button =
   "min-h-11 rounded-md border border-border bg-card px-3 text-sm hover:bg-cream disabled:opacity-40";
 const input = "min-h-11 rounded-md border border-border bg-card px-3 text-sm";
@@ -23,29 +22,27 @@ const RH = 44,
   HH = 44;
 type Preferences = {
   zoom: number;
-  tableWidth: number;
+  nameWidth: number;
   group: "sets" | "departments";
   department: string;
   setId: string;
   collapsed: string[] | null;
   expansionVersion: number;
-  columns: string[];
   scrollTop: number;
   scrollLeft: number;
 };
 const defaults: Preferences = {
   zoom: 12,
-  tableWidth: 700,
+  nameWidth: 280,
   group: "sets",
   department: "",
   setId: "",
   collapsed: null,
   expansionVersion: 1,
-  columns: ["owner", "status", "start", "finish"],
   scrollTop: 0,
   scrollLeft: 0,
 };
-type Cell = { id: string; field: string; value: string };
+type Cell = { id: string; field: "title"; value: string };
 type Drag = {
   id: string;
   kind: "move" | "start" | "finish";
@@ -85,7 +82,6 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
   const dragRef = useRef<Drag | null>(null);
   const suppressClick = useRef(false);
   const [full, setFull] = useState(false);
-  const [columnsOpen, setColumnsOpen] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
   const restored = useRef(false);
   const [viewport, setViewport] = useState({ top: 0, left: 0, width: 1200, height: 600 });
@@ -98,13 +94,8 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
           ...defaults,
           ...v,
           zoom: Math.max(0.1, Math.min(48, Number(v.zoom) || 12)),
-          tableWidth: Math.max(320, Math.min(1000, Number(v.tableWidth) || 700)),
+          nameWidth: Math.max(180, Math.min(440, Number(v.nameWidth) || 280)),
           group: v.group === "departments" ? "departments" : "sets",
-          columns: Array.isArray(v.columns)
-            ? v.columns.filter((x: string) =>
-                ["owner", "status", "start", "finish", "duration", "float"].includes(x),
-              )
-            : defaults.columns,
           // Older views were expanded automatically; start them with the new overview.
           expansionVersion: 1,
           collapsed: v.expansionVersion === 1 && Array.isArray(v.collapsed) ? v.collapsed : null,
@@ -154,12 +145,7 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
   }, [data.state, loaded, prefs.scrollTop, prefs.scrollLeft]);
   const tasks = useMemo(() => data.state?.tasks.map(ganttTask) ?? [], [data.state]);
   const byId = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
-  const currentPeople = people;
   const currentDepartments = departments;
-  const personNames = useMemo(
-    () => new Map(currentPeople.map((p) => [p.id, p.full_name])),
-    [currentPeople],
-  );
   const deptNames = useMemo(
     () =>
       new Map([
@@ -233,9 +219,8 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
       ]),
     [included, data.state?.milestones, today],
   );
-  const tableWidth = Math.min(prefs.tableWidth, Math.max(220, viewport.width * 0.7));
-  const columns = viewport.width < 800 ? [] : prefs.columns;
-  const titleWidth = Math.max(180, tableWidth - columns.length * 100);
+  const tableWidth = Math.min(prefs.nameWidth, Math.max(140, viewport.width * 0.4));
+  const titleWidth = tableWidth;
   const timelineWidth = Math.max(
     120,
     viewport.width - tableWidth,
@@ -322,19 +307,10 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
     if (!cell) return;
     const t = byId.get(cell.id);
     if (!t) return;
-    let field = cell.field;
-    let value: string | null = cell.value || null;
-    if (field === "duration") {
-      const n = Number(cell.value);
-      if (!Number.isInteger(n) || n < 1 || n > 3650 || !t.start_date) {
-        setNotice("Use 1–3,650 calendar days and set a start date first.");
-        return;
-      }
-      field = "due_date";
-      value = addDays(t.start_date, n - 1);
-    }
+    const value = cell.value.trim();
+    if (!value) return;
     setCell(null);
-    await data.propose([{ action: "task", task_id: t.id, patch: { [field]: value } }]);
+    await data.propose([{ action: "task", task_id: t.id, patch: { title: value } }]);
   }
   const beginDrag = (t: Task, kind: Drag["kind"], e: React.PointerEvent) => {
     if (!canDate(t) || locked || e.button !== 0) return;
@@ -406,130 +382,6 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
     window.addEventListener("keydown", keydown);
     return () => window.removeEventListener("keydown", keydown);
   }, [data, locked]);
-  function field(t: Task, col: string) {
-    const value =
-      col === "owner"
-        ? personNames.get(t.assignee_id) || "Unassigned"
-        : col === "status"
-          ? taskStatusMeta[t.status].label
-          : col === "start"
-            ? t.start_date || "Set date"
-            : col === "finish"
-              ? t.due_date || "Set date"
-              : col === "duration"
-                ? t.start_date && t.due_date
-                  ? `${daysBetween(t.start_date, t.due_date) + 1}d`
-                  : "—"
-                : t.total_float_hours == null
-                  ? "—"
-                  : `${Math.round((t.total_float_hours / 24) * 10) / 10}d`;
-    const key =
-      col === "owner"
-        ? "owner_id"
-        : col === "start"
-          ? "start_date"
-          : col === "finish"
-            ? "due_date"
-            : col;
-    const enabled =
-      editable &&
-      !locked &&
-      col !== "float" &&
-      (!["start", "finish", "duration"].includes(col) || canDate(t)) &&
-      (col !== "status" || !parents.has(t.id));
-    if (cell?.id === t.id && cell.field === key)
-      return (
-        <form
-          className="flex h-11 items-center border-2 border-blue-500"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void saveCell();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              void saveCell();
-            }
-            if (e.key === "Escape") {
-              e.stopPropagation();
-              setCell(null);
-            }
-          }}
-        >
-          {col === "owner" || col === "status" ? (
-            <select
-              autoFocus
-              aria-label={`New ${col} for ${t.title}`}
-              className="h-full w-full min-w-0 bg-card text-xs"
-              value={cell.value}
-              onChange={(e) => void saveCell({ ...cell, value: e.target.value })}
-              onBlur={() => setCell(null)}
-            >
-              {col === "owner" ? (
-                <>
-                  <option value="">Unassigned</option>
-                  {people.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.full_name}
-                    </option>
-                  ))}
-                </>
-              ) : (
-                <>
-                  <option value="not_started">Not started</option>
-                  <option value="in_progress">In progress</option>
-                  <option value="blocked">Blocked</option>
-                  <option value="done">Complete</option>
-                </>
-              )}
-            </select>
-          ) : (
-            <input
-              autoFocus
-              required
-              aria-label={`New ${col} for ${t.title}`}
-              className="h-full w-full min-w-0 bg-card px-1 text-xs"
-              type={["start", "finish"].includes(col) ? "date" : "number"}
-              value={cell.value}
-              onChange={(e) => setCell({ ...cell, value: e.target.value })}
-              onBlur={(e) => {
-                if (e.target.checkValidity()) void saveCell();
-              }}
-            />
-          )}
-        </form>
-      );
-    return (
-      <button
-        className="h-11 w-full truncate px-2 text-left text-xs hover:bg-cream disabled:cursor-default disabled:hover:bg-transparent"
-        disabled={!enabled}
-        title={enabled ? `Edit ${col}: ${value}` : value}
-        aria-label={`Edit ${col} for ${t.title}`}
-        onClick={() =>
-          setCell({
-            id: t.id,
-            field: key,
-            value:
-              col === "owner"
-                ? t.assignee_id
-                : col === "status"
-                  ? t.status === "complete"
-                    ? "done"
-                    : t.status === "in_review"
-                      ? "in_progress"
-                      : t.status
-                  : col === "duration"
-                    ? String(daysBetween(t.start_date, t.due_date) + 1)
-                    : col === "start"
-                      ? t.start_date
-                      : t.due_date,
-          })
-        }
-      >
-        {value}
-      </button>
-    );
-  }
   function renderBar(row: GanttRow) {
     const t = row.task;
     const range = taskSpan(row.tasks, "forecast");
@@ -537,9 +389,7 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
       return t ? (
         <button
           className="h-11 px-2 text-xs text-ink-soft underline"
-          onClick={() =>
-            canDate(t) ? setCell({ id: t.id, field: "start_date", value: today }) : setDetail(t.id)
-          }
+          onClick={() => setDetail(t.id)}
         >
           Unscheduled
         </button>
@@ -670,9 +520,6 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
           >
             <Redo2 className="inline size-4" /> <span className="sr-only sm:not-sr-only">Redo</span>
           </button>
-          <button className={button} onClick={() => setColumnsOpen((v) => !v)}>
-            Fields
-          </button>
           <button
             className={button}
             onClick={() => setFull((v) => !v)}
@@ -777,40 +624,8 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
             Critical tasks
           </label>
         </div>
-        {columnsOpen && (
-          <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3 text-sm">
-            {["owner", "status", "start", "finish", "duration", "float"].map((c) => (
-              <label key={c} className="flex min-h-9 items-center gap-1">
-                <input
-                  type="checkbox"
-                  checked={prefs.columns.includes(c)}
-                  onChange={(e) =>
-                    patchPrefs({
-                      columns: e.target.checked
-                        ? [...prefs.columns, c]
-                        : prefs.columns.filter((x) => x !== c),
-                    })
-                  }
-                />
-                {c === "float" ? "Float (days)" : c.charAt(0).toUpperCase() + c.slice(1)}
-              </label>
-            ))}
-            <label>
-              Table width{" "}
-              <input
-                aria-label="Table width"
-                type="range"
-                min="320"
-                max="1000"
-                step="20"
-                value={prefs.tableWidth}
-                onChange={(e) => patchPrefs({ tableWidth: Number(e.target.value) })}
-              />
-            </label>
-          </div>
-        )}
         <p className="text-xs text-ink-soft">
-          Click a cell to edit. Double-click a bar for details. Drag an unstarted task to move it.
+          Click a task name or double-click its bar for details. Drag an unstarted task to move it.
           Stages may overlap; links define the handoffs. Durations use calendar days.
         </p>
       </div>
@@ -860,14 +675,9 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
               <span className="shrink-0 p-3 text-xs font-semibold" style={{ width: titleWidth }}>
                 Set / stage / task
               </span>
-              {columns.map((c) => (
-                <span key={c} className="w-[100px] shrink-0 p-3 text-xs capitalize">
-                  {c === "float" ? "Float (days)" : c}
-                </span>
-              ))}
               <div
                 role="separator"
-                aria-label="Resize task table"
+                aria-label="Resize task names"
                 aria-orientation="vertical"
                 tabIndex={0}
                 className="absolute inset-y-0 right-0 w-2 cursor-col-resize bg-border/50"
@@ -875,9 +685,9 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
                   if (["ArrowLeft", "ArrowRight"].includes(e.key)) {
                     e.preventDefault();
                     patchPrefs({
-                      tableWidth: Math.min(
-                        1000,
-                        Math.max(320, prefs.tableWidth + (e.key === "ArrowRight" ? 20 : -20)),
+                      nameWidth: Math.min(
+                        440,
+                        Math.max(180, prefs.nameWidth + (e.key === "ArrowRight" ? 20 : -20)),
                       ),
                     });
                   }
@@ -885,15 +695,15 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
                 onPointerDown={(e) => {
                   e.currentTarget.setPointerCapture(e.pointerId);
                   e.currentTarget.dataset["start"] = String(e.clientX);
-                  e.currentTarget.dataset["width"] = String(prefs.tableWidth);
+                  e.currentTarget.dataset["width"] = String(prefs.nameWidth);
                 }}
                 onPointerMove={(e) => {
                   if (e.currentTarget.hasPointerCapture(e.pointerId))
                     patchPrefs({
-                      tableWidth: Math.min(
-                        1000,
+                      nameWidth: Math.min(
+                        440,
                         Math.max(
-                          320,
+                          180,
                           Number(e.currentTarget.dataset["width"]) +
                             e.clientX -
                             Number(e.currentTarget.dataset["start"]),
@@ -1015,7 +825,12 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
                         <button
                           className={`h-11 min-w-0 flex-1 truncate text-left text-sm ${t ? "" : "font-semibold"}`}
                           title={row.name}
-                          onClick={() => (t ? setSelected(t.id) : toggle(row))}
+                          onClick={() => {
+                            if (t) {
+                              setSelected(t.id);
+                              setDetail(t.id);
+                            } else toggle(row);
+                          }}
                           onDoubleClick={() => t && setDetail(t.id)}
                           onKeyDown={(e) => {
                             if (t && editable && e.key === "F2") {
@@ -1066,11 +881,6 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
                         </button>
                       )}
                     </div>
-                    {columns.map((c) => (
-                      <div key={c} className="w-[100px] shrink-0 border-l border-border/50">
-                        {t ? field(t, c) : null}
-                      </div>
-                    ))}
                   </div>
                   <div className="relative shrink-0" style={{ width: timelineWidth }}>
                     {renderBar(row)}
@@ -1249,79 +1059,6 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
           </div>
         </Modal>
       )}
-      {cell &&
-        cell.field !== "title" &&
-        !columns.some(
-          (c) =>
-            (c === "owner"
-              ? "owner_id"
-              : c === "start"
-                ? "start_date"
-                : c === "finish"
-                  ? "due_date"
-                  : c) === cell.field,
-        ) && (
-          <Modal title={`Edit ${cell.field.replaceAll("_", " ")}`} onClose={() => setCell(null)}>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void saveCell();
-              }}
-            >
-              <label className="block text-sm">
-                {byId.get(cell.id)?.title}
-                {cell.field === "owner_id" ? (
-                  <select
-                    autoFocus
-                    aria-label="Owner"
-                    className={input + " mt-2 w-full"}
-                    value={cell.value}
-                    onChange={(e) => setCell({ ...cell, value: e.target.value })}
-                  >
-                    <option value="">Unassigned</option>
-                    {people.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.full_name}
-                      </option>
-                    ))}
-                  </select>
-                ) : cell.field === "status" ? (
-                  <select
-                    autoFocus
-                    aria-label="Status"
-                    className={input + " mt-2 w-full"}
-                    value={cell.value}
-                    onChange={(e) => setCell({ ...cell, value: e.target.value })}
-                  >
-                    <option value="not_started">Not started</option>
-                    <option value="in_progress">In progress</option>
-                    <option value="blocked">Blocked</option>
-                    <option value="done">Complete</option>
-                  </select>
-                ) : (
-                  <input
-                    autoFocus
-                    required
-                    aria-label="New value"
-                    className={input + " mt-2 w-full"}
-                    type={
-                      cell.field.endsWith("_date")
-                        ? "date"
-                        : cell.field === "duration"
-                          ? "number"
-                          : "text"
-                    }
-                    value={cell.value}
-                    onChange={(e) => setCell({ ...cell, value: e.target.value })}
-                  />
-                )}
-              </label>
-              <button className={button + " mt-4"} disabled={locked}>
-                Save
-              </button>
-            </form>
-          </Modal>
-        )}
       {linkForm && (
         <Modal title="Task dependencies" onClose={() => setLinkForm(null)}>
           <p className="mb-3 text-sm font-semibold">{byId.get(linkForm.task)?.title}</p>
