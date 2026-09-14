@@ -27,7 +27,8 @@ type Preferences = {
   group: "sets" | "departments";
   department: string;
   setId: string;
-  collapsed: string[];
+  collapsed: string[] | null;
+  expansionVersion: number;
   columns: string[];
   scrollTop: number;
   scrollLeft: number;
@@ -38,7 +39,8 @@ const defaults: Preferences = {
   group: "sets",
   department: "",
   setId: "",
-  collapsed: [],
+  collapsed: null,
+  expansionVersion: 1,
   columns: ["owner", "status", "start", "finish"],
   scrollTop: 0,
   scrollLeft: 0,
@@ -106,7 +108,10 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
                 ["owner", "status", "start", "finish", "duration", "float"].includes(x),
               )
             : defaults.columns,
-          collapsed: Array.isArray(v.collapsed) ? v.collapsed : [],
+          // Older views were expanded automatically; start them with the new overview.
+          expansionVersion: 1,
+          collapsed: v.expansionVersion === 1 && Array.isArray(v.collapsed) ? v.collapsed : null,
+          scrollTop: v.expansionVersion === 1 ? v.scrollTop || 0 : 0,
         });
     } catch {
       /* Ignore damaged view preferences. */
@@ -182,7 +187,16 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
     const ids = new Set(sets.map((s) => s.id));
     return tasks.filter((t) => ids.has(t.scene_id));
   }, [tasks, sets]);
-  const collapsed = useMemo(() => new Set(prefs.collapsed), [prefs.collapsed]);
+  const collapsed = useMemo(
+    () =>
+      new Set(
+        prefs.collapsed ??
+          ganttRows(included, sets, store.stages, new Set(), prefs.group, deptNames)
+            .filter((row) => row.expandable)
+            .map((row) => row.key),
+      ),
+    [prefs.collapsed, included, sets, store.stages, prefs.group, deptNames],
+  );
   const rows = useMemo(
     () =>
       ganttRows(
@@ -284,7 +298,7 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
     width: Math.max(prefs.zoom, (daysBetween(start, finish) + 1) * prefs.zoom),
   });
   function toggle(row: GanttRow) {
-    const next = new Set(prefs.collapsed);
+    const next = new Set(collapsed);
     if (next.has(row.key)) next.delete(row.key);
     else next.add(row.key);
     patchPrefs({ collapsed: [...next] });
@@ -771,23 +785,7 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
           <button className="min-h-9 underline" onClick={() => patchPrefs({ collapsed: [] })}>
             Expand all
           </button>
-          <button
-            className="min-h-9 underline"
-            onClick={() =>
-              patchPrefs({
-                collapsed: ganttRows(
-                  included,
-                  sets,
-                  store.stages,
-                  new Set(),
-                  prefs.group,
-                  deptNames,
-                )
-                  .filter((r) => r.expandable)
-                  .map((r) => r.key),
-              })
-            }
-          >
+          <button className="min-h-9 underline" onClick={() => patchPrefs({ collapsed: null })}>
             Collapse all
           </button>
           <label className="flex min-h-9 items-center gap-1">

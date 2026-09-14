@@ -121,6 +121,18 @@ await page.goto(
 );
 await page.getByRole("region", { name: "Production Gantt" }).waitFor();
 const chart = page.getByRole("region", { name: "Production Gantt" });
+await chart.getByRole("button", { name: "Expand Courtyard", exact: true }).waitFor();
+assert.equal(
+  await chart.getByRole("button", { name: "Edit finish for Frame assembly", exact: true }).count(),
+  0,
+);
+await chart.getByRole("button", { name: "Expand Courtyard", exact: true }).click();
+await chart.getByRole("button", { name: "Expand Metal", exact: true }).waitFor();
+assert.equal(
+  await chart.getByRole("button", { name: "Edit finish for Frame assembly", exact: true }).count(),
+  0,
+);
+await chart.getByRole("button", { name: "Expand all", exact: true }).click();
 await chart.getByRole("button", { name: "Edit finish for Frame assembly", exact: true }).click();
 await chart.getByRole("textbox", { name: "New finish for Frame assembly" }).count();
 const finish = chart.getByLabel("New finish for Frame assembly");
