@@ -1,3 +1,4 @@
+import { writeStage, type SetStage } from "./stages-data";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
@@ -116,6 +117,8 @@ export type Store = {
   projects: Project[];
   scenes: Scene[];
   tasks: Task[];
+  stages: SetStage[];
+  manageStage: (sceneId: string, action: "save"|"delete"|"up"|"down", name?: string, id?: string) => Promise<boolean>;
   milestones: Milestone[];
   documents: Document[];
   documentFolders: DocumentFolder[];
@@ -435,6 +438,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       "notifications",
       "tasks",
       "scenes",
+      "set_stages",
+      "task_dependencies",
       "project_assignments",
       "people",
       "projects",
@@ -1056,6 +1061,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [run],
   );
 
+  const manageStage = useCallback<Store["manageStage"]>(async (sceneId, action, name, id) => {
+    const scene = dataRef.current?.scenes.find(s => s.id === sceneId);
+    if (!scene || !allowed(scene.project_id, "admin")) return false;
+    return await runAsync(() => writeStage(sceneId, currentUserIdRef.current, action, name, id));
+  }, [allowed, runAsync]);
+
   /* ---------------------------------------------------------- work items */
 
   const saveWorkItem = useCallback<Store["saveWorkItem"]>(
@@ -1225,6 +1236,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             projects: data.projects,
             scenes: data.scenes,
             tasks: data.tasks,
+            stages: data.stages,
+            manageStage,
             milestones: data.milestones,
             documents: data.documents,
             documentFolders: data.documentFolders,
@@ -1305,6 +1318,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             projects: [],
             scenes: [],
             tasks: [],
+            stages: [],
+            manageStage,
             milestones: [],
             documents: [],
             documentFolders: [],
@@ -1371,6 +1386,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             updateProduction: async () => false,
           },
     [
+      manageStage,
       role,
       toggleReaction,
       setViewingPerson,

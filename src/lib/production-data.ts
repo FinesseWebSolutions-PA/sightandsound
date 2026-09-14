@@ -1,3 +1,4 @@
+import { stageClient, type SetStage } from "./stages-data";
 /**
  * Live data layer for the "Sight and Sound" Supabase project (ref zqrotlehxgeztrukddck).
  *
@@ -133,6 +134,7 @@ export type Task = {
   parent_task_id: string;
   milestone_id: string;
   scene_id: string;
+  stage_id: string;
   title: string;
   description: string;
   status: TaskStatus;
@@ -338,6 +340,7 @@ export type ProductionData = {
   scenes: Scene[];
   milestones: Milestone[];
   tasks: Task[];
+  stages: SetStage[];
   taskDependencies: TaskDependency[];
   documents: Document[];
   documentVersions: DocumentVersion[];
@@ -539,6 +542,7 @@ export async function loadProductionData(options?: {
     assignmentsRes,
     jobTitlesRes,
     scenesRes,
+    stagesRes,
     milestonesRes,
     tasksRes,
     taskDependenciesRes,
@@ -599,6 +603,7 @@ export async function loadProductionData(options?: {
     readTable("scenes", (from, to) =>
       supabase.from("scenes").select("*").order("sort_order").order("id").range(from, to),
     ),
+    readTable("set_stages", (from, to) => stageClient.from("set_stages").select("*").order("sort_order").order("id").range(from, to)),
     readTable("milestones", (from, to) =>
       supabase.from("milestones").select("*").order("sort_order").order("id").range(from, to),
     ),
@@ -693,6 +698,7 @@ export async function loadProductionData(options?: {
     assignmentsRes,
     jobTitlesRes,
     scenesRes,
+    stagesRes,
     milestonesRes,
     tasksRes,
     taskDependenciesRes,
@@ -794,6 +800,7 @@ export async function loadProductionData(options?: {
     parent_task_id: t.parent_task_id ?? "",
     milestone_id: t.milestone_id ?? "",
     scene_id: t.scene_id ?? "",
+    stage_id: t.stage_id ?? "",
     title: t.title,
     description: t.description ?? "",
     status: asTaskStatus(t.status),
@@ -1178,6 +1185,7 @@ export async function loadProductionData(options?: {
     scenes,
     milestones,
     tasks,
+    stages: stagesRes.data ?? [],
     taskDependencies: (taskDependenciesRes.data ?? []).map((d) => ({
       id: d.id,
       task_id: d.task_id,
@@ -2186,12 +2194,15 @@ export type WorkItemInput = {
   departmentId: string;
   /** Every work item belongs to a set. */
   sceneId: string;
+  stageId?: string | null;
   milestoneId: string | null;
   /** The work item this one is part of; null keeps it top level. Omit to leave unchanged. */
   parentTaskId?: string | null;
   ownerId: string | null;
   startDate: string | null;
   dueDate: string | null;
+  actualStart?: string | null;
+  actualFinish?: string | null;
   status: TaskStatus;
   affectsRehearsal: boolean;
   affectsPerformance: boolean;
@@ -2200,17 +2211,21 @@ export type WorkItemInput = {
 
 /** Creates or updates one work item, then lets the database recompute the schedule. */
 export async function writeTask(input: WorkItemInput): Promise<string> {
+  if (!input.sceneId) throw new Error("Every task must belong to a set.");
   const row = {
     project_id: input.projectId,
     title: input.title.trim(),
     description: input.description.trim() || null,
     department_id: input.departmentId || null,
     scene_id: input.sceneId,
+    ...(input.stageId === undefined ? {} : { stage_id: input.stageId || null }),
     milestone_id: input.milestoneId || null,
     owner_id: input.ownerId || null,
     start_date: input.startDate || null,
     due_date: input.dueDate || null,
     status: toTaskStatusColumn(input.status),
+    ...(input.actualStart === undefined ? {} : { actual_start: input.actualStart || null }),
+    ...(input.actualFinish === undefined ? {} : { actual_finish: input.actualFinish || null }),
     affects_rehearsal: input.affectsRehearsal,
     affects_performance: input.affectsPerformance,
     updated_at: new Date().toISOString(),

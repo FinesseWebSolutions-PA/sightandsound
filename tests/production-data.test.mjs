@@ -57,6 +57,7 @@ function dataLayer({ failTable, rpcData = [], failRpc, tableRows = {} } = {}) {
   vm.runInNewContext(compiled, {
     exports,
     require(name) {
+      if (name === "./stages-data") return { stageClient: supabase };
       assert.equal(name, "@/integrations/supabase/client");
       return { supabase };
     },

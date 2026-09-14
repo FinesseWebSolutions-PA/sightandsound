@@ -1,3 +1,4 @@
+import { taskPrerequisites } from "@/lib/task-planning";
 import { Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
@@ -40,7 +41,7 @@ export function DepartmentWorkQueue({
   /** Present only when the viewer may plan work; opens the editor for that department. */
   onAddWork?: (departmentId: string) => void;
 }) {
-  const { tasks, scenes: projectScenes } = useStore();
+  const { tasks, stages, scenes: projectScenes } = useStore();
   const projectTasks = useMemo(
     () => tasks.filter((t) => t.project_id === projectId),
     [tasks, projectId],
@@ -55,10 +56,7 @@ export function DepartmentWorkQueue({
   const sceneById = (id: string) => projectScenes.find((s) => s.id === id);
 
   function blockers(task: Task) {
-    return taskDependencies
-      .filter((d) => d.task_id === task.id)
-      .map((d) => ({ dep: d, upstream: taskById(d.depends_on_task_id) }))
-      .filter((b) => b.upstream && b.upstream.status !== "complete");
+    return taskPrerequisites(task, taskDependencies, tasks, today).filter(p => p.gate === "start");
   }
 
   return (
@@ -188,6 +186,8 @@ export function DepartmentWorkQueue({
                                     {" · "}
                                     {dept.name}
                                     {" · "}
+                                    {stages.find(s => s.id === task.stage_id)?.name ?? "Independent task"}
+                                    {" · "}
                                     {task.parent_task_id
                                       ? `Part of ${taskById(task.parent_task_id)?.title ?? "another work item"} · `
                                       : ""}
@@ -215,7 +215,7 @@ export function DepartmentWorkQueue({
                                     <AlertTriangle aria-hidden className="size-3.5" /> Blocked by
                                   </p>
                                   <ul className="mt-1 space-y-1">
-                                    {blocks.map(({ dep, upstream }) => (
+                                    {blocks.filter(b => b.upstream).map(({ dep, upstream, message }) => (
                                       <li key={dep.id} className="text-xs text-ink-soft">
                                         <Link
                                           to="/projects/$projectId/timeline"
@@ -225,7 +225,7 @@ export function DepartmentWorkQueue({
                                         >
                                           <Link2 aria-hidden className="mt-0.5 size-3 shrink-0" />
                                           <span>
-                                            {upstream!.title} —{" "}
+                                            {message} —{" "}
                                             {departments.find((d) => d.id === upstream!.department_id)
                                               ?.name ?? "unassigned department"}{" "}
                                             ({dependencyTypeLabel[dep.type]})

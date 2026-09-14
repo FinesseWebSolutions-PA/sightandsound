@@ -1,3 +1,5 @@
+import { taskDependencies } from "@/lib/store";
+import { taskReadiness } from "@/lib/task-planning";
 import { latestVersionReview } from "@/lib/document-library";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { usePersonalWorkflow } from "@/lib/personal-context";
@@ -107,6 +109,7 @@ export function MyWorkPage() {
     currentUserId,
     projects,
     tasks,
+    stages,
     documents,
     approvals,
     notifications,
@@ -272,8 +275,9 @@ export function MyWorkPage() {
 
     // Work assigned to this person that is still open; late work is pulled forward.
     for (const task of tasks.filter((t) => t.assignee_id === viewedId && t.status !== "complete")) {
-      const late = task.due_date < today;
-      const blocked = task.status === "blocked";
+      const late = Boolean(task.due_date) && task.due_date < today;
+      const readiness = taskReadiness(task, taskDependencies, tasks, today);
+      const blocked = readiness.blocked;
       out.push({
         id: `t-${task.id}`,
         bucket: late || blocked ? "waiting" : "work",
@@ -281,9 +285,9 @@ export function MyWorkPage() {
         created_at: task.due_date,
         read: true,
         icon: ListChecks,
-        label: blocked ? "Blocked" : late ? "Past its date" : "Assigned to you",
+        label: blocked ? "Blocked" : late ? "Past its date" : readiness.finishWaiting ? "Waiting to finish" : "Assigned to you",
         title: task.title,
-        detail: `Due ${formatDate(task.due_date)} · ${taskStatusMeta[task.status].label}`,
+        detail: `${scenes.find(s => s.id === task.scene_id)?.name ?? "Set unavailable"} · ${stages.find(s => s.id === task.stage_id)?.name ?? "Independent task"} · ${task.due_date ? `Due ${formatDate(task.due_date)}` : "No due date"} · ${taskStatusMeta[task.status].label}${readiness.prerequisites.length ? ` · ${readiness.prerequisites.map(p => p.message).join("; ")}` : ""}`,
         open: (
           <Link
             to="/projects/$projectId/timeline"
@@ -371,6 +375,8 @@ export function MyWorkPage() {
     comments,
     threads,
     tasks,
+    stages,
+    scenes,
     documents,
     approvals,
     documentVersions,

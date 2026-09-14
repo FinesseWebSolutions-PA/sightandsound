@@ -1,3 +1,4 @@
+import { taskReadiness } from "@/lib/task-planning";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowUpRight,
@@ -50,6 +51,7 @@ export function TaskDetailPanel({
 }) {
   const {
     tasks,
+    stages,
     documents,
     scenes,
 
@@ -103,6 +105,7 @@ export function TaskDetailPanel({
   const canAddSub = can.editCoreTimeline && !locked && !task.parent_task_id;
   const subDone = subItems.filter((t) => t.status === "complete").length;
   const health = scheduleHealth(task);
+  const readiness = taskReadiness(task, taskDependencies, tasks);
 
 
   /** Files attach straight to this work item — no folders to choose. */
@@ -149,8 +152,10 @@ export function TaskDetailPanel({
         <header className="sticky top-0 z-10 flex items-start gap-3 panel-header px-4 py-3">
           <div className="min-w-0 flex-1">
             <p className="rule-label">{dept?.name ?? "Work item"}</p>
+            <p className="mt-1 text-xs text-ink-soft">{scene?.name ?? "Set unavailable"} · {stages.find(s => s.id === task.stage_id)?.name ?? "Independent task"}</p>
 
             <h2 className="mt-0.5 text-base font-semibold text-ink">{task.title}</h2>
+            {readiness.prerequisites.length > 0 && <ul className="mt-2 space-y-1 text-xs text-danger">{readiness.prerequisites.map(p => <li key={p.dep.id}>{p.gate === "finish" ? "Finish waits: " : "Start waits: "}{p.message}</li>)}</ul>}
             {parent && (
               <button
                 type="button"

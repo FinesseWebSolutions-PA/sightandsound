@@ -2,7 +2,13 @@ import { Link2, Loader2, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { PersonPicker } from "@/components/PersonPicker";
-import { departments, personById, projectAssignments, taskDependencies, useStore } from "@/lib/store";
+import {
+  departments,
+  personById,
+  projectAssignments,
+  taskDependencies,
+  useStore,
+} from "@/lib/store";
 import { dependencyTypeLabel } from "@/lib/status";
 import { dependencyConflicts } from "@/lib/schedule";
 import type { DependencyType, TaskStatus } from "@/lib/production-data";
@@ -36,6 +42,7 @@ export function WorkItemEditor({
   taskId,
   presetDepartmentId,
   presetSceneId,
+  presetStageId,
   presetParentTaskId,
   onClose,
 }: {
@@ -44,6 +51,7 @@ export function WorkItemEditor({
   taskId?: string;
   presetDepartmentId?: string;
   presetSceneId?: string;
+  presetStageId?: string;
   /** Pre-scopes a new work item as a sub-item of this one. */
   presetParentTaskId?: string;
   onClose: () => void;
@@ -51,7 +59,8 @@ export function WorkItemEditor({
   const {
     tasks,
     scenes,
-    
+    stages,
+
     saving,
     saveWorkItem,
     deleteWorkItem,
@@ -62,12 +71,24 @@ export function WorkItemEditor({
 
   const existing = taskId ? tasks.find((t) => t.id === taskId) : undefined;
 
+  const initialParent = tasks.find(
+    (t) => t.id === (existing?.parent_task_id || presetParentTaskId),
+  );
+  const [stageId, setStageId] = useState(
+    initialParent?.stage_id || existing?.stage_id || presetStageId || "",
+  );
   const [title, setTitle] = useState(existing?.title ?? "");
   const [notes, setNotes] = useState(existing?.description ?? "");
   const [departmentId, setDepartmentId] = useState(
-    existing?.department_id ?? presetDepartmentId ?? departments[0]?.id ?? "",
+    existing?.department_id ??
+      presetDepartmentId ??
+      initialParent?.department_id ??
+      departments[0]?.id ??
+      "",
   );
-  const [sceneId, setSceneId] = useState(existing?.scene_id || presetSceneId || "");
+  const [sceneId, setSceneId] = useState(
+    initialParent?.scene_id || existing?.scene_id || presetSceneId || "",
+  );
   const milestoneId = existing?.milestone_id ?? "";
   const [parentTaskId, setParentTaskId] = useState(
     existing?.parent_task_id ?? presetParentTaskId ?? "",
@@ -75,6 +96,8 @@ export function WorkItemEditor({
   const [ownerId, setOwnerId] = useState(existing?.assignee_id ?? "");
   const [startDate, setStartDate] = useState(existing?.start_date ?? "");
   const [dueDate, setDueDate] = useState(existing?.due_date ?? "");
+  const [actualStart, setActualStart] = useState(existing?.actual_start ?? "");
+  const [actualFinish, setActualFinish] = useState(existing?.actual_finish ?? "");
   const [status, setStatus] = useState<TaskStatus>(existing?.status ?? "not_started");
   const [affectsRehearsal, setAffectsRehearsal] = useState(existing?.affects_rehearsal ?? false);
   const [affectsPerformance, setAffectsPerformance] = useState(
@@ -91,7 +114,8 @@ export function WorkItemEditor({
   const [lagDays, setLagDays] = useState("0");
 
   const projectScenes = useMemo(
-    () => scenes.filter((s) => s.project_id === projectId).sort((a, b) => a.sort_order - b.sort_order),
+    () =>
+      scenes.filter((s) => s.project_id === projectId).sort((a, b) => a.sort_order - b.sort_order),
     [scenes, projectId],
   );
 
@@ -116,7 +140,9 @@ export function WorkItemEditor({
   const children = existing ? tasks.filter((t) => t.parent_task_id === existing.id) : [];
   const rollsUp = children.length > 0;
   // Nesting is one level deep, so only top-level work items from this production can be a parent.
-  const parentOptions = otherTasks.filter((t) => t.project_id === projectId && !t.parent_task_id);
+  const parentOptions = otherTasks.filter(
+    (t) => t.project_id === projectId && t.scene_id === sceneId && !t.parent_task_id,
+  );
 
   async function save({ override = false }: { override?: boolean } = {}) {
     if (!title.trim()) {
@@ -125,6 +151,10 @@ export function WorkItemEditor({
     }
     if (startDate && dueDate && dueDate < startDate) {
       setProblem("The finish date cannot be before the start date.");
+      return;
+    }
+    if (actualStart && actualFinish && actualFinish < actualStart) {
+      setProblem("Actual finish cannot be before actual start.");
       return;
     }
     if (!sceneId) {
@@ -151,12 +181,17 @@ export function WorkItemEditor({
       description: notes,
       departmentId,
       sceneId,
+      stageId: parentTaskId
+        ? tasks.find((t) => t.id === parentTaskId)?.stage_id || null
+        : stageId || null,
       milestoneId: milestoneId || null,
       parentTaskId: parentTaskId || null,
       ownerId: ownerId || null,
       startDate: startDate || null,
       dueDate: dueDate || null,
       status,
+      actualStart: actualStart || null,
+      actualFinish: actualFinish || null,
       affectsRehearsal,
       affectsPerformance,
     });
@@ -227,7 +262,10 @@ export function WorkItemEditor({
           )}
 
           {problem && (
-            <p role="alert" className="rounded-md border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-ink">
+            <p
+              role="alert"
+              className="rounded-md border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-ink"
+            >
               {problem}
             </p>
           )}
@@ -275,6 +313,9 @@ export function WorkItemEditor({
               <label className="block">
                 <span className="text-sm font-medium text-ink">Set</span>
                 <select
+                  aria-label="Set"
+                  required
+                  disabled={Boolean(parentTaskId) || rollsUp}
                   value={addingScene ? "__new" : sceneId}
                   onChange={(e) => {
                     if (e.target.value === "__new") {
@@ -283,6 +324,8 @@ export function WorkItemEditor({
                     }
                     setAddingScene(false);
                     setSceneId(e.target.value);
+                    setStageId("");
+                    setParentTaskId("");
                   }}
                   className={field}
                 >
@@ -312,6 +355,8 @@ export function WorkItemEditor({
                         const id = await createScene(projectId, newSceneName);
                         if (!id) return;
                         setSceneId(id);
+                        setStageId("");
+                        setParentTaskId("");
                         setNewSceneName("");
                         setAddingScene(false);
                       })();
@@ -334,18 +379,51 @@ export function WorkItemEditor({
               )}
             </div>
 
+            <label className="block">
+              <span className="text-sm font-medium text-ink">Stage</span>
+              <select
+                aria-label="Stage"
+                className={field}
+                value={
+                  parentTaskId ? tasks.find((t) => t.id === parentTaskId)?.stage_id || "" : stageId
+                }
+                disabled={!sceneId || Boolean(parentTaskId)}
+                onChange={(e) => setStageId(e.target.value)}
+              >
+                <option value="">Independent task — no stage</option>
+                {stages
+                  .filter((s) => s.scene_id === sceneId)
+                  .sort((a, b) => a.sort_order - b.sort_order)
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+              </select>
+              <span className="mt-1 block text-xs text-ink-soft">
+                {parentTaskId
+                  ? "Set and stage follow the parent task."
+                  : rollsUp
+                    ? "Changing this stage also moves its subtasks. To change sets, detach or move the subtasks first."
+                    : "Create or rename stages in the set’s Tasks tab. A stage does not automatically block another stage."}
+              </span>
+            </label>
             {rollsUp ? (
               <p className="rounded-md border border-border bg-cream-soft px-3 py-2 text-xs text-ink-soft">
                 This work item has {children.length} sub-item
-                {children.length === 1 ? "" : "s"}, so it summarises them and cannot be placed
-                under another work item.
+                {children.length === 1 ? "" : "s"}, so it summarises them and cannot be placed under
+                another work item.
               </p>
             ) : (
               <label className="block">
                 <span className="text-sm font-medium text-ink">Part of</span>
                 <select
                   value={parentTaskId}
-                  onChange={(e) => setParentTaskId(e.target.value)}
+                  onChange={(e) => {
+                    setParentTaskId(e.target.value);
+                    const parent = tasks.find((t) => t.id === e.target.value);
+                    if (parent) setStageId(parent.stage_id);
+                  }}
                   className={field}
                 >
                   <option value="">Stands on its own</option>
@@ -425,6 +503,37 @@ export function WorkItemEditor({
                   />
                 </label>
               </div>
+            )}
+            {!rollsUp && (
+              <details className="rounded-md border border-border p-3">
+                <summary className="cursor-pointer text-sm font-medium">
+                  Actual handoff dates
+                </summary>
+                <p className="mt-2 text-xs text-ink-soft">
+                  Used to check waiting buffers. Record the day work actually started or finished;
+                  planned dates are not proof of a handoff.
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <label className="text-sm">
+                    Actual start
+                    <input
+                      type="date"
+                      className={field}
+                      value={actualStart}
+                      onChange={(e) => setActualStart(e.target.value)}
+                    />
+                  </label>
+                  <label className="text-sm">
+                    Actual finish
+                    <input
+                      type="date"
+                      className={field}
+                      value={actualFinish}
+                      onChange={(e) => setActualFinish(e.target.value)}
+                    />
+                  </label>
+                </div>
+              </details>
             )}
             {existing && (
               <p className="rounded-md border border-border bg-cream-soft px-3 py-2 text-xs text-ink-soft">

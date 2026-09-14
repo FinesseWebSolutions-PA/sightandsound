@@ -1,3 +1,5 @@
+import { stageGroups, stageSummary } from "@/lib/task-planning";
+import { StageTimeline } from "@/components/schedule/StageTimeline";
 import { SetInstructions } from "@/components/workspace/SetInstructions";
 import { SetWorkspace } from "@/components/workspace/SetWorkspace";
 import { useMemo, useState } from "react";
@@ -6,7 +8,6 @@ import { Crown, ExternalLink, Link2, Plus, X } from "lucide-react";
 
 import { ConversationRail } from "@/components/ConversationRail";
 import { DocumentBrowser } from "@/components/DocumentBrowser";
-import { MasterTimeline } from "@/components/schedule/MasterTimeline";
 import { ProductionCalendar } from "@/components/schedule/ProductionCalendar";
 import { PersonPicker } from "@/components/PersonPicker";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -248,6 +249,7 @@ function SetDetail({
 }) {
   const {
     tasks,
+    stages,
     projectAssignments,
     updateScene,
     renameScene,
@@ -265,6 +267,7 @@ function SetDetail({
   const index = order.findIndex((s) => s.id === set.id);
   const others = order.filter((s) => s.id !== set.id);
   const setTasks = tasks.filter((t) => t.scene_id === set.id);
+  const activeStages = stageGroups(setTasks, stages, set.id).filter(g => g.stage && stageSummary(g.tasks).status === "Active");
 
   // Departments with work on this set are the ones worth staffing here.
   const involved = departments.filter(
@@ -307,6 +310,7 @@ function SetDetail({
         </header>
 
         <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-soft">
+          {activeStages.length > 0 && <span className="basis-full">Active stages: {activeStages.map(g => g.name).join(" · ")}</span>}
           <span>Lead: {personById(set.owner_id)?.full_name ?? "Not assigned"}</span>
           <span>Finish: {set.due_date ? formatDate(set.due_date) : "Not committed"}</span>
           {set.portal_url && (
@@ -701,7 +705,7 @@ function SetDetail({
           <div className="flex overflow-hidden rounded-md border border-border-strong w-fit">
             {(
               [
-                { id: "gantt", label: "Gantt" },
+                { id: "gantt", label: "Stages & tasks" },
                 { id: "calendar", label: "Calendar" },
               ] as const
             ).map((m) => (
@@ -721,7 +725,7 @@ function SetDetail({
           </div>
           <div className="min-w-0 overflow-hidden">
             {scheduleMode === "gantt" ? (
-              <MasterTimeline projectId={projectId} sceneId={set.id} />
+              <StageTimeline projectId={projectId} sceneId={set.id} />
             ) : (
               <ProductionCalendar projectId={projectId} sceneId={set.id} />
             )}

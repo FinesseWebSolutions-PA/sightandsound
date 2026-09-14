@@ -1,3 +1,4 @@
+import { StageTimeline } from "@/components/schedule/StageTimeline";
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
 import { ArrowUpRight, Clock, Link2, Lock, MessageSquare, Plus } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
@@ -19,10 +20,11 @@ import type { Task, TaskStatus } from "@/lib/production-data";
 const views = [
   {
     id: "master",
-    label: "Gantt",
-    mobileLabel: "Schedule",
-    blurb: "Set by set, with their dates and the chain between them",
+    label: "Stages & tasks",
+    mobileLabel: "Stages & tasks",
+    blurb: "Overlapping stages and tasks across sets and departments",
   },
+  { id: "setdates", label: "Set dates", blurb: "Whole-set commitments and explicit set dependencies" },
   {
     id: "calendar",
     label: "Calendar",
@@ -459,7 +461,8 @@ function TimelineTab() {
         <p className="text-xs text-ink-soft">{activeView.blurb}</p>
       </div>
 
-      {view === "master" && <MasterTimeline projectId={projectId} />}
+      {view === "master" && <StageTimeline projectId={projectId} />}
+      {view === "setdates" && <MasterTimeline projectId={projectId} />}
       {view === "calendar" && <ProductionCalendar projectId={projectId} />}
       {view === "queue" && (
         <DepartmentWorkQueue
