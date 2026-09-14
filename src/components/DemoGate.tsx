@@ -10,6 +10,7 @@ export function DemoGate({ children }: { children: ReactNode }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [unlockedThisVisit, setUnlockedThisVisit] = useState(false);
 
   const gate = useQuery({
     queryKey: ["demo-gate"],
@@ -26,7 +27,7 @@ export function DemoGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (gate.data?.unlocked) return <>{children}</>;
+  if (gate.data?.unlocked || unlockedThisVisit) return <>{children}</>;
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,7 +37,9 @@ export function DemoGate({ children }: { children: ReactNode }) {
     try {
       const result = await unlock({ data: { password: password.trim() } });
       if (result.ok) {
-        await gate.refetch();
+        // The server has already validated the code. Render immediately instead
+        // of depending on a second cookie read, which embedded previews can block.
+        setUnlockedThisVisit(true);
       } else {
         setError(true);
         setPassword("");

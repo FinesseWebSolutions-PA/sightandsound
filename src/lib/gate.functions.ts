@@ -6,9 +6,15 @@ const sessionConfig = {
   password: process.env["SESSION_SECRET"] ?? "demo-gate-session-secret-fallback-000000",
   name: "ss-demo-gate",
   maxAge: 60 * 60 * 24 * 7,
-  // The app is also viewed inside the Lovable preview iframe, where the cookie is
-  // third-party: SameSite=Lax would be dropped and the unlock would never stick.
-  cookie: { httpOnly: true, secure: true, sameSite: "none" as const, path: "/" },
+  // In the Lovable editor this app runs cross-site inside an iframe. Partitioning
+  // lets modern browsers retain the encrypted session without exposing it to JS.
+  cookie: {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none" as const,
+    partitioned: true,
+    path: "/",
+  },
 };
 
 type GateSession = { unlocked?: boolean };
