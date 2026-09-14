@@ -36,7 +36,6 @@ export function SetDialog({
     can,
     isClosed,
     updateScene,
-    renameScene,
   } = useStore();
 
   const order = useMemo(
@@ -48,8 +47,6 @@ export function SetDialog({
   const canEdit = can.adminConfig && !isClosed(projectId);
 
   const [tab, setTab] = useState<"tasks" | "general" | "documents" | "conversation">("tasks");
-  const [nameDraft, setNameDraft] = useState(set?.name ?? "");
-  useEffect(() => setNameDraft(set?.name ?? ""), [set?.name]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -96,20 +93,7 @@ export function SetDialog({
             <p className="text-xs text-ink-soft">
               {productionName} · Set {index + 1} of {order.length}
             </p>
-            {canEdit ? (
-              <input
-                aria-label="Set name"
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                onBlur={() => {
-                  if (nameDraft.trim() && nameDraft !== set.name)
-                    renameScene(set.id, projectId, nameDraft);
-                }}
-                className="mt-1 min-h-11 w-full rounded-md border border-border bg-card px-2.5 font-display text-2xl text-ink focus:ring-2 focus:ring-ring focus:outline-none"
-              />
-            ) : (
-              <h2 className="mt-1 font-display text-2xl text-ink">{set.name}</h2>
-            )}
+            <h2 className="mt-1 break-words font-display text-2xl text-ink">{set.name}</h2>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <StatusBadge meta={setStatusMeta[set.status]} size="sm" />
               <span className="text-xs text-ink-soft">
