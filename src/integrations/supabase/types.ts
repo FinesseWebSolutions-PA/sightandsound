@@ -14,94 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
-      document_stars: {
-        Row: {
-          document_id: string
-          person_id: string
-        }
-        Insert: {
-          document_id: string
-          person_id: string
-        }
-        Update: {
-          document_id?: string
-          person_id?: string
-        }
-        Relationships: []
-      }
-
-      document_folders: {
-        Row: {
-          id: string
-          project_id: string
-          parent_id: string | null
-          scene_id: string | null
-          name: string
-          created_by: string | null
-          created_at: string
-          deleted_at: string | null
-        }
-        Insert: {
-          id?: string
-          project_id: string
-          parent_id?: string | null
-          scene_id?: string | null
-          name: string
-          created_by?: string | null
-          created_at?: string
-          deleted_at?: string | null
-        }
-        Update: {
-          id?: string
-          project_id?: string
-          parent_id?: string | null
-          scene_id?: string | null
-          name?: string
-          created_by?: string | null
-          created_at?: string
-          deleted_at?: string | null
-        }
-        Relationships: []
-      }
-
       approvals: {
         Row: {
-          due_date: string | null
-          reviewer_id: string | null
-
           decided_at: string | null
           decided_by: string | null
           decision_note: string | null
           document_version_id: string
+          due_date: string | null
           id: string
           requested_at: string
           requested_by: string | null
+          reviewer_id: string | null
           status: string
         }
         Insert: {
-          due_date?: string | null
-          reviewer_id?: string | null
-
           decided_at?: string | null
           decided_by?: string | null
           decision_note?: string | null
           document_version_id: string
+          due_date?: string | null
           id?: string
           requested_at?: string
           requested_by?: string | null
+          reviewer_id?: string | null
           status?: string
         }
         Update: {
-          due_date?: string | null
-          reviewer_id?: string | null
-
           decided_at?: string | null
           decided_by?: string | null
           decision_note?: string | null
           document_version_id?: string
+          due_date?: string | null
           id?: string
           requested_at?: string
           requested_by?: string | null
+          reviewer_id?: string | null
           status?: string
         }
         Relationships: [
@@ -122,6 +69,13 @@ export type Database = {
           {
             foreignKeyName: "approvals_requested_by_fkey"
             columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approvals_reviewer_id_fkey"
+            columns: ["reviewer_id"]
             isOneToOne: false
             referencedRelation: "people"
             referencedColumns: ["id"]
@@ -162,6 +116,64 @@ export type Database = {
             columns: ["actor_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      capacity_allocations: {
+        Row: {
+          finish_date: string
+          lane: string
+          mode: string
+          owner_id: string
+          project_id: string
+          start_date: string
+          task_id: string
+          updated_at: string
+          vendor: string | null
+        }
+        Insert: {
+          finish_date: string
+          lane: string
+          mode: string
+          owner_id: string
+          project_id: string
+          start_date: string
+          task_id: string
+          updated_at?: string
+          vendor?: string | null
+        }
+        Update: {
+          finish_date?: string
+          lane?: string
+          mode?: string
+          owner_id?: string
+          project_id?: string
+          start_date?: string
+          task_id?: string
+          updated_at?: string
+          vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capacity_allocations_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capacity_allocations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capacity_allocations_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: true
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]
@@ -224,6 +236,48 @@ export type Database = {
           },
         ]
       }
+      comment_edit_history: {
+        Row: {
+          author_id: string
+          comment_id: string
+          edited_at: string
+          id: string
+          new_body: string
+          old_body: string
+        }
+        Insert: {
+          author_id: string
+          comment_id: string
+          edited_at?: string
+          id?: string
+          new_body: string
+          old_body: string
+        }
+        Update: {
+          author_id?: string
+          comment_id?: string
+          edited_at?: string
+          id?: string
+          new_body?: string
+          old_body?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_edit_history_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_edit_history_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comment_reactions: {
         Row: {
           comment_id: string
@@ -265,36 +319,33 @@ export type Database = {
       }
       comments: {
         Row: {
-          reply_to_id: string | null
-
           author_id: string | null
           body: string
           created_at: string
           deleted_at: string | null
           edited_at: string | null
           id: string
+          reply_to_id: string | null
           thread_id: string
         }
         Insert: {
-          reply_to_id?: string | null
-
           author_id?: string | null
           body: string
           created_at?: string
           deleted_at?: string | null
           edited_at?: string | null
           id?: string
+          reply_to_id?: string | null
           thread_id: string
         }
         Update: {
-          reply_to_id?: string | null
-
           author_id?: string | null
           body?: string
           created_at?: string
           deleted_at?: string | null
           edited_at?: string | null
           id?: string
+          reply_to_id?: string | null
           thread_id?: string
         }
         Relationships: [
@@ -306,7 +357,80 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "comments_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "comments_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "discussion_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_preferences: {
+        Row: {
+          mode: string
+          person_id: string
+          thread_id: string
+        }
+        Insert: {
+          mode: string
+          person_id: string
+          thread_id: string
+        }
+        Update: {
+          mode?: string
+          person_id?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_preferences_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_preferences_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "discussion_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_reads: {
+        Row: {
+          last_read_at: string
+          person_id: string
+          thread_id: string
+        }
+        Insert: {
+          last_read_at: string
+          person_id: string
+          thread_id: string
+        }
+        Update: {
+          last_read_at?: string
+          person_id?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_reads_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_reads_thread_id_fkey"
             columns: ["thread_id"]
             isOneToOne: false
             referencedRelation: "discussion_threads"
@@ -417,34 +541,34 @@ export type Database = {
       }
       discussion_threads: {
         Row: {
-          is_general: boolean
           context_type: string
           created_at: string
           created_by: string | null
           document_id: string | null
           id: string
+          is_general: boolean
           project_id: string
           scene_id: string | null
           task_id: string | null
         }
         Insert: {
-          is_general?: boolean
           context_type: string
           created_at?: string
           created_by?: string | null
           document_id?: string | null
           id?: string
+          is_general?: boolean
           project_id: string
           scene_id?: string | null
           task_id?: string | null
         }
         Update: {
-          is_general?: boolean
           context_type?: string
           created_at?: string
           created_by?: string | null
           document_id?: string | null
           id?: string
+          is_general?: boolean
           project_id?: string
           scene_id?: string | null
           task_id?: string | null
@@ -483,6 +607,98 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_folders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          name: string
+          parent_id: string | null
+          project_id: string
+          scene_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          name: string
+          parent_id?: string | null
+          project_id: string
+          scene_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          name?: string
+          parent_id?: string | null
+          project_id?: string
+          scene_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_folders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "document_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_folders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_folders_scene_id_fkey"
+            columns: ["scene_id"]
+            isOneToOne: false
+            referencedRelation: "scenes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_stars: {
+        Row: {
+          document_id: string
+          person_id: string
+        }
+        Insert: {
+          document_id: string
+          person_id: string
+        }
+        Update: {
+          document_id?: string
+          person_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_stars_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_stars_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
         ]
@@ -534,12 +750,11 @@ export type Database = {
       }
       documents: {
         Row: {
-          folder_id: string | null
-
           created_at: string
           created_by: string | null
           deleted_at: string | null
           folder: string | null
+          folder_id: string | null
           id: string
           project_id: string
           requires_approval: boolean
@@ -549,12 +764,11 @@ export type Database = {
           title: string
         }
         Insert: {
-          folder_id?: string | null
-
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
           folder?: string | null
+          folder_id?: string | null
           id?: string
           project_id: string
           requires_approval?: boolean
@@ -564,12 +778,11 @@ export type Database = {
           title: string
         }
         Update: {
-          folder_id?: string | null
-
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
           folder?: string | null
+          folder_id?: string | null
           id?: string
           project_id?: string
           requires_approval?: boolean
@@ -584,6 +797,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "document_folders"
             referencedColumns: ["id"]
           },
           {
@@ -702,6 +922,38 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          desktop: boolean
+          mode: string
+          person_id: string
+          quiet_end: number
+          quiet_start: number
+        }
+        Insert: {
+          desktop?: boolean
+          mode?: string
+          person_id: string
+          quiet_end?: number
+          quiet_start?: number
+        }
+        Update: {
+          desktop?: boolean
+          mode?: string
+          person_id?: string
+          quiet_end?: number
+          quiet_start?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -789,6 +1041,42 @@ export type Database = {
           role?: string
         }
         Relationships: []
+      }
+      personal_notification_state: {
+        Row: {
+          dismissed: boolean
+          notification_id: string
+          person_id: string
+          snoozed_until: string | null
+        }
+        Insert: {
+          dismissed?: boolean
+          notification_id: string
+          person_id: string
+          snoozed_until?: string | null
+        }
+        Update: {
+          dismissed?: boolean
+          notification_id?: string
+          person_id?: string
+          snoozed_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_notification_state_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personal_notification_state_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_assignments: {
         Row: {
@@ -894,6 +1182,36 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_workflow_settings: {
+        Row: {
+          project_id: string
+          timeline_owner_id: string
+        }
+        Insert: {
+          project_id: string
+          timeline_owner_id: string
+        }
+        Update: {
+          project_id?: string
+          timeline_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_workflow_settings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_workflow_settings_timeline_owner_id_fkey"
+            columns: ["timeline_owner_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
         ]
@@ -1014,6 +1332,283 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_change_requests: {
+        Row: {
+          created_at: string
+          id: string
+          new_finish: string
+          new_start: string
+          old_finish: string | null
+          old_start: string | null
+          project_id: string
+          reason: string
+          requested_by: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          task_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          new_finish: string
+          new_start: string
+          old_finish?: string | null
+          old_start?: string | null
+          project_id: string
+          reason: string
+          requested_by: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          task_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          new_finish?: string
+          new_start?: string
+          old_finish?: string | null
+          old_start?: string | null
+          project_id?: string
+          reason?: string
+          requested_by?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_change_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_change_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_change_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_change_requests_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      set_followers: {
+        Row: {
+          person_id: string
+          scene_id: string
+        }
+        Insert: {
+          person_id: string
+          scene_id: string
+        }
+        Update: {
+          person_id?: string
+          scene_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "set_followers_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "set_followers_scene_id_fkey"
+            columns: ["scene_id"]
+            isOneToOne: false
+            referencedRelation: "scenes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      set_instruction_documents: {
+        Row: {
+          category: string
+          document_id: string
+          scene_id: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          category: string
+          document_id: string
+          scene_id: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          category?: string
+          document_id?: string
+          scene_id?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "set_instruction_documents_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "set_instruction_documents_scene_id_fkey"
+            columns: ["scene_id"]
+            isOneToOne: false
+            referencedRelation: "scenes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "set_instruction_documents_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      set_update_recipients: {
+        Row: {
+          acknowledged_at: string | null
+          person_id: string
+          update_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          person_id: string
+          update_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          person_id?: string
+          update_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "set_update_recipients_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "set_update_recipients_update_id_fkey"
+            columns: ["update_id"]
+            isOneToOne: false
+            referencedRelation: "set_updates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      set_updates: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string
+          document_version_id: string | null
+          id: string
+          kind: string
+          needs_ack: boolean
+          owner_id: string
+          scene_id: string
+          source_comment_id: string | null
+          source_snapshot: string | null
+          task_id: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by: string
+          document_version_id?: string | null
+          id?: string
+          kind: string
+          needs_ack?: boolean
+          owner_id: string
+          scene_id: string
+          source_comment_id?: string | null
+          source_snapshot?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string
+          document_version_id?: string | null
+          id?: string
+          kind?: string
+          needs_ack?: boolean
+          owner_id?: string
+          scene_id?: string
+          source_comment_id?: string | null
+          source_snapshot?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "set_updates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "set_updates_document_version_id_fkey"
+            columns: ["document_version_id"]
+            isOneToOne: false
+            referencedRelation: "document_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "set_updates_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "set_updates_scene_id_fkey"
+            columns: ["scene_id"]
+            isOneToOne: false
+            referencedRelation: "scenes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "set_updates_source_comment_id_fkey"
+            columns: ["source_comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "set_updates_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]
@@ -1209,6 +1804,12 @@ export type Database = {
           total_float_hours: number
         }[]
       }
+      conversation_followers: {
+        Args: { p_thread: string }
+        Returns: {
+          person_id: string
+        }[]
+      }
       cpm_task_schedule: {
         Args: {
           p_override_finish?: string
@@ -1225,6 +1826,48 @@ export type Database = {
           task_id: string
           total_float_hours: number
         }[]
+      }
+      department_audience: {
+        Args: { p_project: string; p_scene?: string }
+        Returns: {
+          department_id: string
+          person_id: string
+        }[]
+      }
+      department_mention_recipients: {
+        Args: { p_thread: string }
+        Returns: {
+          department_id: string
+          person_id: string
+        }[]
+      }
+      ensure_set_chat: {
+        Args: { p_actor: string; p_scene: string }
+        Returns: string
+      }
+      file_conversation_attachment: {
+        Args: {
+          p_actor: string
+          p_attachment: string
+          p_folder: string
+          p_requires_approval?: boolean
+          p_title: string
+        }
+        Returns: string
+      }
+      library_folder_action: {
+        Args: {
+          p_action: string
+          p_actor: string
+          p_folder: string
+          p_name?: string
+          p_parent?: string
+        }
+        Returns: undefined
+      }
+      personal_workflow: {
+        Args: { p_action: string; p_actor: string; p_payload?: Json }
+        Returns: Json
       }
       preview_task_reschedule: {
         Args: { p_new_finish: string; p_new_start: string; p_task_id: string }
@@ -1250,6 +1893,49 @@ export type Database = {
       recompute_scene_rollup: {
         Args: { p_scene_id: string }
         Returns: undefined
+      }
+      request_document_review: {
+        Args: {
+          p_actor: string
+          p_document: string
+          p_due_date: string
+          p_note: string
+          p_reviewer: string
+          p_version: string
+        }
+        Returns: string
+      }
+      review_document: {
+        Args: {
+          p_actor: string
+          p_decision: string
+          p_document: string
+          p_note: string
+          p_reviewer?: string
+          p_version: string
+        }
+        Returns: string
+      }
+      set_instruction_action: {
+        Args: {
+          p_actor: string
+          p_category: string
+          p_document: string
+          p_remove?: boolean
+          p_scene: string
+        }
+        Returns: undefined
+      }
+      set_recipients: {
+        Args: { p_scene: string }
+        Returns: {
+          full_name: string
+          person_id: string
+        }[]
+      }
+      workspace_action: {
+        Args: { p_action: string; p_actor: string; p_payload: Json }
+        Returns: string
       }
     }
     Enums: {
