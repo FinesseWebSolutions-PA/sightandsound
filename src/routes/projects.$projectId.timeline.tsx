@@ -8,7 +8,6 @@ import { WorkItemEditor } from "@/components/WorkItemEditor";
 
 import { StatusBadge } from "@/components/StatusBadge";
 import { DepartmentWorkQueue } from "@/components/schedule/DepartmentWorkQueue";
-import { MasterTimeline } from "@/components/schedule/MasterTimeline";
 import { ProductionCalendar } from "@/components/schedule/ProductionCalendar";
 import { SceneReadinessMatrix } from "@/components/schedule/SceneReadinessMatrix";
 import { departments, personById, taskDependencies, useStore } from "@/lib/store";
@@ -20,11 +19,10 @@ import type { Task, TaskStatus } from "@/lib/production-data";
 const views = [
   {
     id: "master",
-    label: "Stages & tasks",
-    mobileLabel: "Stages & tasks",
+    label: "Gantt",
+    mobileLabel: "Gantt",
     blurb: "Overlapping stages and tasks across sets and departments",
   },
-  { id: "setdates", label: "Set dates", blurb: "Whole-set commitments and explicit set dependencies" },
   {
     id: "calendar",
     label: "Calendar",
@@ -87,7 +85,6 @@ export const Route = createFileRoute("/projects/$projectId/timeline")({
         property: "og:description",
         content: "Sets and work items with due dates, ownership, status, and dependencies.",
       },
-
     ],
   }),
   component: TimelineTab,
@@ -277,7 +274,7 @@ function TaskTable({
                     >
                       {task.title}
                     </button>
-                    
+
                     {blocks.length > 0 && (
                       <span className="mt-1 inline-flex items-center gap-1 text-xs text-ink-soft">
                         <ArrowUpRight aria-hidden className="size-3" />
@@ -371,7 +368,6 @@ function TimelineTab() {
   const projectTasks = tasks.filter((t) => t.project_id === projectId);
   const listTasks = [...projectTasks].sort(byDateAsc((t) => t.due_date));
 
-
   const taskTitle = (id: string) => tasks.find((t) => t.id === id)?.title ?? id;
 
   // Arriving from My Work, the Dashboard or a blocker link opens that work item in place.
@@ -452,7 +448,6 @@ function TimelineTab() {
               className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold ${
                 view === v.id ? "chip-selected" : "chip-quiet hover:bg-cream"
               }`}
-
             >
               {isMobile && "mobileLabel" in v && v.mobileLabel ? v.mobileLabel : v.label}
             </button>
@@ -461,8 +456,7 @@ function TimelineTab() {
         <p className="text-xs text-ink-soft">{activeView.blurb}</p>
       </div>
 
-      {view === "master" && <StageTimeline projectId={projectId} />}
-      {view === "setdates" && <MasterTimeline projectId={projectId} />}
+      {view === "master" && <StageTimeline key={projectId} projectId={projectId} />}
       {view === "calendar" && <ProductionCalendar projectId={projectId} />}
       {view === "queue" && (
         <DepartmentWorkQueue
@@ -525,7 +519,6 @@ function TimelineTab() {
           />
         </section>
       </div>
-
 
       {openTaskId && (
         <TaskDetailPanel
