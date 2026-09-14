@@ -38,3 +38,17 @@ test("Back and Forward preserve an existing origin, and denied storage uses memo
   assert.equal(history.canReturn(file), true);
   assert.equal(history.canReturn(origin), false);
 });
+
+test("a tour can restore the original file Back behavior only in the same history slot", () => {
+  const history = createReturnHistory(() => undefined);
+  history.remember(origin, file);
+  const returned = loc(file.href, "after-tour", 3);
+  history.restoreAfterTour(file, returned);
+  assert.equal(history.canReturn(returned), true);
+  const wrongSlot = loc(file.href, "different-slot", 4);
+  history.restoreAfterTour(file, wrongSlot);
+  assert.equal(history.canReturn(wrongSlot), false);
+  const direct = loc(file.href, "direct", 3);
+  history.restoreAfterTour(direct, loc(file.href, "new-direct", 3));
+  assert.equal(history.canReturn(loc(file.href, "new-direct", 3)), false);
+});

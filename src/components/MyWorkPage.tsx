@@ -418,7 +418,7 @@ export function MyWorkPage() {
   const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? "Other";
 
   return (
-    <div className="mx-auto max-w-[1100px] space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+    <div data-tour="my-work" className="mx-auto max-w-[1100px] space-y-6 px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="min-w-0 font-display text-3xl text-ink sm:text-4xl">My Work</h1>
         {viewedId === currentUserId && unreadIds.length > 0 && (

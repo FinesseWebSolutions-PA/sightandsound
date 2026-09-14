@@ -562,6 +562,7 @@ function SetDetail({
       </section>
 
       <nav
+        data-tour="set-tabs"
         aria-label={`${set.name} sections`}
         className="surface-card flex flex-wrap items-center gap-1 p-1"
       >

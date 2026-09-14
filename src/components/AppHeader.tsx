@@ -1,3 +1,4 @@
+import { ProductTour } from "@/components/ProductTour";
 import { usePersonalWorkflow } from "@/lib/personal-context";
 import { notificationDisposition } from "@/lib/notification-rules";
 import { Link } from "@tanstack/react-router";
@@ -86,6 +87,8 @@ export function AppHeader() {
             People
           </Link>
         </nav>
+
+        <ProductTour />
 
         {/* Utilities zone — search icon + one account menu */}
         <div className="ml-auto hidden items-center gap-1 py-2.5 md:flex md:border-l md:border-bar-border md:pl-4 lg:pl-6">

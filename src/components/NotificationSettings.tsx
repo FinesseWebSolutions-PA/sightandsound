@@ -14,7 +14,7 @@ export function NotificationSettings() {
     if (state.preferences) setPref(state.preferences);
   }, [state.preferences]);
   return (
-    <section className="surface-card p-3">
+    <section data-tour="notifications" className="surface-card p-3">
       <button
         className="min-h-11 text-sm font-medium"
         aria-expanded={open}

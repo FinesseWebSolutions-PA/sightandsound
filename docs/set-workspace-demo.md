@@ -54,3 +54,11 @@ Google is selected for individual sign-in, but provider configuration and accoun
 Any active demo person, including viewers, can approve the latest uploaded version in an open production. A pending request or assignment is not required. When a request exists, the intended reviewer remains recorded while the actual approver is recorded separately. Direct approvals notify the uploader; requested approvals notify the requester. Repeated approvals preserve the first approval record. Older versions, deleted files, deactivated people, and closed productions cannot be approved. Requesting changes retains its existing contributor/assigned-reviewer rules. This exception remains until deliberately replaced; it does not grant other viewer editing permissions.
 
 Verification: `node tests/db/open-upload-approval.mjs /absolute/path/to/@electric-sql/pglite/dist/index.js`, plus the JavaScript suite, type checking, and production build. No live review decisions were created during testing.
+
+## First-visit guide and replay
+
+The header's **Help & tour** button is available on desktop and phones. A first-visit welcome offers an 8-step quick start, a 19-step full walkthrough, and six topic shortcuts. The guide navigates the actual app, highlights relevant controls, and opens an existing set file for version/approval explanations when one is available. Empty productions and sets have explanatory fallbacks.
+
+Next, Back, and the step picker control navigation. Pause saves the current step; Help & tour offers Resume. Quick start and Full walkthrough always begin at step one. Reset tour progress clears only the current person's guide record on this browser. Dismissed/completed tours do not automatically reappear after reload. Progress is browser-local, not cross-device. Blocked browser storage shows a notice and the guide still works for the current visit.
+
+The guide restores its starting URL and page scroll when paused or finished, while preserving a file's original Back destination. It does not send messages, approve uploads, change assignments or dates, or mark conversations read. The underlying page is blocked while guided steps are open. Escape pauses the tour; the guide includes keyboard focus management and responsive layouts.

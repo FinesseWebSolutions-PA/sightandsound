@@ -153,7 +153,9 @@ function SearchPage() {
   );
   return (
     <main className="mx-auto max-w-[1000px] px-4 py-6 sm:px-6 sm:py-8">
-      <h1 className="font-display text-3xl text-ink sm:text-4xl">Search</h1>
+      <h1 data-tour="search" className="font-display text-3xl text-ink sm:text-4xl">
+        Search
+      </h1>
 
       <div className="mt-4 flex items-center gap-2 rounded-full border border-border bg-card px-4 focus-within:ring-2 focus-within:ring-ring">
         <SearchIcon aria-hidden className="size-4 shrink-0 text-ink-soft" />

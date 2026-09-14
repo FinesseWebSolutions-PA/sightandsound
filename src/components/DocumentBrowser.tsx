@@ -1152,7 +1152,7 @@ function FileViewer({
               fileLabel={version?.file_label ?? doc.title}
             />
           </section>
-          <aside className="min-w-0">
+          <aside data-tour="file-review" className="min-w-0">
             <div className="flex gap-1 border-b p-2">
               {(
                 [

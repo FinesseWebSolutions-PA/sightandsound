@@ -1,3 +1,4 @@
+import { tourSession } from "./product-tour";
 export const readKey = (userId: string, threadId: string) => `ss-read:${userId}:${threadId}`;
 let transport: { user: string; send: (thread: string, at: string) => Promise<void> } | null = null;
 const pending = new Map<string, { user: string; thread: string; at: string }>();
@@ -39,11 +40,12 @@ export function mergeConversationReads(
   if (changed) window.dispatchEvent(new Event("conversation-read"));
 }
 async function flush() {
-  if (running || !transport) return;
+  if (tourSession.active || running || !transport) return;
   running = true;
   const current = transport;
   try {
     for (const [key, row] of pending) {
+      if (tourSession.active) break;
       if (row.user !== current.user) continue;
       try {
         await current.send(row.thread, row.at);
@@ -81,7 +83,7 @@ export function setReadTransport(
   };
 }
 export function markConversationRead(userId: string, threadId: string, at: string) {
-  if (!userId || !threadId || !Number.isFinite(Date.parse(at))) return;
+  if (tourSession.active || !userId || !threadId || !Number.isFinite(Date.parse(at))) return;
   const old = lastRead(userId, threadId);
   if (old && new Date(at).getTime() <= new Date(old).getTime()) return;
   memoryReads.set(readKey(userId, threadId), at);

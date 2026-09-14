@@ -32,6 +32,23 @@ export function createReturnHistory(storage: () => StorageAccess | undefined) {
         /* Memory fallback. */
       }
     },
+    restoreAfterTour(from: LocationEntry, to: LocationEntry) {
+      if (
+        !this.canReturn(from) ||
+        from.href !== to.href ||
+        from.state.__TSR_index !== to.state.__TSR_index ||
+        !to.state.__TSR_key
+      )
+        return;
+      const key = to.state.__TSR_key;
+      const entry = { href: to.href, index: to.state.__TSR_index! };
+      memory.set(key, entry);
+      try {
+        storage()?.setItem(prefix + key, JSON.stringify(entry));
+      } catch {
+        /* Memory fallback. */
+      }
+    },
     canReturn(location: LocationEntry) {
       const key = location.state.__TSR_key;
       if (!key) return false;
