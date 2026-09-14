@@ -163,17 +163,6 @@ assert.equal(
 );
 await chart.getByRole("button", { name: "Redo", exact: true }).click();
 await page.waitForFunction(() => document.body.innerText.includes("Change redone"));
-await chart.getByRole("button", { name: "Capture baseline", exact: true }).click();
-await page
-  .getByRole("dialog", { name: "Capture baseline" })
-  .getByRole("button", { name: "Capture", exact: true })
-  .click();
-await page.waitForFunction(
-  () => document.querySelector('select[aria-label="Compare baseline"]')?.options.length === 2,
-);
-await chart
-  .getByLabel("Compare baseline")
-  .selectOption({ label: "Plan " + new Date().toISOString().slice(0, 10) });
 await chart.getByRole("button", { name: "Fit", exact: true }).click();
 await page.screenshot({
   path: process.env.GANTT_DESKTOP_SCREENSHOT || "/tmp/ss-gantt-desktop.png",
@@ -309,7 +298,7 @@ writeFileSync(
   ),
 );
 console.log(
-  "Passed browser editing, preview/cancel, commit, undo/redo, baseline, actual-date lock, cancelled drag, drag preview, saved grouping, 5,000-task virtualization and mobile width.",
+  "Passed browser editing, preview/cancel, commit, undo/redo, actual-date lock, cancelled drag, drag preview, saved grouping, 5,000-task virtualization and mobile width.",
   { readyMs, rowCount },
 );
 await browser.close();

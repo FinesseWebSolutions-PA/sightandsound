@@ -11,7 +11,7 @@ The production and set timelines now share one Gantt editor. The previous Set da
 - Review affected dates before saving a cascade or dependency change. Protected milestone warnings remain visible. Preview uses a transaction rollback and writes no changes or audit entries.
 - Undo/redo the last 30 Gantt changes while the chart remains open. An intervening change to the production prevents undo from overwriting newer work. Reloading or leaving the chart clears the undo history.
 - Use Today, Fit, zoom, Fields, the adjustable table divider or full screen. Grouping, filters, columns, expansion and scroll positions are saved per production/set in the current browser.
-- Capture named, immutable baselines and select one to compare its planned dates with the current bars. Gold lines show the selected baseline; date mode controls planned versus forecast bars.
+- Show the current schedule using forecast dates, falling back to task dates. Date-mode and baseline controls have been removed to simplify the chart; previously captured baseline records remain stored.
 - Administrators can add stages and tasks in context. Existing task/set editors remain available for full details. Viewers retain read-only access.
 
 ## Data and scheduling
@@ -24,7 +24,7 @@ New baseline data has RLS and checked administrator capture; snapshots have no d
 
 - 67 unit tests pass, including hierarchy retention, independent work, daylight-saving date moves and bounded rendering.
 - Isolated PostgreSQL-compatible tests exercise preview rollback, downstream movement, completed-date protection, administrator/closed-production guards, stale edits, undo, cycles, dependency reversal, approval gating, baseline RLS and atomic batch rollback.
-- Browser tests use isolated PGlite data behind intercepted requests. They exercise real UI edits, previews, commit/cancel, undo/redo, baseline capture, cancelled drag, saved grouping, failed saves, a colleague's intervening edit, viewer controls and mobile width. No live data is mutated by those tests.
+- Browser tests use isolated PGlite data behind intercepted requests. They exercise real UI edits, previews, commit/cancel, undo/redo, cancelled drag, saved grouping, failed saves, a colleague's intervening edit, viewer controls and mobile width. No live data is mutated by those tests.
 - The large fixture contains 5,000 tasks and 2,001 links. The visible area rendered 23 rows. Two local production-bundle runs reached usable rows in approximately 4.3–5.7 seconds; sampled scrolling p95 frame intervals ranged from 12–32.6 ms. These are local headless-browser measurements with an in-process test database, not a network-controlled or 100-user benchmark. The stress case does not establish all proposed performance targets.
 - A preview against the live 111-task Prodigal production succeeded and left the semantic snapshot unchanged. The migrations were applied before publishing the UI.
 - Type checking, targeted lint and the production build pass.
@@ -45,4 +45,4 @@ The fixture uses the local demo's default access code and intercepts all applica
 
 ## Boundaries of this release
 
-This delivers the core unified editor and baseline comparison. It does not claim complete Wrike parity. Scheduling remains date-based with calendar-day durations; custom work calendars, hourly planning, effort-based capacity, reusable stage/task blueprints, CSV/PDF export, bulk group dragging and drag-to-connect gestures remain future work. Links are currently created through the dependency editor. The existing CPM convergence limit is retained with an explicit error rather than silently accepting an unconverged schedule. Enterprise rollout still needs individual identity, realistic concurrent-user load tests and agreement with the line producer on calendar and cascade rules.
+This delivers the core unified editor. It does not claim complete Wrike parity. Scheduling remains date-based with calendar-day durations; custom work calendars, hourly planning, effort-based capacity, reusable stage/task blueprints, CSV/PDF export, bulk group dragging and drag-to-connect gestures remain future work. Links are currently created through the dependency editor. The existing CPM convergence limit is retained with an explicit error rather than silently accepting an unconverged schedule. Enterprise rollout still needs individual identity, realistic concurrent-user load tests and agreement with the line producer on calendar and cascade rules.

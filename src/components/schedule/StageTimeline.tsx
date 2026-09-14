@@ -64,9 +64,6 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
   const [query, setQuery] = useState("");
   const [critical, setCritical] = useState(false);
   const [links, setLinks] = useState(true);
-  const [mode, setMode] = useState<"forecast" | "plan">("forecast");
-  const [baseline, setBaseline] = useState("");
-  const [baselineName, setBaselineName] = useState<string | null>(null);
   const [selected, setSelected] = useState("");
   const [detail, setDetail] = useState("");
   const [editor, setEditor] = useState<{
@@ -274,16 +271,6 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
     }
     return map;
   }, [dependencies]);
-  const selectedBaseline = useMemo(
-    () =>
-      new Map(
-        (data.baselines.find((b) => b.id === baseline)?.tasks ?? []).map((t) => [
-          t.id,
-          ganttTask(t),
-        ]),
-      ),
-    [data.baselines, baseline],
-  );
   const editable = store.can.editCoreTimeline && !store.isClosed(projectId);
   const locked = data.busy || Boolean(data.preview);
   const canDate = (t: Task) =>
@@ -354,8 +341,8 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
     e.preventDefault();
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
-    const start = mode === "forecast" ? t.forecast_start || t.start_date : t.start_date;
-    const finish = mode === "forecast" ? t.forecast_finish || t.due_date : t.due_date;
+    const start = t.forecast_start || t.start_date;
+    const finish = t.forecast_finish || t.due_date;
     if (!start || !finish) return;
     const d = { id: t.id, kind, x: e.clientX, scroll: viewport.left, days: 0, start, finish };
     dragRef.current = d;
@@ -545,7 +532,7 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
   }
   function renderBar(row: GanttRow) {
     const t = row.task;
-    const range = taskSpan(row.tasks, mode);
+    const range = taskSpan(row.tasks, "forecast");
     if (!range.start || !range.finish)
       return t ? (
         <button
@@ -560,10 +547,6 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
     const dateRange =
       t && drag?.id === t.id ? shiftDates(drag.start, drag.finish, drag.days, drag.kind) : null;
     const placement = box(dateRange?.start || range.start, dateRange?.finish || range.finish);
-    const baselineTasks = row.tasks.flatMap((task) =>
-      selectedBaseline.has(task.id) ? [selectedBaseline.get(task.id)!] : [],
-    );
-    const old = taskSpan(baselineTasks, "plan");
     const summary = !t || parents.has(t.id);
     const color =
       t?.status === "complete"
@@ -577,13 +560,6 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
               : "bg-ink";
     return (
       <>
-        {old.start && old.finish && (
-          <div
-            title={`Baseline: ${old.start} → ${old.finish}`}
-            className="absolute top-[34px] h-1.5 rounded bg-gold-deep/60"
-            style={box(old.start, old.finish)}
-          />
-        )}
         <div
           className={`absolute top-2 h-7 rounded ${color} ${selected === t?.id ? "ring-2 ring-blue-500 ring-offset-1" : ""} ${summary ? "border border-gold-deep" : "text-white"}`}
           style={placement}
@@ -800,37 +776,6 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
             />{" "}
             Critical tasks
           </label>
-          <select
-            className={input}
-            aria-label="Displayed dates"
-            value={mode}
-            onChange={(e) => setMode(e.target.value as typeof mode)}
-          >
-            <option value="forecast">Forecast dates</option>
-            <option value="plan">Planned dates</option>
-          </select>
-          <select
-            className={input + " max-w-60"}
-            aria-label="Compare baseline"
-            value={baseline}
-            onChange={(e) => setBaseline(e.target.value)}
-          >
-            <option value="">No baseline comparison</option>
-            {data.baselines.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-          {editable && (
-            <button
-              className="min-h-9 underline"
-              disabled={locked}
-              onClick={() => setBaselineName(`Plan ${today}`)}
-            >
-              Capture baseline
-            </button>
-          )}
         </div>
         {columnsOpen && (
           <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3 text-sm">
@@ -1167,8 +1112,8 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
                     to = byId.get(d.task_id);
                   if (!from || !to) return [];
                   const ends = dependencyEnds(d.type);
-                  const datesA = taskSpan([from], mode),
-                    datesB = taskSpan([to], mode);
+                  const datesA = taskSpan([from], "forecast"),
+                    datesB = taskSpan([to], "forecast");
                   if (!datesA.start || !datesA.finish || !datesB.start || !datesB.finish) return [];
                   const x1 = x(ends.from === "finish" ? addDays(datesA.finish, 1) : datesA.start),
                     x2 = x(ends.to === "finish" ? addDays(datesB.finish, 1) : datesB.start),
@@ -1516,33 +1461,6 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
           </form>
         </Modal>
       )}
-      {baselineName !== null && (
-        <Modal title="Capture baseline" onClose={() => setBaselineName(null)}>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void data.capture(baselineName);
-              setBaselineName(null);
-            }}
-          >
-            <p className="mb-3 text-sm">
-              Keep a named copy of today’s plan to compare with later changes.
-            </p>
-            <input
-              autoFocus
-              required
-              maxLength={100}
-              aria-label="Baseline name"
-              className={input + " w-full"}
-              value={baselineName}
-              onChange={(e) => setBaselineName(e.target.value)}
-            />
-            <button className={button + " mt-4"} disabled={locked}>
-              Capture
-            </button>
-          </form>
-        </Modal>
-      )}
       {detail && (
         <TaskDetailPanel
           taskId={detail}
@@ -1571,8 +1489,7 @@ export function StageTimeline({ projectId, sceneId }: { projectId: string; scene
         />
       )}
       <p className="text-xs text-ink-soft">
-        {editable ? "Administrator planning access" : "Read-only schedule"} · {rows.length} rows ·
-        Gold line = selected baseline.{" "}
+        {editable ? "Administrator planning access" : "Read-only schedule"} · {rows.length} rows ·{" "}
         <Link
           to="/projects/$projectId/sets"
           params={{ projectId }}
