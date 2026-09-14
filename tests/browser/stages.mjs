@@ -4,6 +4,16 @@ if (!process.env.STAGE_REVIEW_PASSWORD)
   throw new Error("Set STAGE_REVIEW_PASSWORD to the locally configured access code.");
 import assert from "node:assert/strict";
 const browser = await chromium.launch({ headless: true });
+async function dismissTourIfShown(page) {
+  const skip = page.getByRole("button", { name: "I’ll explore on my own", exact: true });
+  if (
+    await skip.waitFor({ timeout: 1500 }).then(
+      () => true,
+      () => false,
+    )
+  )
+    await skip.click();
+}
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const project = "1c34d14d-d89f-4139-9846-9e04bc2ffc60";
 const uuid = (n) => `10000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
@@ -158,7 +168,7 @@ await page.route("**/rest/v1/**", async (route) => {
 await page.goto("http://127.0.0.1:4173/productions");
 await page.getByPlaceholder("Access code").fill(process.env.STAGE_REVIEW_PASSWORD);
 await page.getByRole("button", { name: "Enter demo", exact: true }).click();
-await page.getByRole("button", { name: "I’ll explore on my own", exact: true }).click();
+await dismissTourIfShown(page);
 await ready;
 const setUrl = `http://127.0.0.1:4173/projects/${project}/sets?set=${scene.id}&section=tasks`;
 await page.goto(setUrl);
@@ -252,7 +262,7 @@ await page.evaluate(() => {
   localStorage.removeItem("ss-demo-person");
 });
 await page.reload();
-await page.getByRole("button", { name: "I’ll explore on my own", exact: true }).click();
+await dismissTourIfShown(page);
 await page.getByRole("heading", { name: "Tasks on this set", exact: true }).waitFor();
 assert.equal(await page.getByRole("button", { name: "Add stage", exact: true }).count(), 0);
 assert.equal(

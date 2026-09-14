@@ -1,3 +1,4 @@
+import { PRODUCT_TOUR_ENABLED } from "@/lib/product-tour";
 import { ProductTour } from "@/components/ProductTour";
 import { usePersonalWorkflow } from "@/lib/personal-context";
 import { notificationDisposition } from "@/lib/notification-rules";
@@ -88,7 +89,7 @@ export function AppHeader() {
           </Link>
         </nav>
 
-        <ProductTour />
+        {PRODUCT_TOUR_ENABLED && <ProductTour />}
 
         {/* Utilities zone — search icon + one account menu */}
         <div className="ml-auto hidden items-center gap-1 py-2.5 md:flex md:border-l md:border-bar-border md:pl-4 lg:pl-6">

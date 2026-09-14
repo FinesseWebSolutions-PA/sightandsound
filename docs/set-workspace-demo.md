@@ -57,6 +57,8 @@ Verification: `node tests/db/open-upload-approval.mjs /absolute/path/to/@electri
 
 ## First-visit guide and replay
 
+**Currently paused at the user’s request.** The first-visit welcome and Help & tour button are disabled by `PRODUCT_TOUR_ENABLED` in `src/lib/product-tour.ts`. Saved progress is retained for re-enabling later. The behavior below describes the guide when enabled.
+
 The header's **Help & tour** button is available on desktop and phones. A first-visit welcome offers an 8-step quick start, a 19-step full walkthrough, and six topic shortcuts. The guide navigates the actual app, highlights relevant controls, and opens an existing set file for version/approval explanations when one is available. Empty productions and sets have explanatory fallbacks.
 
 Next, Back, and the step picker control navigation. Pause saves the current step; Help & tour offers Resume. Quick start and Full walkthrough always begin at step one. Reset tour progress clears only the current person's guide record on this browser. Dismissed/completed tours do not automatically reappear after reload. Progress is browser-local, not cross-device. Blocked browser storage shows a notice and the guide still works for the current visit.

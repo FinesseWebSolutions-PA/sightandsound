@@ -1,3 +1,5 @@
+// Temporarily paused. Re-enable without clearing anyone’s saved tour progress.
+export const PRODUCT_TOUR_ENABLED = false;
 export const TOUR_VERSION = 1;
 export type TourRoute =
   | "home"
