@@ -1,6 +1,7 @@
-import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, notFound, useNavigate, useRouter } from "@tanstack/react-router";
 
 import { DocumentBrowser } from "@/components/DocumentBrowser";
+import { returnHistory } from "@/lib/return-history";
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/projects/$projectId/documents")({
@@ -34,6 +35,7 @@ function DocumentsTab() {
   const { projectId } = Route.useParams();
   const search = Route.useSearch();
   const navigate = useNavigate();
+  const router = useRouter();
   const { projects } = useStore();
   if (!projects.find((p) => p.id === projectId)) throw notFound();
 
@@ -62,9 +64,14 @@ function DocumentsTab() {
         {...(search.folder ? { openFolder: search.folder } : {})}
         {...(search.comment ? { highlightCommentId: search.comment } : {})}
         onOpenDocument={(documentId) => setSearch({ document: documentId, version: undefined })}
-        onCloseDocument={() =>
-          setSearch({ document: undefined, comment: undefined, version: undefined })
-        }
+        onCloseDocument={() => {
+          if (returnHistory.canReturn(router.state.location)) {
+            router.history.back();
+          } else {
+            // Direct/shared link: close in place without sending the user off-site.
+            setSearch({ document: undefined, comment: undefined, version: undefined }, true);
+          }
+        }}
         onPlaceChange={(encoded) => setSearch({ folder: encoded || undefined })}
       />
     </div>
