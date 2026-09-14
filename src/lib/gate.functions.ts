@@ -27,8 +27,8 @@ export const getGateStatus = createServerFn({ method: "GET" }).handler(async () 
 export const unlockSite = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string }) => data)
   .handler(async ({ data }) => {
-    const expected = process.env["SITE_PASSWORD"];
-    if (!expected) throw new Error("SITE_PASSWORD is not set");
+    // Demo access code; the env value wins when configured.
+    const expected = process.env["SITE_PASSWORD"] || "1111";
     if (!passwordMatches(data.password, expected)) {
       return { ok: false as const };
     }
