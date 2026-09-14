@@ -48,3 +48,9 @@ Validation includes JavaScript tests, type checking, a production build, targete
 Validation: 48 JavaScript tests, type checking, production build, targeted lint, desktop/phone UI checks, and isolated PostgreSQL assertions for personal workflow, main-chat uniqueness, muted notices, and atomic review due dates. Run the latter with `node tests/db/personal-workflow.mjs /absolute/path/to/node_modules/@electric-sql/pglite/dist/index.js`. The test installs no live data.
 
 Google is selected for individual sign-in, but provider configuration and account-bound authorization are still pending. See [Google sign-in rollout](google-sign-in-rollout.md). Security advisors continue to report the two existing schedule functions callable as SECURITY DEFINER; address their privileges during authorization rollout ([Supabase remediation](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable)).
+
+## Temporary open approval rule — September 14
+
+Any active demo person, including viewers, can approve the latest uploaded version in an open production. A pending request or assignment is not required. When a request exists, the intended reviewer remains recorded while the actual approver is recorded separately. Direct approvals notify the uploader; requested approvals notify the requester. Repeated approvals preserve the first approval record. Older versions, deleted files, deactivated people, and closed productions cannot be approved. Requesting changes retains its existing contributor/assigned-reviewer rules. This exception remains until deliberately replaced; it does not grant other viewer editing permissions.
+
+Verification: `node tests/db/open-upload-approval.mjs /absolute/path/to/@electric-sql/pglite/dist/index.js`, plus the JavaScript suite, type checking, and production build. No live review decisions were created during testing.

@@ -680,7 +680,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const recordApproval = useCallback<Store["recordApproval"]>(
     async (documentId, decision, note, versionId, reviewerId, dueDate) => {
       const doc = dataRef.current?.documents.find((d) => d.id === documentId);
-      if (!doc || !allowed(doc.project_id, "contribute")) return false;
+      if (!doc) return false;
+      // Temporary approval exception only; other document writes keep their role checks.
+      if (decision === "approved") {
+        if (
+          isClosed(doc.project_id) ||
+          !dataRef.current?.people.some((p) => p.id === currentUserIdRef.current)
+        )
+          return false;
+      } else if (!allowed(doc.project_id, "contribute")) return false;
       return runAsync(() =>
         writeApproval(
           documentId,
@@ -693,7 +701,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         ),
       );
     },
-    [allowed, runAsync],
+    [allowed, isClosed, runAsync],
   );
 
   const libraryAction = useCallback<Store["libraryAction"]>(

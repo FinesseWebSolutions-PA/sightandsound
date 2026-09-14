@@ -991,6 +991,12 @@ function FileViewer({
     current &&
     pending &&
     (!pending.reviewer_id || pending.reviewer_id === currentUserId);
+  // Temporary prototype rule: every active person can approve the latest upload.
+  const mayApprove =
+    current &&
+    !isClosed(doc.project_id) &&
+    !!personById(currentUserId) &&
+    history[0]?.decision !== "approved";
   const approvedVersions = approvedDocumentVersions(approvals, doc.id);
   const approved = approvedVersions[0];
   const decide = async (decision: "requested" | "approved" | "changes_requested") => {
@@ -1203,7 +1209,7 @@ function FileViewer({
                         {personById(pending.requested_by_id)?.full_name ?? "a team member"}
                         {pending.due_date ? ` · Needed by ${pending.due_date}` : ""}
                         <br />
-                        Waiting for{" "}
+                        Review assigned to{" "}
                         {personById(pending.reviewer_id ?? "")?.full_name ?? "a reviewer"} · v
                         {version?.version}
                       </p>
@@ -1246,7 +1252,6 @@ function FileViewer({
                         value={reviewer}
                         onChange={setReviewer}
                         placeholder="Search for a reviewer…"
-                        excludeIds={people.filter((p) => p.role === "viewer").map((p) => p.id)}
                         suggestedIds={[
                           ...reviewAssignments
                             .filter(
@@ -1295,7 +1300,7 @@ function FileViewer({
                       </button>
                     </div>
                   )}
-                  {mayDecide && !changing && (
+                  {mayApprove && !changing && !requesting && (
                     <div className="sticky bottom-0 z-10 flex gap-2 border-t bg-card p-3">
                       <button
                         className="btn-primary min-h-11 flex-1 px-3"
@@ -1306,18 +1311,20 @@ function FileViewer({
                         }}
                       >
                         <Check className="mr-1 inline size-4" />
-                        {busy ? "Saving…" : "Approve"}
+                        {busy ? "Saving…" : `Approve v${version?.version}`}
                       </button>
-                      <button
-                        className={button}
-                        disabled={busy}
-                        onClick={() => {
-                          setChanging(true);
-                          setNote("");
-                        }}
-                      >
-                        Request changes
-                      </button>
+                      {mayDecide && (
+                        <button
+                          className={button}
+                          disabled={busy}
+                          onClick={() => {
+                            setChanging(true);
+                            setNote("");
+                          }}
+                        >
+                          Request changes
+                        </button>
+                      )}
                     </div>
                   )}
                   {changing && mayDecide && (
