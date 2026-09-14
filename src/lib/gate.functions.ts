@@ -6,7 +6,9 @@ const sessionConfig = {
   password: process.env["SESSION_SECRET"] ?? "demo-gate-session-secret-fallback-000000",
   name: "ss-demo-gate",
   maxAge: 60 * 60 * 24 * 7,
-  cookie: { httpOnly: true, secure: true, sameSite: "lax" as const, path: "/" },
+  // The app is also viewed inside the Lovable preview iframe, where the cookie is
+  // third-party: SameSite=Lax would be dropped and the unlock would never stick.
+  cookie: { httpOnly: true, secure: true, sameSite: "none" as const, path: "/" },
 };
 
 type GateSession = { unlocked?: boolean };
